@@ -19,6 +19,8 @@
 package main
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"mime"
 	"net"
 	"net/http"
@@ -26,6 +28,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -59,11 +62,14 @@ func idDe(r *http.Request) string {
 }
 
 func main() {
+	carpeta := buscarArchivos()
 	escucha, err := net.Listen("tcp", direccion)
 	if err != nil {
-		// Ya hay uno en marcha. Si es esta misma versión, sólo abrir; si
-		// es otra, que se cierre y quedarse con el sitio.
-		if versionEnMarcha() == version {
+		// Ya hay uno en marcha. Si es esta misma versión y desde esta misma
+		// carpeta, sólo abrir; si es otra versión u otra copia (otra
+		// descarga, con su «mis-datos»), que se cierre y quedarse con el
+		// sitio: si no, se verían los datos de la otra copia.
+		if versionEnMarcha() == version && dondeEnMarcha() == huella(carpeta) {
 			abrir()
 			return
 		}
@@ -87,7 +93,6 @@ func main() {
 	mime.AddExtensionType(".json", "application/json")
 	mime.AddExtensionType(".svg", "image/svg+xml")
 	mime.AddExtensionType(".js", "text/javascript")
-	carpeta := buscarArchivos()
 	if carpeta == "" {
 		escucha.Close()
 		avisarFalta("No encuentro la carpeta «archivos». Tiene que estar junto a este programa, tal como viene en el .zip.")
@@ -100,6 +105,10 @@ func main() {
 	mux.HandleFunc("/__version", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Cache-Control", "no-store")
 		w.Write([]byte(version))
+	})
+	mux.HandleFunc("/__donde", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "no-store")
+		w.Write([]byte(huella(carpeta)))
 	})
 	mux.HandleFunc("/__salir", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
@@ -186,6 +195,32 @@ self.addEventListener("activate", (e) => e.waitUntil(caches.keys()
     .then(() => self.clients.matchAll({ type: "window" }))
     .then((cs) => cs.forEach((c) => c.navigate(c.url)))));
 `
+
+// Una huella de la carpeta «archivos» (para saber si el lanzador en marcha
+// es esta misma copia sin enseñar la ruta).
+func huella(carpeta string) string {
+	if carpeta == "" {
+		return ""
+	}
+	h := sha256.Sum256([]byte(strings.ToLower(filepath.Clean(carpeta))))
+	return hex.EncodeToString(h[:8])
+}
+
+// De qué copia es el lanzador en marcha ("" si no contesta o es uno viejo).
+func dondeEnMarcha() string {
+	cliente := http.Client{Timeout: 2 * time.Second}
+	r, err := cliente.Get(url + "__donde")
+	if err != nil {
+		return ""
+	}
+	defer r.Body.Close()
+	if r.StatusCode != http.StatusOK {
+		return ""
+	}
+	b := make([]byte, 64)
+	n, _ := r.Body.Read(b)
+	return string(b[:n])
+}
 
 // La versión del lanzador que ya está en marcha ("" si no contesta).
 func versionEnMarcha() string {
