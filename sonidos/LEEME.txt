@@ -1,0 +1,16 @@
+LAS GRABACIONES DE SONIDO
+=========================
+Aquí van los .ogg del sonido ambiente y de los efectos de sonido, con la
+misma ruta que tienen en la Google Sound Library (CC BY 4.0):
+
+    https://actions.google.com/sounds/v1/weather/rain_on_roof.ogg
+    →  sonidos/weather/rain_on_roof.ogg
+
+Las rutas que usa la app están en scripts/pantalla-master.js (SONIDOS,
+para el ambiente, y EFECTOS_SONOROS, para los efectos). Sólo salen en la
+app las que estén aquí: después de añadir o quitar, pasa
+
+    python3 herramientas/precache.py
+
+que apunta cuáles hay (sonidos/indice.json) y las mete en lo que se
+guarda para funcionar sin conexión.

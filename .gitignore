@@ -1,0 +1,6 @@
+__pycache__/
+.DS_Store
+dist/
+lanzador/icono.ico
+lanzador/icono.icns
+lanzador/*.syso

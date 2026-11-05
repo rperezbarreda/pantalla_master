@@ -1,0 +1,39 @@
+# Cada vez que se sube algo a main, hace los .zip para descargar (el
+# programa y su carpeta «archivos», para Windows, macOS y Linux; ver herramientas/construir-ejecutables.py) y los deja en la
+# release «ultima» del repo: los usuarios los bajan de
+# https://github.com/rperezbarreda/pantalla_master/releases/latest
+name: ejecutables
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  construir:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Pillow y el icono de Windows
+        run: |
+          pip install pillow
+          go install github.com/akavel/rsrc@v0.10.2
+      - name: Construir
+        run: python3 herramientas/construir-ejecutables.py
+      - name: Publicar en la release «ultima»
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete ultima --yes --cleanup-tag || true
+          gh release create ultima dist/* --latest \
+            --title "Pantalla de máster" \
+            --notes "Baja el .zip de tu sistema, descomprímelo y abre «Pantalla de máster» con doble clic (junto a él va la carpeta «archivos»: déjalos juntos). Windows: PantallaMaster-Windows.zip. Mac: el de tu procesador (Apple Silicon = M1, M2…; si no, Intel). Linux: PantallaMaster-Linux.zip. Todo lo que hagas se guarda en tu ordenador."
