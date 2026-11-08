@@ -9,8 +9,20 @@ const VERSION = "__VERSION__";
 const CACHE = "pantalla-master-" + VERSION;
 const ARCHIVOS = __ARCHIVOS__;
 
+// Cada archivo se pide con «?v=VERSION» y sin la caché del navegador: así
+// no se cuela uno viejo que tuviera guardado el navegador o Cloudflare (el
+// sitio va detrás). Se guarda con su nombre de siempre.
 self.addEventListener("install", (e) => {
-    e.waitUntil(caches.open(CACHE).then((c) => c.addAll(ARCHIVOS)));
+    e.waitUntil(caches.open(CACHE).then((c) => Promise.all(ARCHIVOS.map((a) => {
+        const u = new URL(a, self.location);
+        u.searchParams.set("v", VERSION);
+        return fetch(u, { cache: "reload" }).then((r) => {
+            if (!r.ok) {
+                throw new Error(a + ": " + r.status);
+            }
+            return c.put(a, r);
+        });
+    }))));
 });
 
 // La nueva sólo entra cuando la app lo pide («↻ actualizar»), o sola si
