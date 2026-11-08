@@ -126,8 +126,9 @@
         if (linea === "amplio" || linea === "muy-amplio") {
             raiz.setAttribute("data-interlineado", linea);
         }
-        if (localStorage.getItem("richi-estilo") === "moderno") {
-            raiz.setAttribute("data-estilo", "moderno");
+        var estilo = localStorage.getItem("richi-estilo");
+        if (estilo === "moderno" || estilo === "windows") {
+            raiz.setAttribute("data-estilo", estilo);
         }
         if (localStorage.getItem("richi-letra") === "legible") {
             raiz.setAttribute("data-letra", "legible");

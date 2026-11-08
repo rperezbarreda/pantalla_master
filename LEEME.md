@@ -32,7 +32,8 @@ sw.js                   GENERADO: el service worker (sin conexión)
 scripts/                arranque.js (tema antes de pintar), app.js (Aa, sw),
                         pantalla-master.js, personajes.js, tema.js, ajustes.js
 estilos/                los del blog + app.css (lo propio de la app) y moderno.css
-                        (el diseño «moderno», Aa → diseño: sin él, el retro de siempre)
+                        y windows.css (los otros dos diseños, Aa → diseño: «moderno» y
+                        «windows 98»; sin ellos, el retro de siempre)
 datos/                  el SRD 5.2 en español (CC BY 4.0) y las tablas
                         (compendio/: reglas.json, nombres.json, master-tablas.json…)
 tipografias/            las letras (con sus licencias OFL)

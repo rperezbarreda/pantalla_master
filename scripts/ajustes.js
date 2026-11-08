@@ -17,7 +17,7 @@
 //     --escala           multiplica el tamaño de raíz (base.css)
 //     data-interlineado  la separación del texto largo (ajustes.css)
 //     data-letra         cambia las cinco fuentes de golpe (base.css)
-//     data-estilo        el diseño: retro (sin él) o moderno (moderno.css)
+//     data-estilo        el diseño: retro (sin él), moderno (moderno.css) o windows (windows.css)
 //     data-theme         el tema, de siempre (tema.js)
 //     data-crt           el filtro CRT (ajustes.css)
 //     data-voz           a qué velocidad lee (leer-en-voz.js)
