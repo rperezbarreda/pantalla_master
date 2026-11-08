@@ -15318,7 +15318,7 @@
         }
         todo.activo = estado.id;
         const salida = { activa: todo.id, campanas: todas.campanas.map((c) => ({ id: c.id, nombre: c.nombre, activo: c.activo,
-            pjs: c.pjs, docs: c.docs, musica: c.musica, inventario: c.inventario, conParty: c.conParty, jugadores: c.jugadores, linea: c.linea, relaciones: c.relaciones, perfiles: c.perfiles.map((pf) => ({ id: pf.id, nombre: pf.nombre, color: pf.color || "",
+            pjs: c.pjs, docs: c.docs, musica: c.musica, inventario: c.inventario, conParty: c.conParty, unidades: c.unidades, jugadores: c.jugadores, linea: c.linea, relaciones: c.relaciones, perfiles: c.perfiles.map((pf) => ({ id: pf.id, nombre: pf.nombre, color: pf.color || "",
                 colorPestana: pf.colorPestana, zoom: pf.zoom || 1,
                 modulos: pf.modulos.map((m) => ({ id: m.id, tipo: m.tipo, x: m.x, y: m.y, w: m.w, h: m.h,
                     titulo: m.titulo || "", color: m.color || "", plegado: !!m.plegado,
@@ -17000,6 +17000,7 @@
         botonCampana.textContent = "📚";
         botonCampana.setAttribute("aria-label", "Campaña: " + todo.nombre + " (cambiar de campaña)");
         botonCampana.title = "Campaña: " + todo.nombre + " — cambiar, crear o renombrar";
+        aplicarUnidades();
     }
     function activarCampana(c) {
         estado.modulos.forEach((m) => {
@@ -17119,13 +17120,130 @@
                 w: 410, h: 540, titulo, color, plegado: false, escala: 1, datos: { html } })) };
     }
     // Una campaña nueva: el tutorial y luego las plantillas de tableros.
-    function crearCampana(nombre) {
+    function crearCampana(nombre, unidades) {
         const c = { id: "c" + siguienteCampana++, nombre: nombre || "campaña " + (todas.campanas.length + 1), pjs: [],
+            unidades: unidades === "metrico" ? "metrico" : "imperial",
             perfiles: [perfilTutorial()].concat(perfilesDeSerie()).map((pf) => Object.assign(pf, { id: "p" + siguientePerfil++,
                 modulos: pf.modulos.map((m) => Object.assign(m, { id: "m" + siguienteId++ })) })) };
         c.activo = c.perfiles[0].id;
         c.conParty = true;
         return c;
+    }
+
+    // ---- LAS MEDIDAS DE CADA CAMPAÑA: imperial (pies, libras, millas:
+    // como vienen el SRD y las tablas) o métrico (metros, kilos y
+    // kilómetros, con la equivalencia de los manuales en español: 5 pies =
+    // 1,5 m, 1 libra = 0,5 kg, 1 milla = 1,5 km). Va en la campaña
+    // («unidades»: "imperial" o "metrico"; sin ella, imperial). Se elige al
+    // crearla y se cambia en ⚙ opciones.
+    // En métrico no se toca ningún dato: lo que se pinta en la pantalla se
+    // pasa al vuelo (un MutationObserver sobre la página), y al volver a
+    // imperial se deja como estaba. Lo que escribes tú (las notas, los
+    // campos) no se toca nunca. ----
+    const MEDIDAS = [["imperial", "📏 imperial: pies, libras y millas"], ["metrico", "📐 métrico: metros, kilos y kilómetros"]];
+    const unidadesDe = (c) => (c && c.unidades === "metrico" ? "metrico" : "imperial");
+    // (Sin una letra, un número ni una coma delante: «2d4 pies» se queda.)
+    const NUM = "\\d+(?:[.,]\\d+)*";
+    const SUELTO = "(?<![\\w.,])";
+    const RE_PIES = new RegExp(SUELTO + "(" + NUM + "(?:\\s*(?:\\/|×|x|por)\\s*" + NUM + ")*)(\\s*)(?:ft\\.?(?![a-záéíóúñ])|pies\\b|pie\\b)", "gi");
+    const RE_LIBRAS = new RegExp(SUELTO + "(" + NUM + ")(\\s*)(?:lb\\.?(?![a-záéíóúñ])|libras?\\b)", "gi");
+    const RE_MILLAS = new RegExp(SUELTO + "(" + NUM + ")(\\s*)millas?\\b", "gi");
+    function numeroLeido(x) {
+        if (x.indexOf(",") >= 0) {
+            return parseFloat(x.replace(/\./g, "").replace(",", "."));
+        }
+        return /^\d{1,3}(\.\d{3})+$/.test(x) ? parseFloat(x.replace(/\./g, "")) : parseFloat(x);
+    }
+    const numeroEscrito = (n) => n.toLocaleString("es-ES", { maximumFractionDigits: 2 });
+    const pasarNumeros = (grupo, por) => grupo.replace(new RegExp(NUM, "g"), (x) => numeroEscrito(numeroLeido(x) * por));
+    function aMetrico(texto) {
+        return texto.replace(RE_PIES, (x, n, esp) => pasarNumeros(n, 0.3) + (esp || " ") + "m")
+            .replace(RE_LIBRAS, (x, n, esp) => pasarNumeros(n, 0.5) + (esp || " ") + "kg")
+            .replace(RE_MILLAS, (x, n, esp) => pasarNumeros(n, 1.5) + (esp || " ") + "km");
+    }
+    // Los textos pasados: nodo → [lo de antes, lo de ahora].
+    const pasados = new Map();
+    let enMetrico = false;
+    // (Ni lo que habla de las propias medidas: data-sin-medidas.)
+    const NO_TOCAR = "script, style, textarea, [contenteditable], .master-entrada, .ajustes, [data-sin-medidas]";
+    function pasarNodo(n) {
+        const ya = pasados.get(n);
+        if (ya && n.data === ya[1]) {
+            return;
+        }
+        if (!/\d/.test(n.data) || !n.parentElement || n.parentElement.closest(NO_TOCAR)) {
+            return;
+        }
+        const nuevo = aMetrico(n.data);
+        if (nuevo !== n.data) {
+            pasados.set(n, [n.data, nuevo]);
+            n.data = nuevo;
+        }
+    }
+    function pasarDentro(raiz) {
+        if (raiz.nodeType === 3) {
+            pasarNodo(raiz);
+            return;
+        }
+        if (raiz.nodeType !== 1 || raiz.closest(NO_TOCAR)) {
+            return;
+        }
+        const w = document.createTreeWalker(raiz, NodeFilter.SHOW_TEXT);
+        const nodos = [];
+        while (w.nextNode()) {
+            nodos.push(w.currentNode);
+        }
+        nodos.forEach(pasarNodo);
+    }
+    const vigilante = new MutationObserver((cambios) => {
+        cambios.forEach((c) => {
+            if (c.type === "characterData") {
+                pasarNodo(c.target);
+            } else {
+                c.addedNodes.forEach(pasarDentro);
+            }
+        });
+    });
+    function aplicarUnidades() {
+        const metrico = unidadesDe(todo) === "metrico";
+        document.documentElement.dataset.unidades = metrico ? "metrico" : "imperial";
+        if (metrico === enMetrico) {
+            return;
+        }
+        enMetrico = metrico;
+        if (metrico) {
+            pasarDentro(document.body);
+            vigilante.observe(document.body, { childList: true, subtree: true, characterData: true });
+        } else {
+            vigilante.disconnect();
+            pasados.forEach(([antes, ahora], n) => {
+                if (n.isConnected && n.data === ahora) {
+                    n.data = antes;
+                }
+            });
+            pasados.clear();
+        }
+    }
+    // Elegir las medidas (al crear una campaña): dos opciones, sin ninguna
+    // marcada, para que se elija. .valor() da la elegida o "".
+    function elegirUnidades(id) {
+        const caja = crear("fieldset", "master-unidades");
+        caja.appendChild(crear("legend", "oc-dados-etiqueta", "¿qué medidas usáis?"));
+        const radios = MEDIDAS.map(([v, texto]) => {
+            const et = crear("label", "master-unidades-opcion");
+            const r = crear("input");
+            r.type = "radio";
+            r.name = id;
+            r.value = v;
+            r.id = id + "-" + v;
+            et.htmlFor = r.id;
+            et.append(r, document.createTextNode(" " + texto));
+            caja.appendChild(et);
+            return r;
+        });
+        caja.valor = () => (radios.find((r) => r.checked) || {}).value || "";
+        caja.foco = () => radios[0].focus();
+        return caja;
     }
 
     // LICENCIAS Y CRÉDITOS: lo que hay que decir del SRD, los sonidos, las
@@ -17236,7 +17354,8 @@
         et.htmlFor = input.id;
         const crearB = crear("button", "oc-vida-accion es-principal", "＋ crear y empezar");
         crearB.type = "submit";
-        form.append(et, input, crearB, crear("p", "oc-hoja-nota", "Viene con un tablero de tutorial que explica las opciones,"
+        const medidas = elegirUnidades("master-entrada-unidades");
+        form.append(et, input, medidas, crearB, crear("p", "oc-hoja-nota", "Viene con un tablero de tutorial que explica las opciones,"
             + " y con tableros de ejemplo para combate, tiendas, PNJ…"));
         form.addEventListener("submit", (e) => {
             e.preventDefault();
@@ -17246,7 +17365,12 @@
                 input.focus();
                 return;
             }
-            const c = crearCampana(n);
+            if (!medidas.valor()) {
+                avisar("Elige qué medidas usáis: imperial (pies) o métrico (metros). Se puede cambiar luego en ⚙ opciones.");
+                medidas.foco();
+                return;
+            }
+            const c = crearCampana(n, medidas.valor());
             if (sinGuardarTodavia) {
                 todas.campanas = [c];
                 sinGuardarTodavia = false;
@@ -17378,8 +17502,14 @@
             });
             return f;
         };
+        const medidasNueva = elegirUnidades("master-campana-unidades");
         const nueva = formulario("master-campana-nueva", "campaña nueva", "campaña " + (todas.campanas.length + 1), "＋ crear", (n) => {
-            const c = crearCampana(n);
+            if (!medidasNueva.valor()) {
+                avisar("Elige qué medidas usáis: imperial (pies) o métrico (metros).");
+                medidasNueva.foco();
+                return;
+            }
+            const c = crearCampana(n, medidasNueva.valor());
             todas.campanas.push(c);
             cerrar();
             activarCampana(c);
@@ -17412,6 +17542,7 @@
             avisar("Borrada la campaña " + nombre + ".");
         });
         borrar.disabled = todas.campanas.length < 2;
+        nueva.insertBefore(medidasNueva, nueva.querySelector("button"));
         cuerpo.append(ul, nueva, renombrarla, borrar);
         const cerrar = window.ocVentana.abrir({ titulo: "campañas", cuerpo, vuelta: botonCampana, clase: "es-ancha" });
     }
@@ -17500,6 +17631,16 @@
             }), vaciar);
             fila("Las ventanas de esta pestaña", otras);
         }
+        const notaMedidas = crear("p", "oc-hoja-nota", "En métrico, lo que sale en pantalla (monstruos, conjuros, reglas, objetos,"
+            + " generadores…) se pasa con la equivalencia de los manuales en español: 5 pies = 1,5 m, 1 libra = 0,5 kg,"
+            + " 1 milla = 1,5 km. Lo que escribes tú no se toca.");
+        notaMedidas.dataset.sinMedidas = "";
+        fila("Medidas de esta campaña", botonesDe("medidas", MEDIDAS, unidadesDe(todo), (v) => {
+            todo.unidades = v;
+            guardar();
+            aplicarUnidades();
+            avisar(v === "metrico" ? "Medidas en metros, kilos y kilómetros." : "Medidas en pies, libras y millas.");
+        }), notaMedidas);
         fila("Copia de seguridad", copias(() => cerrar()));
         // En la web (no en el ejecutable, que ya es la app en el
         // ordenador): de dónde bajarla para usarla sin el navegador.
