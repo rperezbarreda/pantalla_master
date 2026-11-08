@@ -29,9 +29,13 @@ window.ocMontar = window.ocMontar || {};
 // algo se avisa con el evento «oc:reglas».
 
 window.ocReglas = (function () {
+    // Las de 2024 (SRD 5.2) o, en una campaña de 2014, las del SRD 5.1
+    // (usarEdicion, que lo pone la pantalla de máster al cambiar de campaña).
     const RUTA = "datos/personajes/compendio/reglas.json";
+    const RUTAS = { 2024: RUTA, 2014: "datos/personajes/compendio/2014/reglas.json" };
     const CLAVE = "richi-master-reglas";
-    let crudo = null;
+    let edicion = "2024";
+    const crudos = {};
     const leerCambios = () => {
         try {
             const x = JSON.parse(localStorage.getItem(CLAVE) || "{}");
@@ -42,15 +46,16 @@ window.ocReglas = (function () {
     };
     const CAMPOS = ["nombre", "icono", "texto", "corto", "alias"];
     function cargar() {
-        if (!crudo) {
-            crudo = fetch(RUTA).then((r) => {
+        const ruta = RUTAS[edicion] || RUTA;
+        if (!crudos[ruta]) {
+            crudos[ruta] = fetch(ruta).then((r) => {
                 if (!r.ok) {
                     throw new Error(r.status);
                 }
                 return r.json();
             });
         }
-        return crudo.then((d) => {
+        return crudos[ruta].then((d) => {
             const cambios = leerCambios();
             const reglas = (d.reglas || []).map((r) => {
                 const c = cambios[r.id];
@@ -105,7 +110,14 @@ window.ocReglas = (function () {
         document.dispatchEvent(new CustomEvent("oc:reglas"));
         return true;
     }
-    return { RUTA, CLAVE, cargar, guardarCambio, cambios: leerCambios };
+    function usarEdicion(e) {
+        const nueva = e === "2014" ? "2014" : "2024";
+        if (nueva !== edicion) {
+            edicion = nueva;
+            document.dispatchEvent(new CustomEvent("oc:reglas"));
+        }
+    }
+    return { RUTA, CLAVE, cargar, guardarCambio, cambios: leerCambios, usarEdicion, edicion: () => edicion };
 })();
 
 (function () {

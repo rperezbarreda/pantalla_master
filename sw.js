@@ -5,10 +5,13 @@
 // en herramientas/sw-plantilla.js. La versión cambia sola cuando cambia
 // cualquier archivo, y entonces la app avisa de que hay una nueva.
 // =========================================
-const VERSION = "9c447d645484";
+const VERSION = "fb3b92cc1aee";
 const CACHE = "pantalla-master-" + VERSION;
 const ARCHIVOS = [
     "./",
+    "datos/personajes/compendio/2014/bestiario.json",
+    "datos/personajes/compendio/2014/conjuros-srd.json",
+    "datos/personajes/compendio/2014/reglas.json",
     "datos/personajes/compendio/bestiario.json",
     "datos/personajes/compendio/conjuros-srd.json",
     "datos/personajes/compendio/idiomas.json",

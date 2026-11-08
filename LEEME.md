@@ -48,6 +48,8 @@ lanzador/               el ejecutable (Go)
 - `reglas.json`: `reglas` (cada una con su `id`, que no se cambia, su grupo, nombre, icono, alias y texto; `opcional: true` para las que no son del SRD, como el flanqueo) y `marcas` (las de la iniciativa: icono, resumen corto y la regla que abren). Desde la app, cada regla tiene «✎ cambiar» y «↺ volver a la original»: lo cambiado se guarda aparte («richi-master-reglas», va con exportar y en «mis-datos») y el archivo no se toca.
 - `nombres.json`: las sílabas y trozos del generador de nombres. Desde la app («✎ cambiar esta» en el generador) se cambian las de siempre y se crean **tablas de nombres propias** (nombres enteros: títulos, femeninos, masculinos, neutros y apellidos, o lugares en dos partes), en «richi-master-nombres».
 
+**La edición** también es de cada campaña («edicion»: `2024` o `2014`; sin ella, 2024), se elige al crearla y se cambia en ⚙ opciones. Con 2014, las reglas, el bestiario y los conjuros salen de `datos/personajes/compendio/2014/` (el SRD 5.1 en español de Wizards, CC BY 4.0, pasado de su PDF oficial y con las medidas en pies y libras); lo demás (la tienda, los rasgos) es el de 2024. Los id de las reglas son los mismos en las dos cuando la regla es la misma, así que lo que cambias en la app («richi-master-reglas») vale para las dos.
+
 **Las medidas** son de cada campaña («unidades» en su JSON guardado: `imperial` o `metrico`; sin ella, imperial). Se eligen al crearla y se cambian en ⚙ opciones. Los datos van siempre en pies, libras y millas (como el SRD); en métrico se pasa al vuelo lo que sale en pantalla (5 pies = 1,5 m, 1 lb = 0,5 kg, 1 milla = 1,5 km), sin tocar lo que escribe cada uno (`aplicarUnidades` en `scripts/pantalla-master.js`).
 
 **Antes de subir cualquier cambio:**

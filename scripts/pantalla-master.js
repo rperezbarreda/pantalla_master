@@ -169,6 +169,14 @@
     // Los JSON de la web, una vez cada uno.
     const pedidos = {};
     const REGLAS = window.ocReglas.RUTA;
+    // LA EDICIÓN de cada campaña: 2024 (SRD 5.2, lo de siempre) o 2014 (SRD
+    // 5.1: sus reglas, sus monstruos y sus conjuros, en
+    // datos/personajes/compendio/2014/). Va en la campaña («edicion»; sin
+    // ella, 2024), se elige al crearla y se cambia en ⚙ opciones. Lo tuyo
+    // (tus monstruos, conjuros, reglas propias…) vale para las dos.
+    let edicionAhora = "2024";
+    const DE_2014 = { "datos/personajes/compendio/bestiario.json": "datos/personajes/compendio/2014/bestiario.json",
+        "datos/personajes/compendio/conjuros-srd.json": "datos/personajes/compendio/2014/conjuros-srd.json" };
     const NOMBRES = "datos/personajes/compendio/nombres.json";
 
     function pedir(ruta) {
@@ -180,8 +188,10 @@
         if (ruta === NOMBRES) {
             return pedirNombres();
         }
-        if (!pedidos[ruta]) {
-            pedidos[ruta] = fetch(ruta).then((r) => {
+        // En una campaña de 2014, los monstruos y los conjuros del SRD 5.1.
+        const real = (edicionAhora === "2014" && DE_2014[ruta]) || ruta;
+        if (!pedidos[real]) {
+            pedidos[real] = fetch(real).then((r) => {
                 if (!r.ok) {
                     throw new Error(r.status);
                 }
@@ -190,10 +200,10 @@
         }
         const k = PROPIOS_EN[ruta];
         if (!k) {
-            return pedidos[ruta];
+            return pedidos[real];
         }
         // Con lo tuyo (si hay) al final.
-        return pedidos[ruta].then((d) => {
+        return pedidos[real].then((d) => {
             const tuyos = leerPropios()[k];
             if (!tuyos.length) {
                 return d;
@@ -15318,7 +15328,7 @@
         }
         todo.activo = estado.id;
         const salida = { activa: todo.id, campanas: todas.campanas.map((c) => ({ id: c.id, nombre: c.nombre, activo: c.activo,
-            pjs: c.pjs, docs: c.docs, musica: c.musica, inventario: c.inventario, conParty: c.conParty, unidades: c.unidades, jugadores: c.jugadores, linea: c.linea, relaciones: c.relaciones, perfiles: c.perfiles.map((pf) => ({ id: pf.id, nombre: pf.nombre, color: pf.color || "",
+            pjs: c.pjs, docs: c.docs, musica: c.musica, inventario: c.inventario, conParty: c.conParty, unidades: c.unidades, edicion: c.edicion, jugadores: c.jugadores, linea: c.linea, relaciones: c.relaciones, perfiles: c.perfiles.map((pf) => ({ id: pf.id, nombre: pf.nombre, color: pf.color || "",
                 colorPestana: pf.colorPestana, zoom: pf.zoom || 1,
                 modulos: pf.modulos.map((m) => ({ id: m.id, tipo: m.tipo, x: m.x, y: m.y, w: m.w, h: m.h,
                     titulo: m.titulo || "", color: m.color || "", plegado: !!m.plegado,
@@ -17001,6 +17011,7 @@
         botonCampana.setAttribute("aria-label", "Campaña: " + todo.nombre + " (cambiar de campaña)");
         botonCampana.title = "Campaña: " + todo.nombre + " — cambiar, crear o renombrar";
         aplicarUnidades();
+        aplicarEdicion();
     }
     function activarCampana(c) {
         estado.modulos.forEach((m) => {
@@ -17120,9 +17131,9 @@
                 w: 410, h: 540, titulo, color, plegado: false, escala: 1, datos: { html } })) };
     }
     // Una campaña nueva: el tutorial y luego las plantillas de tableros.
-    function crearCampana(nombre, unidades) {
+    function crearCampana(nombre, unidades, edicion) {
         const c = { id: "c" + siguienteCampana++, nombre: nombre || "campaña " + (todas.campanas.length + 1), pjs: [],
-            unidades: unidades === "metrico" ? "metrico" : "imperial",
+            unidades: unidades === "metrico" ? "metrico" : "imperial", edicion: edicion === "2014" ? "2014" : "2024",
             perfiles: [perfilTutorial()].concat(perfilesDeSerie()).map((pf) => Object.assign(pf, { id: "p" + siguientePerfil++,
                 modulos: pf.modulos.map((m) => Object.assign(m, { id: "m" + siguienteId++ })) })) };
         c.activo = c.perfiles[0].id;
@@ -17204,6 +17215,23 @@
             }
         });
     });
+    const EDICIONES = [["2024", "📕 2024 (D&D de 2024, SRD 5.2)"], ["2014", "📗 2014 (D&D de 2014, SRD 5.1)"]];
+    const edicionDe = (c) => (c && c.edicion === "2014" ? "2014" : "2024");
+    // Al cambiar de edición: las reglas, el buscador y las ventanas, otra vez.
+    function aplicarEdicion() {
+        const e = edicionDe(todo);
+        document.documentElement.dataset.edicion = e;
+        window.ocReglas.usarEdicion(e);
+        if (e === edicionAhora) {
+            return;
+        }
+        edicionAhora = e;
+        indice = null;
+        estado.modulos.forEach((m) => {
+            m.el = null;
+        });
+        pintarTodo();
+    }
     function aplicarUnidades() {
         const metrico = unidadesDe(todo) === "metrico";
         document.documentElement.dataset.unidades = metrico ? "metrico" : "imperial";
@@ -17224,12 +17252,14 @@
             pasados.clear();
         }
     }
-    // Elegir las medidas (al crear una campaña): dos opciones, sin ninguna
-    // marcada, para que se elija. .valor() da la elegida o "".
-    function elegirUnidades(id) {
+    // Elegir las medidas o la edición (al crear una campaña): las opciones,
+    // sin ninguna marcada, para que se elija. .valor() da la elegida o "".
+    const elegirUnidades = (id) => elegirUna(id, "¿qué medidas usáis?", MEDIDAS);
+    const elegirEdicion = (id) => elegirUna(id, "¿con qué reglas jugáis?", EDICIONES);
+    function elegirUna(id, leyenda, opciones) {
         const caja = crear("fieldset", "master-unidades");
-        caja.appendChild(crear("legend", "oc-dados-etiqueta", "¿qué medidas usáis?"));
-        const radios = MEDIDAS.map(([v, texto]) => {
+        caja.appendChild(crear("legend", "oc-dados-etiqueta", leyenda));
+        const radios = opciones.map(([v, texto]) => {
             const et = crear("label", "master-unidades-opcion");
             const r = crear("input");
             r.type = "radio";
@@ -17256,6 +17286,13 @@
             + " oficial. Los rasgos y dotes se han preparado a partir de 5e-bits/5e-database (MIT).",
         [["el SRD 5.2", "https://www.dndbeyond.com/srd"], ["la licencia CC BY 4.0", "https://creativecommons.org/licenses/by/4.0/deed.es"],
             ["5e-database", "https://github.com/5e-bits/5e-database"]]],
+        ["📗 Reglas, monstruos y conjuros de 2014", "Esta obra incluye materiales extraídos del Documento de referencia del"
+            + " sistema 5.1 («SRD 5.1») de Wizards of the Coast LLC, que está disponible en"
+            + " https://dnd.wizards.com/es/resources/systems-reference-document. El SRD 5.1 tiene la licencia Creative Commons"
+            + " Atribución/Reconocimiento 4.0 Licencia Pública Internacional, que está disponible en"
+            + " https://creativecommons.org/licenses/by/4.0/legalcode.es.",
+        [["el SRD 5.1", "https://dnd.wizards.com/es/resources/systems-reference-document"],
+            ["la licencia CC BY 4.0", "https://creativecommons.org/licenses/by/4.0/legalcode.es"]]],
         ["🔊 Sonidos", "Las grabaciones de sonido ambiente y efectos (cuando vienen con la app) son de la Google Sound Library,"
             + " con licencia CC BY 4.0. Tus propios audios son tuyos y se quedan en tu dispositivo.",
         [["Google Sound Library", "https://developers.google.com/assistant/tools/sound-library"],
@@ -17355,7 +17392,8 @@
         const crearB = crear("button", "oc-vida-accion es-principal", "＋ crear y empezar");
         crearB.type = "submit";
         const medidas = elegirUnidades("master-entrada-unidades");
-        form.append(et, input, medidas, crearB, crear("p", "oc-hoja-nota", "Viene con un tablero de tutorial que explica las opciones,"
+        const edicion = elegirEdicion("master-entrada-edicion");
+        form.append(et, input, edicion, medidas, crearB, crear("p", "oc-hoja-nota", "Viene con un tablero de tutorial que explica las opciones,"
             + " y con tableros de ejemplo para combate, tiendas, PNJ…"));
         form.addEventListener("submit", (e) => {
             e.preventDefault();
@@ -17365,12 +17403,17 @@
                 input.focus();
                 return;
             }
+            if (!edicion.valor()) {
+                avisar("Elige con qué reglas jugáis: las de 2024 o las de 2014. Se puede cambiar luego en ⚙ opciones.");
+                edicion.foco();
+                return;
+            }
             if (!medidas.valor()) {
                 avisar("Elige qué medidas usáis: imperial (pies) o métrico (metros). Se puede cambiar luego en ⚙ opciones.");
                 medidas.foco();
                 return;
             }
-            const c = crearCampana(n, medidas.valor());
+            const c = crearCampana(n, medidas.valor(), edicion.valor());
             if (sinGuardarTodavia) {
                 todas.campanas = [c];
                 sinGuardarTodavia = false;
@@ -17503,13 +17546,19 @@
             return f;
         };
         const medidasNueva = elegirUnidades("master-campana-unidades");
+        const edicionNueva = elegirEdicion("master-campana-edicion");
         const nueva = formulario("master-campana-nueva", "campaña nueva", "campaña " + (todas.campanas.length + 1), "＋ crear", (n) => {
+            if (!edicionNueva.valor()) {
+                avisar("Elige con qué reglas jugáis: las de 2024 o las de 2014.");
+                edicionNueva.foco();
+                return;
+            }
             if (!medidasNueva.valor()) {
                 avisar("Elige qué medidas usáis: imperial (pies) o métrico (metros).");
                 medidasNueva.foco();
                 return;
             }
-            const c = crearCampana(n, medidasNueva.valor());
+            const c = crearCampana(n, medidasNueva.valor(), edicionNueva.valor());
             todas.campanas.push(c);
             cerrar();
             activarCampana(c);
@@ -17542,6 +17591,7 @@
             avisar("Borrada la campaña " + nombre + ".");
         });
         borrar.disabled = todas.campanas.length < 2;
+        nueva.insertBefore(edicionNueva, nueva.querySelector("button"));
         nueva.insertBefore(medidasNueva, nueva.querySelector("button"));
         cuerpo.append(ul, nueva, renombrarla, borrar);
         const cerrar = window.ocVentana.abrir({ titulo: "campañas", cuerpo, vuelta: botonCampana, clase: "es-ancha" });
@@ -17635,6 +17685,13 @@
             + " generadores…) se pasa con la equivalencia de los manuales en español: 5 pies = 1,5 m, 1 libra = 0,5 kg,"
             + " 1 milla = 1,5 km. Lo que escribes tú no se toca.");
         notaMedidas.dataset.sinMedidas = "";
+        fila("Reglas de esta campaña", botonesDe("edición", EDICIONES, edicionDe(todo), (v) => {
+            todo.edicion = v;
+            guardar();
+            aplicarEdicion();
+            avisar(v === "2014" ? "Reglas, monstruos y conjuros de 2014 (SRD 5.1)." : "Reglas, monstruos y conjuros de 2024 (SRD 5.2).");
+        }), crear("p", "oc-hoja-nota", "Cambia las reglas (estados, acciones, descansos…), el bestiario y los conjuros. Lo tuyo"
+            + " (tus monstruos, conjuros y reglas propias) sale con las dos. Los objetos de la tienda son los de 2024."));
         fila("Medidas de esta campaña", botonesDe("medidas", MEDIDAS, unidadesDe(todo), (v) => {
             todo.unidades = v;
             guardar();
