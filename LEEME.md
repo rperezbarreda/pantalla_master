@@ -33,12 +33,18 @@ scripts/                arranque.js (tema antes de pintar), app.js (Aa, sw),
                         pantalla-master.js, personajes.js, tema.js, ajustes.js
 estilos/                los del blog + app.css (lo propio de la app)
 datos/                  el SRD 5.2 en español (CC BY 4.0) y las tablas
+                        (compendio/: reglas.json, nombres.json, master-tablas.json…)
 tipografias/            las letras (con sus licencias OFL)
 imagenes/               iconos y fondos
 sonidos/                las grabaciones (ver sonidos/LEEME.txt)
 herramientas/           precache.py, construir-ejecutables.py y la plantilla del sw
 lanzador/               el ejecutable (Go)
 ```
+
+**Las reglas y los nombres se cambian en sus JSON** (`datos/personajes/compendio/`):
+
+- `reglas.json`: `reglas` (cada una con su `id`, que no se cambia, su grupo, nombre, icono, alias y texto; `opcional: true` para las que no son del SRD, como el flanqueo) y `marcas` (las de la iniciativa: icono, resumen corto y la regla que abren). Desde la app, cada regla tiene «✎ cambiar» y «↺ volver a la original»: lo cambiado se guarda aparte («richi-master-reglas», va con exportar y en «mis-datos») y el archivo no se toca.
+- `nombres.json`: las sílabas y trozos del generador de nombres. Desde la app («✎ cambiar esta» en el generador) se cambian las de siempre y se crean **tablas de nombres propias** (nombres enteros: títulos, femeninos, masculinos, neutros y apellidos, o lugares en dos partes), en «richi-master-nombres».
 
 **Antes de subir cualquier cambio:**
 

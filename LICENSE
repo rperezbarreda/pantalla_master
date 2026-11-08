@@ -27,7 +27,7 @@ and the original content of this project. Some files are under their own
 licenses:
 
 - datos/personajes/compendio/*-srd.json, bestiario.json, tienda.json and
-  datos/personajes/reglas-dnd.json include material from the System Reference
+  reglas.json include material from the System Reference
   Document 5.2 by Wizards of the Coast LLC, available at
   https://www.dndbeyond.com/srd, licensed under the Creative Commons
   Attribution 4.0 International License

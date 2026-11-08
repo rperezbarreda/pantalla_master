@@ -15,6 +15,99 @@
 
 window.ocMontar = window.ocMontar || {};
 
+// =========================================
+// LAS REGLAS (datos/personajes/compendio/reglas.json) Y LO QUE CAMBIAS
+// =========================================
+// Todas salen del JSON: las reglas (con su id, que no cambia) y las marcas
+// de la iniciativa (icono, resumen corto y la regla que abren). Lo que se
+// cambia desde la app (✎ cambiar en una regla) va aparte, en
+// «richi-master-reglas»: {id: {nombre, icono, texto, corto, alias}}, y se
+// pone encima al cargar; «volver a la original» lo quita.
+// window.ocReglas.cargar() → Promise de {fuente, reglas, marcas}, ya con
+// lo tuyo (cada regla cambiada lleva «cambiada: true» y «original», la del
+// JSON). guardarCambio(id, datos) (null: la original otra vez). Al cambiar
+// algo se avisa con el evento «oc:reglas».
+
+window.ocReglas = (function () {
+    const RUTA = "datos/personajes/compendio/reglas.json";
+    const CLAVE = "richi-master-reglas";
+    let crudo = null;
+    const leerCambios = () => {
+        try {
+            const x = JSON.parse(localStorage.getItem(CLAVE) || "{}");
+            return x && typeof x === "object" && !Array.isArray(x) ? x : {};
+        } catch (e) {
+            return {};
+        }
+    };
+    const CAMPOS = ["nombre", "icono", "texto", "corto", "alias"];
+    function cargar() {
+        if (!crudo) {
+            crudo = fetch(RUTA).then((r) => {
+                if (!r.ok) {
+                    throw new Error(r.status);
+                }
+                return r.json();
+            });
+        }
+        return crudo.then((d) => {
+            const cambios = leerCambios();
+            const reglas = (d.reglas || []).map((r) => {
+                const c = cambios[r.id];
+                if (!c) {
+                    return r;
+                }
+                const x = Object.assign({}, r, { cambiada: true, original: r });
+                CAMPOS.forEach((k) => {
+                    if (typeof c[k] === "string" && k !== "corto") {
+                        x[k] = c[k];
+                    }
+                });
+                return x;
+            });
+            const porId = {};
+            reglas.forEach((r) => {
+                porId[r.id] = r;
+            });
+            // Las marcas: su resumen y su icono, los de su regla si los
+            // cambiaste (el icono, solo si era el mismo que el de la regla).
+            const marcas = (d.marcas || []).map((mk) => {
+                const c = mk.regla && cambios[mk.regla];
+                const r = mk.regla && porId[mk.regla];
+                if (!c) {
+                    return mk;
+                }
+                const x = Object.assign({}, mk);
+                if (typeof c.corto === "string" && c.corto.trim()) {
+                    x.corto = c.corto.trim();
+                    x.cortoOriginal = mk.corto || "";
+                }
+                if (r && r.original && c.icono && mk.icono === r.original.icono) {
+                    x.icono = c.icono;
+                }
+                return x;
+            });
+            return { fuente: d.fuente, reglas, marcas, porId };
+        });
+    }
+    function guardarCambio(id, datos) {
+        const todos = leerCambios();
+        if (datos) {
+            todos[id] = datos;
+        } else {
+            delete todos[id];
+        }
+        try {
+            localStorage.setItem(CLAVE, JSON.stringify(todos));
+        } catch (e) {
+            return false;
+        }
+        document.dispatchEvent(new CustomEvent("oc:reglas"));
+        return true;
+    }
+    return { RUTA, CLAVE, cargar, guardarCambio, cambios: leerCambios };
+})();
+
 (function () {
     // La clave (donde se guarda lo de cada uno): la del personaje o, en la
     // pantalla de máster, la suya.
@@ -3621,55 +3714,41 @@ window.ocMontar.iniciativa = function (sitio, opciones) {
     // ---- LAS MARCAS: lo que lleva encima cada uno (un estado, la
     // concentración, un conjuro, un efecto…), con rondas si se quiere: al
     // empezar cada ronda se les quita una y, al llegar a 0, se acaban. ----
-    // Las de siempre, con su dibujo (los mismos que en las reglas).
-    const MARCAS = [["concentración", "🧘"], ["bendecido", "✨"], ["maldito", "💀"], ["ventaja", "⬆️"], ["desventaja", "⬇️"],
-        ["escondido", "🥷"], ["agarrado", "🤝"], ["apresado", "⛓️"], ["asustado", "😱"], ["aturdido", "💫"], ["cegado", "🙈"],
-        ["derribado", "🛌"], ["ensordecido", "🙉"], ["envenenado", "🤢"], ["hechizado", "💘"], ["incapacitado", "🚫"],
-        ["inconsciente", "😵"], ["invisible", "👻"], ["paralizado", "🧊"], ["petrificado", "🗿"], ["agotamiento", "🥵"]];
-    const ICONO = {};
-    MARCAS.forEach(([t, i]) => {
-        ICONO[t] = i;
-    });
-    // Qué es cada una, en corto (al pasar el ratón por encima); al
-    // pulsarla, la regla entera (reglas-dnd.json) si la hay.
-    const QUE_ES = { "concentración": "Mantiene un conjuro de concentración: lo pierde si lanza otro, queda incapacitado"
-            + " o falla la salvación de Constitución al recibir daño (CD 10 o la mitad del daño).",
-        bendecido: "Bajo un efecto que ayuda (como Bendición: suma 1d4 a sus ataques y salvaciones).",
-        maldito: "Bajo un efecto que estorba (como Perdición: resta 1d4 a sus ataques y salvaciones, o una maldición).",
-        ventaja: "Tira dos d20 y se queda con el mayor.", desventaja: "Tira dos d20 y se queda con el menor.",
-        escondido: "No se le ve ni se le oye: los ataques contra él tienen desventaja y los suyos, ventaja.",
-        agarrado: "Velocidad 0; desventaja al atacar a cualquiera que no sea quien le agarra.",
-        apresado: "Velocidad 0; desventaja en sus ataques y en las salvaciones de Destreza; los ataques contra él, con ventaja.",
-        asustado: "Desventaja en pruebas y ataques mientras ve lo que le asusta; no puede acercarse a ello.",
-        aturdido: "Incapacitado; falla las salvaciones de Fuerza y Destreza; los ataques contra él, con ventaja.",
-        cegado: "No ve: falla lo que necesite la vista; sus ataques, con desventaja; los de los demás, con ventaja.",
-        derribado: "Solo se arrastra; desventaja al atacar; ataques cuerpo a cuerpo contra él a 5 pies, con ventaja.",
-        ensordecido: "No oye: falla lo que necesite el oído.",
-        envenenado: "Desventaja en las tiradas de ataque y en las pruebas de característica.",
-        hechizado: "No puede atacar a quien le hechiza; este tiene ventaja en sus pruebas sociales con él.",
-        incapacitado: "No puede hacer acciones, acciones adicionales ni reacciones; pierde la concentración.",
-        inconsciente: "Incapacitado y derribado; falla Fuerza y Destreza; golpes a 5 pies, críticos.",
-        invisible: "No se le ve: sus ataques, con ventaja; los de los demás contra él, con desventaja.",
-        paralizado: "Incapacitado, velocidad 0; falla Fuerza y Destreza; golpes a 5 pies, críticos.",
-        petrificado: "Convertido en piedra: incapacitado, resistencia a todo el daño, no envejece.",
-        agotamiento: "Cada nivel resta 2 a sus pruebas de d20 y 5 pies a su velocidad; con 6, muere." };
-    // La regla de reglas-dnd.json que explica cada una.
-    const REGLA_DE = { "concentración": "Concentración", ventaja: "Ventaja y desventaja", desventaja: "Ventaja y desventaja",
-        escondido: "Esconderse" };
-    let reglasTexto = null;
-
-    function leerReglas() {
-        if (!reglasTexto) {
-            reglasTexto = fetch("datos/personajes/reglas-dnd.json").then((r) => r.json()).then((d) => {
-                const porNombre = {};
-                (d.reglas || []).forEach((x) => {
-                    porNombre[x.nombre.toLowerCase()] = x.texto;
-                });
-                return porNombre;
-            }).catch(() => ({}));
-        }
-        return reglasTexto;
+    // Las de siempre: las «marcas» de reglas.json (window.ocReglas), con
+    // su dibujo, su resumen corto (al pasar el ratón por encima) y la regla
+    // que se abre al pulsarlas. Hasta que llegan, la lista sale sin ellas;
+    // al llegar (o al cambiar una regla en la app) se vuelve a pintar.
+    let MARCAS = [];
+    let ICONO = {};
+    let QUE_ES = {};
+    let REGLA_DE = {};
+    let reglasPorId = {};
+    function ponerReglas(d) {
+        MARCAS = (d.marcas || []).map((mk) => [mk.marca, mk.icono]);
+        ICONO = {};
+        QUE_ES = {};
+        REGLA_DE = {};
+        (d.marcas || []).forEach((mk) => {
+            ICONO[mk.marca] = mk.icono || "";
+            QUE_ES[mk.marca] = mk.corto || "";
+            if (mk.regla) {
+                REGLA_DE[mk.marca] = mk.regla;
+            }
+        });
+        reglasPorId = d.porId || {};
     }
+    function cargarReglas() {
+        return window.ocReglas.cargar().then((d) => {
+            ponerReglas(d);
+            if (caja.isConnected) {
+                pintar();
+            }
+        }).catch(() => {
+            // Sin el JSON: las marcas, sin dibujo ni resumen.
+        });
+    }
+    // La regla entera de una marca (su texto), o nada.
+    const leerReglas = () => Promise.resolve(reglasPorId);
 
     // Un texto con «**negrita**», párrafos y listas «- », en nodos.
     function textoConFormato(texto) {
@@ -3795,12 +3874,12 @@ window.ocMontar.iniciativa = function (sitio, opciones) {
         const texto = crear("div", "oc-ini-marca-que");
         texto.appendChild(crear("p", "", queEs(mk) || "Una marca propia, sin descripción."));
         cuerpo.appendChild(texto);
-        const regla = REGLA_DE[mk.t] || (ICONO[mk.t] ? mk.t : "");
+        const regla = REGLA_DE[mk.t];
         if (regla && !mk.d) {
-            leerReglas().then((porNombre) => {
-                const t = porNombre[regla.toLowerCase()];
-                if (t) {
-                    texto.replaceChildren(textoConFormato(t));
+            leerReglas().then((porId) => {
+                const r = porId[regla];
+                if (r && r.texto) {
+                    texto.replaceChildren(textoConFormato(r.texto));
                 }
             });
         }
@@ -4482,6 +4561,8 @@ window.ocMontar.iniciativa = function (sitio, opciones) {
     caja.append(barraModos, panelPreparar, panelCombate);
     sitio.replaceChildren(caja, aviso);
     pintar();
+    cargarReglas();
+    document.addEventListener("oc:reglas", cargarReglas);
     // Si otro (el bestiario de la pantalla de máster) mete a alguien en
     // «richi-oc-iniciativa», avisa con este evento y se vuelve a leer.
     document.addEventListener("oc-iniciativa:cambio", () => {
@@ -4511,8 +4592,10 @@ window.ocMontar.iniciativa = function (sitio, opciones) {
 // filtra (por el nombre y el texto, sin mirar tildes).
 // window.ocMontar.reglas(sitio) lo monta en un sitio con esas reglas
 // (<li class="oc-regla"><details>…); se monta solo en la de la ficha.
+// «abrir(id, boton)», si se da, abre cada una a su manera (la pantalla de
+// máster: con «✎ cambiar»); el id, el data-id de su <li>.
 
-window.ocMontar.reglas = function (sitio, idBuscar) {
+window.ocMontar.reglas = function (sitio, idBuscar, abrir) {
     const llano = (t) => String(t || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
     const reglas = Array.from(sitio.querySelectorAll(".oc-regla"));
     const grupos = Array.from(sitio.querySelectorAll(".oc-reglas-grupo"));
@@ -4534,6 +4617,10 @@ window.ocMontar.reglas = function (sitio, idBuscar) {
         n.textContent = nombre.textContent.replace(/^▸\s*/, "");
         b.append(dibujo, n);
         b.addEventListener("click", () => {
+            if (abrir && r.dataset.id) {
+                abrir(r.dataset.id, b);
+                return;
+            }
             const cuerpo = document.createElement("div");
             cuerpo.className = "oc-regla-ventana";
             const grande = document.createElement("p");
