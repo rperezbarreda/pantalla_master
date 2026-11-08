@@ -176,7 +176,8 @@
     // (tus monstruos, conjuros, reglas propias…) vale para las dos.
     let edicionAhora = "2024";
     const DE_2014 = { "datos/personajes/compendio/bestiario.json": "datos/personajes/compendio/2014/bestiario.json",
-        "datos/personajes/compendio/conjuros-srd.json": "datos/personajes/compendio/2014/conjuros-srd.json" };
+        "datos/personajes/compendio/conjuros-srd.json": "datos/personajes/compendio/2014/conjuros-srd.json",
+        "datos/personajes/compendio/tienda.json": "datos/personajes/compendio/2014/tienda.json" };
     const NOMBRES = "datos/personajes/compendio/nombres.json";
 
     function pedir(ruta) {
@@ -17311,7 +17312,7 @@
             + " oficial. Los rasgos y dotes se han preparado a partir de 5e-bits/5e-database (MIT).",
         [["el SRD 5.2", "https://www.dndbeyond.com/srd"], ["la licencia CC BY 4.0", "https://creativecommons.org/licenses/by/4.0/deed.es"],
             ["5e-database", "https://github.com/5e-bits/5e-database"]]],
-        ["📗 Reglas, monstruos y conjuros de 2014", "Esta obra incluye materiales extraídos del Documento de referencia del"
+        ["📗 Reglas, monstruos, conjuros y objetos de 2014", "Esta obra incluye materiales extraídos del Documento de referencia del"
             + " sistema 5.1 («SRD 5.1») de Wizards of the Coast LLC, que está disponible en"
             + " https://dnd.wizards.com/es/resources/systems-reference-document. El SRD 5.1 tiene la licencia Creative Commons"
             + " Atribución/Reconocimiento 4.0 Licencia Pública Internacional, que está disponible en"
@@ -17322,7 +17323,7 @@
             + " con licencia CC BY 4.0. Tus propios audios son tuyos y se quedan en tu dispositivo.",
         [["Google Sound Library", "https://developers.google.com/assistant/tools/sound-library"],
             ["la licencia CC BY 4.0", "https://creativecommons.org/licenses/by/4.0/deed.es"]]],
-        ["🔤 Tipografías", "Space Grotesk, DM Mono, Jersey 10, Pangolin, Patrick Hand, Caveat, Atkinson Hyperlegible y Noto, con licencia SIL Open Font"
+        ["🔤 Tipografías", "Space Grotesk, DM Mono, Jersey 10, Pangolin, Patrick Hand, Caveat, Inter, Pixelify Sans, VT323, Atkinson Hyperlegible y Noto, con licencia SIL Open Font"
             + " License 1.1.", [["la licencia OFL", "https://openfontlicense.org"]]],
         ["🧩 La app", "Pantalla de máster, de Richi (rperezbarreda). El código tiene licencia MIT. Dungeons & Dragons y D&D son"
             + " marcas de Wizards of the Coast; esta app no está afiliada ni respaldada por ellos.",
@@ -17769,8 +17770,9 @@
             guardar();
             aplicarEdicion();
             avisar(v === "2014" ? "Reglas, monstruos y conjuros de 2014 (SRD 5.1)." : "Reglas, monstruos y conjuros de 2024 (SRD 5.2).");
-        }), crear("p", "oc-hoja-nota", "Cambia las reglas (estados, acciones, descansos…), el bestiario y los conjuros. Lo tuyo"
-            + " (tus monstruos, conjuros y reglas propias) sale con las dos. Los objetos de la tienda son los de 2024."));
+        }), crear("p", "oc-hoja-nota", "Cambia las reglas (estados, acciones, descansos…), el bestiario, los conjuros y los objetos"
+            + " (el equipo y los objetos mágicos de la tienda y del botín). Lo tuyo (tus monstruos, conjuros, objetos y reglas"
+            + " propias) sale con las dos."));
         fila("Medidas de esta campaña", botonesDe("medidas", MEDIDAS, unidadesDe(todo), (v) => {
             todo.unidades = v;
             guardar();

@@ -22,10 +22,30 @@
    El relieve va con box-shadow por dentro (cuatro rayas de un píxel) y
    no con border: outset, que cada navegador pinta a su manera. */
 
+/* Sus letras (OFL, solo se descargan si se elige este diseño): Pixelify
+   Sans para las barras de título, que imita las letras de píxeles de
+   Windows; VT323, la de los terminales, para los temas de terminal (el
+   cmd). El texto, la del sistema (Tahoma). */
+@font-face {
+    font-family: "Pixelify Sans";
+    src: url("../tipografias/pixelify-sans-700.woff2") format("woff2");
+    font-weight: 700;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "VT323";
+    src: url("../tipografias/vt323-400.woff2") format("woff2");
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+}
+
 :root[data-estilo="windows"] {
     --fuente-texto: Tahoma, "Segoe UI", Verdana, "DejaVu Sans", sans-serif;
     --fuente-mono: var(--fuente-texto);
-    --fuente-ventana: var(--fuente-texto);
+    --fuente-ventana: "Pixelify Sans", var(--fuente-texto);
     --fuente-titular: var(--fuente-texto);
     --bg-texture: none;
     /* De serie (puros, tranquilos): sacados de los colores del tema. */
@@ -49,6 +69,19 @@
 
 :root[data-letra="legible"][data-estilo="windows"] {
     --fuente-texto: "Atkinson Hyperlegible", Tahoma, sans-serif;
+    --fuente-ventana: var(--fuente-texto);
+}
+
+/* Con los de terminal, todo con la letra de consola. VT323 es pequeña de
+   por sí: font-size-adjust la iguala en altura a las demás (con
+   cualquier tamaño de texto). */
+:root[data-estilo="windows"][data-theme^="terminal-"]:not([data-letra="legible"]) {
+    --fuente-texto: "VT323", "DejaVu Sans Mono", monospace;
+    --fuente-ventana: "VT323", monospace;
+}
+
+:root[data-estilo="windows"][data-theme^="terminal-"]:not([data-letra="legible"]) body {
+    font-size-adjust: 0.56;
 }
 
 /* CON EL TEMA CLARO: el Windows 98 de siempre. Negro sobre el gris da
@@ -206,7 +239,8 @@
     border: 0;
     background: linear-gradient(90deg, var(--w-azul), var(--w-azul-claro));
     color: var(--w-titulo);
-    font-size: 0.8125rem;
+    font-family: var(--fuente-ventana);
+    font-size: 0.875rem;
     font-weight: 700;
 }
 

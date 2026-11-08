@@ -5,13 +5,14 @@
 // en herramientas/sw-plantilla.js. La versión cambia sola cuando cambia
 // cualquier archivo, y entonces la app avisa de que hay una nueva.
 // =========================================
-const VERSION = "1ea822286496";
+const VERSION = "6f26ff310f06";
 const CACHE = "pantalla-master-" + VERSION;
 const ARCHIVOS = [
     "./",
     "datos/personajes/compendio/2014/bestiario.json",
     "datos/personajes/compendio/2014/conjuros-srd.json",
     "datos/personajes/compendio/2014/reglas.json",
+    "datos/personajes/compendio/2014/tienda.json",
     "datos/personajes/compendio/bestiario.json",
     "datos/personajes/compendio/conjuros-srd.json",
     "datos/personajes/compendio/idiomas.json",
@@ -67,6 +68,7 @@ const ARCHIVOS = [
     "tipografias/caveat-700.woff2",
     "tipografias/dm-mono-400.woff2",
     "tipografias/dm-mono-500.woff2",
+    "tipografias/inter-variable.woff2",
     "tipografias/jersey-10-400.woff2",
     "tipografias/noto-bamum.woff2",
     "tipografias/noto-glagolitic.woff2",
@@ -86,9 +88,11 @@ const ARCHIVOS = [
     "tipografias/noto-tifinagh.woff2",
     "tipografias/pangolin-400.woff2",
     "tipografias/patrick-hand-400.woff2",
+    "tipografias/pixelify-sans-700.woff2",
     "tipografias/space-grotesk-400.woff2",
     "tipografias/space-grotesk-500.woff2",
-    "tipografias/space-grotesk-600.woff2"
+    "tipografias/space-grotesk-600.woff2",
+    "tipografias/vt323-400.woff2"
 ];
 
 self.addEventListener("install", (e) => {

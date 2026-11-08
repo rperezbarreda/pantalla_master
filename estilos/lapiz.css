@@ -352,9 +352,3 @@
     background: linear-gradient(transparent 60%, rgba(255, 214, 64, 0.55) 60%, rgba(255, 214, 64, 0.55) 92%, transparent 92%);
     color: var(--l-grafito);
 }
-
-/* Los controles, con la letra de mano también (el navegador les pone la
-   suya si nadie dice nada; con peso 0, lo que ya diga cada uno manda). */
-:where(:root[data-estilo="lapiz"]) :where(button, input, select, textarea) {
-    font-family: inherit;
-}

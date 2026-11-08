@@ -18,8 +18,19 @@
    lo que ya tenía su forma (los botones redondos, las fotos en círculo)
    se queda como está. */
 
+/* Su letra: Inter (OFL), variable (todos los grosores en un archivo).
+   Solo se descarga si se elige este diseño. */
+@font-face {
+    font-family: "Inter";
+    src: url("../tipografias/inter-variable.woff2") format("woff2");
+    font-weight: 100 900;
+    font-style: normal;
+    font-display: swap;
+}
+
 :root[data-estilo="moderno"] {
-    /* Una sola letra: la del texto (o la Atkinson, con «más legible»). */
+    /* Una sola letra: Inter (o la Atkinson, con «más legible»). */
+    --fuente-texto: "Inter", "Segoe UI", system-ui, sans-serif;
     --fuente-mono: var(--fuente-texto);
     --fuente-ventana: var(--fuente-texto);
     --fuente-titular: var(--fuente-texto);
@@ -30,6 +41,10 @@
     --moderno-borde-fuerte: color-mix(in srgb, var(--yellow) 60%, transparent);
     --moderno-sombra: 0 12px 32px rgba(0, 0, 0, 0.28), 0 2px 8px rgba(0, 0, 0, 0.16);
     --moderno-sombra-suave: 0 4px 14px rgba(0, 0, 0, 0.2);
+}
+
+:root[data-letra="legible"][data-estilo="moderno"] {
+    --fuente-texto: "Atkinson Hyperlegible", "Inter", sans-serif;
 }
 
 /* En los temas claros, la sombra más suave (sobre crema, la oscura
