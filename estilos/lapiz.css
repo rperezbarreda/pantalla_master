@@ -11,9 +11,11 @@
    importante.
 
    Lo pone data-estilo="lapiz" en el <html> (scripts/arranque.js desde
-   «richi-estilo»; lo cambia scripts/ajustes.js). Como el de Windows,
-   TRAE SUS COLORES (papel y grafito), salvo con los temas puros y los de
-   terminal, donde solo cambia la forma. Con «más legible» manda la
+   «richi-estilo»; lo cambia scripts/ajustes.js). LOS COLORES VAN CON EL
+   TEMA: con el claro, papel hueso y grafito; con el oscuro, un cuaderno
+   de hojas negras escrito con lápiz blanco; con los de terminal, papel
+   negro y todo escrito del color del tema (el cmd azul, verde…); con los
+   demás, el papel y el lápiz salen de los colores de ese tema. Con «más legible» manda la
    Atkinson, como siempre: la letra de mano es bonita pero se lee peor.
 
    Contraste: el grafito (#2f2c28) sobre el papel (#f6f1e4) da 13:1; el
@@ -43,19 +45,20 @@
     --fuente-ventana: "Caveat", "Patrick Hand", cursive;
     --fuente-titular: "Caveat", "Patrick Hand", cursive;
     --bg-texture: none;
-    --l-papel: #f6f1e4;
-    --l-papel-oscuro: #ece5d2;
-    --l-grafito: #2f2c28;
-    --l-gris: #4a463f;
-    --l-boli: #1d3f8f;
-    --l-renglon: rgba(29, 63, 143, 0.13);
-    --l-margen: rgba(178, 34, 34, 0.35);
+    /* De serie (puros, tranquilos): sacados de los colores del tema. */
+    --l-papel: var(--purple-lighter);
+    --l-papel-oscuro: var(--purple);
+    --l-grafito: var(--white);
+    --l-gris: var(--muted);
+    --l-boli: var(--yellow);
+    --l-renglon: color-mix(in srgb, var(--yellow) 14%, transparent);
+    --l-margen: color-mix(in srgb, var(--error) 40%, transparent);
     /* Las esquinas a pulso: cuatro radios distintos (y otros tantos para
        la otra forma, para que no salgan todas iguales). */
     --l-trazo: 255px 12px 225px 14px / 14px 225px 12px 255px;
     --l-trazo-2: 12px 225px 14px 255px / 255px 14px 225px 12px;
     /* Rayitas de lápiz para sombrear lo elegido. */
-    --l-rayado: repeating-linear-gradient(-45deg, rgba(47, 44, 40, 0.16) 0 2px, transparent 2px 6px);
+    --l-rayado: repeating-linear-gradient(-45deg, color-mix(in srgb, var(--l-grafito) 18%, transparent) 0 2px, transparent 2px 6px);
 }
 
 :root[data-letra="legible"][data-estilo="lapiz"] {
@@ -69,18 +72,67 @@
     font-size: 1.06em;
 }
 
-:root[data-estilo="lapiz"]:not([data-theme^="puro-"]):not([data-theme^="terminal-"]) {
+/* CON EL TEMA CLARO: papel hueso, grafito y boli azul. */
+:root[data-estilo="lapiz"][data-theme="light"] {
     color-scheme: light;
-    --purple: var(--l-papel);
-    --purple-lighter: var(--l-papel);
-    --surface: var(--l-papel);
-    --yellow: var(--l-boli);
+    --l-papel: #f6f1e4;
+    --l-papel-oscuro: #ece5d2;
+    --l-grafito: #2f2c28;
+    --l-gris: #4a463f;
+    --l-boli: #1d3f8f;
+    --l-renglon: rgba(29, 63, 143, 0.13);
+    --l-margen: rgba(178, 34, 34, 0.35);
+    --purple: #f6f1e4;
+    --purple-lighter: #f6f1e4;
+    --surface: #f6f1e4;
+    --yellow: #1d3f8f;
     --yellow-contrast: #ffffff;
     --yellow-glow-strong: rgba(29, 63, 143, 0.3);
-    --white: var(--l-grafito);
-    --muted: var(--l-gris);
+    --white: #2f2c28;
+    --muted: #4a463f;
     --border: rgba(47, 44, 40, 0.35);
     --error: #9b1c1c;
+}
+
+/* CON EL OSCURO (el de fábrica): un cuaderno de hojas negras, escrito con
+   lápiz blanco y boli celeste. El lápiz sobre la hoja da 14:1; el boli,
+   9:1. */
+:root[data-estilo="lapiz"]:not([data-theme]) {
+    color-scheme: dark;
+    --l-papel: #24221f;
+    --l-papel-oscuro: #191816;
+    --l-grafito: #ebe5d8;
+    --l-gris: #d2cbbd;
+    --l-boli: #8cb8ff;
+    --l-renglon: rgba(140, 184, 255, 0.12);
+    --l-margen: rgba(255, 120, 120, 0.35);
+    --purple: #24221f;
+    --purple-lighter: #24221f;
+    --surface: #24221f;
+    --yellow: #8cb8ff;
+    --yellow-contrast: #191816;
+    --yellow-glow-strong: rgba(140, 184, 255, 0.3);
+    --white: #ebe5d8;
+    --muted: #d2cbbd;
+    --border: rgba(235, 229, 216, 0.35);
+    --error: #ff9b94;
+}
+
+/* CON LOS DE TERMINAL: papel negro y todo escrito del color del tema. */
+:root[data-estilo="lapiz"][data-theme^="terminal-"] {
+    --l-papel: #000000;
+    --l-papel-oscuro: #000000;
+    --l-grafito: var(--yellow);
+    --l-gris: var(--yellow);
+    --l-boli: var(--yellow);
+    --l-renglon: color-mix(in srgb, var(--yellow) 18%, transparent);
+    --l-margen: color-mix(in srgb, var(--yellow) 40%, transparent);
+}
+
+/* CON LOS PUROS: sin renglones ni margen (en alto contraste, estorban). */
+:root[data-estilo="lapiz"][data-theme^="puro-"] {
+    --l-renglon: transparent;
+    --l-margen: transparent;
 }
 
 :root[data-estilo="lapiz"] body * {
@@ -89,11 +141,11 @@
 }
 
 /* El papel: renglones azules y el margen rojo, como un cuaderno. */
-:root[data-estilo="lapiz"]:not([data-theme^="puro-"]):not([data-theme^="terminal-"]) body {
+:root[data-estilo="lapiz"] body {
     background-color: var(--l-papel-oscuro);
 }
 
-:root[data-estilo="lapiz"]:not([data-theme^="puro-"]):not([data-theme^="terminal-"]) .master-lienzo.con-lienzo:not(.con-tablero) {
+:root[data-estilo="lapiz"] .master-lienzo.con-lienzo:not(.con-tablero) {
     background-color: var(--l-papel-oscuro);
     background-image: linear-gradient(90deg, transparent 47px, var(--l-margen) 47px, var(--l-margen) 49px, transparent 49px),
         repeating-linear-gradient(transparent 0 27px, var(--l-renglon) 27px 28px);
@@ -111,7 +163,7 @@
     border: 2px solid var(--l-grafito);
     border-radius: var(--l-trazo);
     background: var(--l-papel);
-    box-shadow: 3px 4px 0 -1px rgba(47, 44, 40, 0.25);
+    box-shadow: 3px 4px 0 -1px color-mix(in srgb, var(--l-grafito) 25%, transparent);
 }
 
 :root[data-estilo="lapiz"] .master-ventana:nth-child(even) {
@@ -123,15 +175,15 @@
 :root[data-estilo="lapiz"] .master-ventana.con-color {
     border-color: var(--l-grafito);
     background: color-mix(in srgb, var(--postit) 22%, var(--l-papel));
-    box-shadow: 3px 4px 0 -1px rgba(47, 44, 40, 0.25);
+    box-shadow: 3px 4px 0 -1px color-mix(in srgb, var(--l-grafito) 25%, transparent);
 }
 
 :root[data-estilo="lapiz"] .master-ventana.es-arrastrada {
-    box-shadow: 8px 10px 0 -2px rgba(47, 44, 40, 0.3);
+    box-shadow: 8px 10px 0 -2px color-mix(in srgb, var(--l-grafito) 30%, transparent);
 }
 
 :root[data-estilo="lapiz"] .ajustes.ajustes-a-mano {
-    box-shadow: 0 0 0 100vmax rgba(47, 44, 40, 0.45);
+    box-shadow: 0 0 0 100vmax rgba(0, 0, 0, 0.5);
 }
 
 :root[data-estilo="lapiz"] .app .app-principal {
@@ -143,7 +195,7 @@
 /* La barra de título: sin relleno, el título subrayado a mano (una raya
    ondulada de lápiz) y un poco más grande. */
 :root[data-estilo="lapiz"] :is(.master-ventana-barra, .oc-menu-ventana-barra, .ajustes-barra) {
-    border-bottom: 2px dashed rgba(47, 44, 40, 0.45);
+    border-bottom: 2px dashed color-mix(in srgb, var(--l-grafito) 45%, transparent);
     background: transparent;
     color: var(--l-grafito);
     font-size: 1.35rem;
@@ -155,7 +207,7 @@
 }
 
 :root[data-estilo="lapiz"] .master-ventana.con-color .master-ventana-barra {
-    border-bottom-color: rgba(47, 44, 40, 0.45);
+    border-bottom-color: color-mix(in srgb, var(--l-grafito) 45%, transparent);
     background: color-mix(in srgb, var(--postit) 45%, var(--l-papel));
     color: var(--l-grafito);
 }
@@ -230,7 +282,7 @@
     border: 3px solid var(--l-grafito);
     border-radius: 50% 45% 55% 48% / 48% 55% 45% 50%;
     background: var(--l-papel);
-    box-shadow: 3px 4px 0 -1px rgba(47, 44, 40, 0.3);
+    box-shadow: 3px 4px 0 -1px color-mix(in srgb, var(--l-grafito) 30%, transparent);
     color: var(--l-grafito);
 }
 
@@ -240,7 +292,7 @@
     border: 0;
     border-bottom: 2px solid var(--l-grafito);
     border-radius: 0 0 6px 10px / 0 0 4px 6px;
-    background: rgba(255, 255, 255, 0.45);
+    background: color-mix(in srgb, var(--l-grafito) 7%, transparent);
     color: var(--l-grafito);
 }
 

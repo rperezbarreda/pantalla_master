@@ -8,10 +8,12 @@
    grises que se hunden al pulsarlos y los campos blancos hundidos.
 
    Lo pone data-estilo="windows" en el <html> (scripts/arranque.js desde
-   «richi-estilo»; lo cambia scripts/ajustes.js). Al revés que el
-   moderno, TRAE SUS COLORES (el gris es la mitad del parecido), salvo
-   con los temas puros y los de terminal: quien los elige quiere esos
-   colores, así que ahí solo cambia la forma.
+   «richi-estilo»; lo cambia scripts/ajustes.js). LOS COLORES VAN CON EL
+   TEMA: con el claro, el Windows 98 de siempre (gris, azul marino y el
+   escritorio verde azulado); con el oscuro, un Windows 98 oscuro; con los
+   de terminal, una consola (negro y el color del tema, como el cmd); con
+   los demás (puros, tranquilos), el gris y el azul salen de los colores
+   de ese tema. Todo lo de abajo usa las --w-…, que se ponen aquí.
 
    La letra es la del sistema (Tahoma, la de Windows; si no está, la sin
    remates que haya): no se descarga ninguna. Con «más legible» manda la
@@ -26,14 +28,18 @@
     --fuente-ventana: var(--fuente-texto);
     --fuente-titular: var(--fuente-texto);
     --bg-texture: none;
-    --w-gris: #c0c0c0;
-    --w-luz: #ffffff;
-    --w-media-luz: #dfdfdf;
-    --w-sombra: #808080;
-    --w-negro: #0a0a0a;
-    --w-azul: #000080;
-    --w-azul-claro: #1084d0;
-    --w-escritorio: #008080;
+    /* De serie (puros, tranquilos): sacados de los colores del tema. */
+    --w-gris: var(--purple-lighter);
+    --w-texto: var(--white);
+    --w-luz: color-mix(in srgb, var(--purple-lighter) 45%, #ffffff);
+    --w-media-luz: color-mix(in srgb, var(--purple-lighter) 75%, #ffffff);
+    --w-sombra: color-mix(in srgb, var(--purple-lighter) 55%, #000000);
+    --w-negro: color-mix(in srgb, var(--purple-lighter) 15%, #000000);
+    --w-azul: var(--yellow);
+    --w-azul-claro: color-mix(in srgb, var(--yellow) 60%, var(--purple-lighter));
+    --w-titulo: var(--yellow-contrast);
+    --w-campo: var(--purple);
+    --w-escritorio: var(--purple);
     --w-relieve: inset -1px -1px var(--w-negro), inset 1px 1px var(--w-luz), inset -2px -2px var(--w-sombra),
         inset 2px 2px var(--w-media-luz);
     --w-hundido: inset -1px -1px var(--w-luz), inset 1px 1px var(--w-sombra), inset -2px -2px var(--w-media-luz),
@@ -45,20 +51,91 @@
     --fuente-texto: "Atkinson Hyperlegible", Tahoma, sans-serif;
 }
 
-/* Los colores de Windows (menos con los puros y los de terminal). Negro
-   sobre el gris da 12:1 y el azul marino sobre el gris, 11:1. */
-:root[data-estilo="windows"]:not([data-theme^="puro-"]):not([data-theme^="terminal-"]) {
+/* CON EL TEMA CLARO: el Windows 98 de siempre. Negro sobre el gris da
+   12:1 y el azul marino sobre el gris, 11:1. */
+:root[data-estilo="windows"][data-theme="light"] {
     color-scheme: light;
+    --w-gris: #c0c0c0;
+    --w-texto: #000000;
+    --w-luz: #ffffff;
+    --w-media-luz: #dfdfdf;
+    --w-sombra: #808080;
+    --w-negro: #0a0a0a;
+    --w-azul: #000080;
+    --w-azul-claro: #1084d0;
+    --w-titulo: #ffffff;
+    --w-campo: #ffffff;
+    --w-escritorio: #008080;
     --purple: #ffffff;
-    --purple-lighter: var(--w-gris);
-    --surface: var(--w-gris);
-    --yellow: var(--w-azul);
+    --purple-lighter: #c0c0c0;
+    --surface: #c0c0c0;
+    --yellow: #000080;
     --yellow-contrast: #ffffff;
     --yellow-glow-strong: rgba(0, 0, 128, 0.35);
     --white: #000000;
     --muted: #202020;
-    --border: var(--w-sombra);
+    --border: #808080;
     --error: #a00000;
+}
+
+/* CON EL OSCURO (el de fábrica, sin data-theme): un Windows 98 de noche,
+   gris carbón con el relieve en grises y la barra azul más viva. El texto
+   claro sobre el gris da 11:1; el azul de los enlaces, 7:1. */
+:root[data-estilo="windows"]:not([data-theme]) {
+    color-scheme: dark;
+    --w-gris: #3a3a3e;
+    --w-texto: #f2f2f2;
+    --w-luz: #6c6c72;
+    --w-media-luz: #4e4e54;
+    --w-sombra: #1f1f22;
+    --w-negro: #000000;
+    --w-azul: #1c3a8f;
+    --w-azul-claro: #3f74d6;
+    --w-titulo: #ffffff;
+    --w-campo: #202024;
+    --w-escritorio: #0f3a3a;
+    --purple: #202024;
+    --purple-lighter: #3a3a3e;
+    --surface: #3a3a3e;
+    --yellow: #9cc0ff;
+    --yellow-contrast: #000000;
+    --yellow-glow-strong: rgba(156, 192, 255, 0.35);
+    --white: #f2f2f2;
+    --muted: #d6d6d6;
+    --border: #6c6c72;
+    --error: #ff9b94;
+}
+
+/* CON LOS DE TERMINAL: una consola, el cmd. Todo negro, el relieve y el
+   texto del color del tema y la barra de título llena de ese color. */
+:root[data-estilo="windows"][data-theme^="terminal-"] {
+    --w-gris: #000000;
+    --w-texto: var(--yellow);
+    --w-luz: var(--yellow);
+    --w-media-luz: color-mix(in srgb, var(--yellow) 55%, #000000);
+    --w-sombra: color-mix(in srgb, var(--yellow) 35%, #000000);
+    --w-negro: color-mix(in srgb, var(--yellow) 20%, #000000);
+    --w-azul: var(--yellow);
+    --w-azul-claro: var(--yellow);
+    --w-titulo: #000000;
+    --w-campo: #000000;
+    --w-escritorio: #000000;
+}
+
+/* CON LOS PUROS: las rayas del relieve, del color del texto (en alto
+   contraste, una sombra a medias no separa nada). */
+:root[data-estilo="windows"][data-theme^="puro-"] {
+    --w-gris: var(--purple);
+    --w-texto: var(--white);
+    --w-luz: var(--white);
+    --w-media-luz: var(--purple);
+    --w-sombra: var(--white);
+    --w-negro: var(--white);
+    --w-azul: var(--white);
+    --w-azul-claro: var(--white);
+    --w-titulo: var(--purple);
+    --w-campo: var(--purple);
+    --w-escritorio: var(--purple);
 }
 
 :root[data-estilo="windows"] body * {
@@ -66,7 +143,7 @@
     text-transform: none !important;
 }
 
-:root[data-estilo="windows"]:not([data-theme^="puro-"]):not([data-theme^="terminal-"]) body {
+:root[data-estilo="windows"] body {
     background: var(--w-escritorio);
 }
 
@@ -83,7 +160,7 @@
     border: 2px solid;
     border-color: var(--w-borde);
     border-radius: 0;
-    background: var(--purple-lighter);
+    background: var(--w-gris);
     box-shadow: inset -1px -1px var(--w-sombra), inset 1px 1px var(--w-luz), 1px 1px 0 var(--w-negro);
 }
 
@@ -128,7 +205,7 @@
     padding: 3px 3px 3px 6px;
     border: 0;
     background: linear-gradient(90deg, var(--w-azul), var(--w-azul-claro));
-    color: #ffffff;
+    color: var(--w-titulo);
     font-size: 0.8125rem;
     font-weight: 700;
 }
@@ -150,7 +227,7 @@
     border-radius: 0;
     background: var(--w-gris);
     box-shadow: var(--w-relieve);
-    color: #000000;
+    color: var(--w-texto);
     font-size: 0.6875rem;
     font-weight: 700;
 }
@@ -161,7 +238,7 @@
 
 :root[data-estilo="windows"] :is(.master-ventana-mando, .oc-menu-ventana-cerrar, .ajustes-barra button):hover {
     background: var(--w-gris);
-    color: #000000;
+    color: var(--w-texto);
 }
 
 /* ---- LOS BOTONES: grises con relieve; al pulsarlos (o si están
@@ -173,14 +250,14 @@
     border-radius: 0;
     background: var(--w-gris);
     box-shadow: var(--w-relieve);
-    color: #000000;
+    color: var(--w-texto);
     font-weight: 400;
 }
 
 :root[data-estilo="windows"] :is(.oc-vida-accion, .master-pestana-mando, .master-opcion, .ajustes-opcion, .oc-boton,
     .master-anadir-tarjeta, .master-conjuro, .oc-regla-boton):hover:not(:disabled) {
     background: var(--w-gris);
-    color: #000000;
+    color: var(--w-texto);
 }
 
 :root[data-estilo="windows"] :is(.oc-vida-accion, .master-pestana-mando, .master-opcion, .ajustes-opcion, .oc-boton,
@@ -189,14 +266,14 @@
 :root[data-estilo="windows"] .oc-boton[aria-expanded="true"] {
     background: var(--w-media-luz);
     box-shadow: var(--w-hundido);
-    color: #000000;
+    color: var(--w-texto);
     font-weight: 700;
 }
 
 :root[data-estilo="windows"] .oc-vida-accion.es-principal {
     background: var(--w-gris);
     box-shadow: 0 0 0 1px var(--w-negro), var(--w-relieve);
-    color: #000000;
+    color: var(--w-texto);
     font-weight: 700;
 }
 
@@ -207,7 +284,7 @@
 
 /* El foco: la raya de puntos de Windows, por dentro. */
 :root[data-estilo="windows"] :is(button, a, select, input, textarea, summary):focus-visible {
-    outline: 1px dotted #000000;
+    outline: 1px dotted var(--w-texto);
     outline-offset: -4px;
 }
 
@@ -217,20 +294,20 @@
     border-radius: 0;
     background: var(--w-gris);
     box-shadow: var(--w-relieve), 2px 2px 0 var(--w-negro);
-    color: #000000;
+    color: var(--w-texto);
 }
 
 /* ---- LOS CAMPOS: blancos y hundidos. ---- */
 :root[data-estilo="windows"] :is(.oc-dados-texto, .master-elegir, .oc-dados-elegir, .oc-notas-texto) {
     border: 0;
     border-radius: 0;
-    background: #ffffff;
+    background: var(--w-campo);
     box-shadow: var(--w-hundido);
-    color: #000000;
+    color: var(--w-texto);
 }
 
 :root[data-estilo="windows"] .oc-dados-etiqueta {
-    color: #000000;
+    color: var(--w-texto);
     font-size: 0.8125rem;
 }
 
@@ -247,13 +324,13 @@
     border-radius: 0;
     background: var(--w-gris);
     box-shadow: inset 1px 1px var(--w-luz), inset -1px 0 var(--w-negro), inset -2px 0 var(--w-sombra);
-    color: #000000;
+    color: var(--w-texto);
 }
 
 :root[data-estilo="windows"] :is(.master-pestana, .master-bicho-pestana)[aria-selected="true"],
 :root[data-estilo="windows"] .master-bicho-pestana[aria-pressed="true"] {
     background: var(--w-gris);
-    color: #000000;
+    color: var(--w-texto);
     font-weight: 700;
     transform: translateY(-2px);
 }
@@ -274,7 +351,7 @@
     border: 0;
 }
 
-:root[data-estilo="windows"]:not([data-theme^="puro-"]):not([data-theme^="terminal-"]) .master-lienzo.con-lienzo:not(.con-tablero) {
+:root[data-estilo="windows"] .master-lienzo.con-lienzo:not(.con-tablero) {
     background-color: var(--w-escritorio);
     background-image: none;
 }
@@ -308,14 +385,14 @@
     border-radius: 0;
     background: var(--w-gris);
     box-shadow: inset 1px 1px var(--w-luz), inset -1px 0 var(--w-negro), inset -2px 0 var(--w-sombra);
-    color: #000000;
+    color: var(--w-texto);
     font-weight: 400;
 }
 
 :root[data-estilo="windows"] :is(.master-grupo-pestana, .oc-ini-modo)[aria-selected="true"] {
     background: var(--w-gris);
     box-shadow: inset 1px 1px var(--w-luz), inset -1px 0 var(--w-negro), inset -2px 0 var(--w-sombra);
-    color: #000000;
+    color: var(--w-texto);
     font-weight: 700;
 }
 
