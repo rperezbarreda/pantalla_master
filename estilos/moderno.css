@@ -86,7 +86,7 @@
 }
 
 /* Las cajas y paneles que tenían la sombra dura desplazada. */
-:root[data-estilo="moderno"] :is(.oc-panel, .oc-hoja-caja, .oc-dados, .oc-carta, .oc-bloque, .oc-menu-ventana,
+:root[data-estilo="moderno"] :is(.oc-panel, .oc-hoja-caja, .oc-dados, .oc-carta, .oc-menu-ventana,
     .master-entrada-caja, .master-buscador-lista, .app-actualizar, .ajustes, .ajustes-ejemplo) {
     border-width: 1px;
     border-radius: var(--moderno-radio);
