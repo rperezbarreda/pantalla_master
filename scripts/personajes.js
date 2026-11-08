@@ -4093,6 +4093,97 @@ window.ocMontar.iniciativa = function (sitio, opciones) {
         return acabadas;
     }
 
+    // ---- LOS GRUPOS: varios (los cuatro goblins) con la misma iniciativa,
+    // que van juntos y actúan en el mismo turno. Cada uno lleva «grupo» (el
+    // mismo texto en todos); en la lista van seguidos. ----
+    const grupoDe = (c) => (c && c.grupo) || "";
+    function inicioDe(i) {
+        const g = grupoDe(datos.lista[i]);
+        while (g && i > 0 && grupoDe(datos.lista[i - 1]) === g) {
+            i -= 1;
+        }
+        return i;
+    }
+    function finDe(i) {
+        const g = grupoDe(datos.lista[i]);
+        while (g && i < datos.lista.length - 1 && grupoDe(datos.lista[i + 1]) === g) {
+            i += 1;
+        }
+        return i;
+    }
+    // Los del turno de «i» (él solo, o todo su grupo).
+    const delTurno = (i) => (i < 0 || i >= datos.lista.length ? [] : datos.lista.slice(inicioDe(i), finDe(i) + 1));
+    const nombresDe = (cs) => (cs.length < 2 ? (cs[0] ? cs[0].nombre : "") : cs.slice(0, -1).map((c) => c.nombre).join(", ")
+        + " y " + cs[cs.length - 1].nombre);
+    // Que cada grupo vaya seguido y tenga al menos dos; y todos con la
+    // iniciativa del primero.
+    function arreglarGrupos() {
+        const ultimo = {};
+        datos.lista.forEach((c, i) => {
+            const g = grupoDe(c);
+            if (!g) {
+                return;
+            }
+            if (ultimo[g] !== undefined && ultimo[g] !== i - 1) {
+                delete c.grupo;
+                return;
+            }
+            ultimo[g] = i;
+        });
+        const cuantos = {};
+        datos.lista.forEach((c) => {
+            cuantos[grupoDe(c)] = (cuantos[grupoDe(c)] || 0) + 1;
+        });
+        const primero = {};
+        datos.lista.forEach((c) => {
+            const g = grupoDe(c);
+            if (!g) {
+                return;
+            }
+            if (cuantos[g] < 2) {
+                delete c.grupo;
+                return;
+            }
+            if (!primero[g]) {
+                primero[g] = c;
+            } else {
+                c.ini = primero[g].ini;
+            }
+        });
+        if (datos.turno >= 0 && datos.turno < datos.lista.length) {
+            datos.turno = inicioDe(datos.turno);
+        }
+    }
+    // Unir a «c» con el de arriba (a su grupo, o a uno nuevo con los dos).
+    function unirArriba(i) {
+        const c = datos.lista[i];
+        const arriba = datos.lista[i - 1];
+        if (!c || !arriba) {
+            return;
+        }
+        const g = grupoDe(arriba) || "g" + arriba.id;
+        arriba.grupo = g;
+        c.grupo = g;
+        arreglarGrupos();
+        guardar();
+        pintar();
+        avisar(c.nombre + " va ahora con " + nombresDe(delTurno(i).filter((x) => x !== c)) + " (misma iniciativa, mismo turno).");
+    }
+    function separar(i) {
+        const c = datos.lista[i];
+        delete c.grupo;
+        // Si estaba en medio, el grupo se queda con los de arriba.
+        const g = grupoDe(datos.lista[i - 1]);
+        if (g && grupoDe(datos.lista[i + 1]) === g) {
+            const [fuera] = datos.lista.splice(i, 1);
+            datos.lista.splice(finDe(i - 1) + 1, 0, fuera);
+        }
+        arreglarGrupos();
+        guardar();
+        pintar();
+        avisar(c.nombre + " va ahora solo.");
+    }
+
     // ---- LA LISTA ----
     const ronda = crear("p", "oc-ini-ronda");
     const lista = crear("ol", "oc-ini-lista");
@@ -4102,28 +4193,37 @@ window.ocMontar.iniciativa = function (sitio, opciones) {
             return;
         }
         let acabadas = [];
-        datos.turno += paso;
-        if (datos.turno >= datos.lista.length) {
-            datos.turno = 0;
-            datos.ronda += 1;
-            acabadas = gastarRonda();
-        }
-        if (datos.turno < 0) {
-            if (datos.ronda > 1) {
-                datos.turno = datos.lista.length - 1;
-                datos.ronda -= 1;
-            } else {
-                datos.turno = 0;
-            }
-        }
-        const c = datos.lista[datos.turno];
+        // Un grupo es un solo turno: se salta de grupo en grupo.
+        const ahora = Math.max(0, Math.min(datos.turno, datos.lista.length - 1));
         if (paso > 0) {
-            c.usado = {};
-            c.legUsadas = 0;
+            datos.turno = datos.turno < 0 ? 0 : finDe(ahora) + 1;
+            if (datos.turno >= datos.lista.length) {
+                datos.turno = 0;
+                datos.ronda += 1;
+                acabadas = gastarRonda();
+            }
+        } else {
+            datos.turno = inicioDe(ahora) - 1;
+            if (datos.turno < 0) {
+                if (datos.ronda > 1) {
+                    datos.turno = datos.lista.length - 1;
+                    datos.ronda -= 1;
+                } else {
+                    datos.turno = 0;
+                }
+            }
+            datos.turno = inicioDe(datos.turno);
+        }
+        const turno = delTurno(datos.turno);
+        if (paso > 0) {
+            turno.forEach((c) => {
+                c.usado = {};
+                c.legUsadas = 0;
+            });
         }
         guardar();
         pintar();
-        avisar("Ronda " + datos.ronda + ": le toca a " + c.nombre + "."
+        avisar("Ronda " + datos.ronda + ": le toca a " + nombresDe(turno) + "."
             + (acabadas.length ? " Se acaba: " + acabadas.join(", ") + "." : ""));
     };
     const siguiente = botonDe("oc-vida-accion es-principal", "siguiente ▶", () => pasar(1));
@@ -4145,7 +4245,7 @@ window.ocMontar.iniciativa = function (sitio, opciones) {
         });
         guardar();
         pintar();
-        avisar("¡Combate! Ronda 1: le toca a " + datos.lista[0].nombre + ".");
+        avisar("¡Combate! Ronda 1: le toca a " + nombresDe(delTurno(0)) + ".");
         pestanas[1].focus();
     });
     const terminar = botonDe("oc-vida-accion", "🏁 terminar el combate", () => {
@@ -4159,8 +4259,20 @@ window.ocMontar.iniciativa = function (sitio, opciones) {
     });
     const ordenar = botonDe("oc-vida-accion", "⇅ por iniciativa", () => {
         const deAhora = datos.lista[datos.turno];
-        datos.lista.sort((a, b) => (b.ini === "" ? -999 : b.ini) - (a.ini === "" ? -999 : a.ini));
+        // Los de un grupo, juntos (tienen la misma iniciativa; si empata
+        // con otro, no se mezclan).
+        const valor = (c) => (c.ini === "" || c.ini === undefined ? -999 : c.ini);
+        const sitio = new Map(datos.lista.map((c, i) => [c, i]));
+        const primeroDe = {};
+        datos.lista.forEach((c, i) => {
+            if (grupoDe(c) && primeroDe[grupoDe(c)] === undefined) {
+                primeroDe[grupoDe(c)] = i;
+            }
+        });
+        const clave = (c) => (grupoDe(c) ? primeroDe[grupoDe(c)] : sitio.get(c));
+        datos.lista.sort((a, b) => (valor(b) - valor(a)) || (clave(a) - clave(b)) || (sitio.get(a) - sitio.get(b)));
         datos.turno = deAhora ? datos.lista.indexOf(deAhora) : -1;
+        arreglarGrupos();
         guardar();
         pintar();
         avisar("Ordenados por iniciativa.");
@@ -4192,6 +4304,7 @@ window.ocMontar.iniciativa = function (sitio, opciones) {
         const [c] = datos.lista.splice(desde, 1);
         datos.lista.splice(hasta, 0, c);
         datos.turno = deAhora ? datos.lista.indexOf(deAhora) : -1;
+        arreglarGrupos();
         guardar();
         pintar();
         avisar(c.nombre + ": puesto " + (hasta + 1) + " de " + datos.lista.length + ".");
@@ -4217,6 +4330,15 @@ window.ocMontar.iniciativa = function (sitio, opciones) {
                 return;
             }
             c[campoN] = numeroDe(input.value);
+            // En un grupo, la iniciativa es de todos.
+            if (campoN === "ini" && grupoDe(c)) {
+                datos.lista.filter((x) => grupoDe(x) === grupoDe(c)).forEach((x) => {
+                    x.ini = c.ini;
+                });
+                guardar();
+                pintar();
+                return;
+            }
             guardar();
         });
         caja.appendChild(input);
@@ -4331,7 +4453,10 @@ window.ocMontar.iniciativa = function (sitio, opciones) {
         }
         ronda.textContent = "";
         lista.replaceChildren(...datos.lista.map((c, i) => {
-            const li = crear("li", "oc-ini-fila" + (i === datos.turno ? " es-su-turno" : ""));
+            const g = grupoDe(c);
+            const conArriba = g && grupoDe(datos.lista[i - 1]) === g;
+            const li = crear("li", "oc-ini-fila" + (i === datos.turno ? " es-su-turno" : "") + (g ? " es-en-grupo" : "")
+                + (conArriba ? " es-del-grupo" : ""));
             li.dataset.id = c.id;
             li.style.borderLeftColor = colorDe(c);
             if (i === datos.turno) {
@@ -4360,6 +4485,9 @@ window.ocMontar.iniciativa = function (sitio, opciones) {
                 avisar("Ahora se llama " + nuevo + ".");
             });
             quien.append(n, chapasDe(c));
+            if (g && !conArriba) {
+                quien.prepend(crear("span", "oc-ini-grupo", "🔗 grupo de " + delTurno(i).length));
+            }
             if (i === datos.turno) {
                 quien.prepend(crear("span", "oc-ini-le-toca", "▶ le toca"));
             }
@@ -4368,17 +4496,24 @@ window.ocMontar.iniciativa = function (sitio, opciones) {
             const mandos = crear("div", "oc-ini-mandos");
             const bMarcas = botonDe("oc-ini-mando es-marcas", "⭐", () => editarMarcas(c, bMarcas), "Marcas de " + c.nombre);
             bMarcas.setAttribute("aria-haspopup", "dialog");
-            mandos.append(bMarcas,
+            // 🔗 con el de arriba (mismo turno) o 🔓 separarlo.
+            const bGrupo = g ? botonDe("oc-ini-mando es-grupo", "🔓", () => separar(i), "Separar a " + c.nombre + " de su grupo")
+                : botonDe("oc-ini-mando es-grupo", "🔗", () => unirArriba(i), i > 0 ? "Juntar a " + c.nombre + " con "
+                    + datos.lista[i - 1].nombre + " (misma iniciativa, mismo turno)" : "Juntar con el de arriba");
+            bGrupo.title = g ? "Separar del grupo" : "Juntar con el de arriba: misma iniciativa y mismo turno";
+            bGrupo.disabled = !g && i === 0;
+            mandos.append(bMarcas, bGrupo,
                 botonDe("oc-ini-mando es-subir", "↑", () => mover(i, i - 1, ".es-subir"), "Subir a " + c.nombre),
                 botonDe("oc-ini-mando es-bajar", "↓", () => mover(i, i + 1, ".es-bajar"), "Bajar a " + c.nombre),
-                botonDe("oc-ini-mando", "✕", () => {
+                botonDe("oc-ini-mando es-quitar", "✕", () => {
                     const deAhora = datos.lista[datos.turno];
                     datos.lista.splice(i, 1);
                     datos.turno = deAhora && deAhora !== c ? datos.lista.indexOf(deAhora) : Math.min(datos.turno, datos.lista.length - 1);
+                    arreglarGrupos();
                     guardar();
                     pintar();
                     avisar("Quitado: " + c.nombre + ".");
-                    (lista.querySelectorAll(".oc-ini-mando")[Math.min(i, datos.lista.length - 1) * 4 + 3] || nombre).focus();
+                    (lista.querySelectorAll(".es-quitar")[Math.min(i, datos.lista.length - 1)] || nombre).focus();
                 }, "Quitar a " + c.nombre));
             li.append(asa, quien, datosC, mandos);
             return li;
@@ -4400,22 +4535,32 @@ window.ocMontar.iniciativa = function (sitio, opciones) {
         if (datos.turno < 0 || datos.turno >= datos.lista.length) {
             datos.turno = 0;
         }
+        datos.turno = inicioDe(datos.turno);
         const ahora = datos.lista[datos.turno];
+        const turno = delTurno(datos.turno);
         rondaC.textContent = "Ronda " + datos.ronda;
-        toca.replaceChildren(crear("span", "oc-ini-combate-le", "le toca a "), crear("strong", "", ahora.nombre), chapasDe(ahora));
+        toca.replaceChildren(crear("span", "oc-ini-combate-le", "le toca a "), crear("strong", "", nombresDe(turno)),
+            turno.length < 2 ? chapasDe(ahora) : document.createTextNode(""));
         toca.style.borderLeftColor = colorDe(ahora);
         listaC.replaceChildren(...datos.lista.map((c, i) => {
-            const li = crear("li", "oc-ini-fila es-combate" + (i === datos.turno ? " es-su-turno" : ""));
+            const leToca = turno.indexOf(c) >= 0;
+            const g = grupoDe(c);
+            const conArriba = g && grupoDe(datos.lista[i - 1]) === g;
+            const li = crear("li", "oc-ini-fila es-combate" + (leToca ? " es-su-turno" : "") + (g ? " es-en-grupo" : "")
+                + (conArriba ? " es-del-grupo" : ""));
             li.dataset.id = c.id;
             li.style.borderLeftColor = colorDe(c);
-            if (i === datos.turno) {
+            if (leToca) {
                 li.setAttribute("aria-current", "true");
             }
             const quien = crear("div", "oc-ini-quien");
             const n = crear("span", "oc-ini-nombre", c.nombre);
             n.appendChild(crear("span", "visually-hidden", " (" + nombreDeColor(colorDe(c)) + ")"));
             quien.append(n, chapasDe(c));
-            if (i === datos.turno) {
+            if (g && !conArriba) {
+                quien.prepend(crear("span", "oc-ini-grupo", "🔗 grupo de " + delTurno(i).length));
+            }
+            if (leToca) {
                 quien.prepend(crear("span", "oc-ini-le-toca", "▶ le toca"));
             }
             const datosC = crear("div", "oc-ini-datos es-combate");
@@ -4572,6 +4717,7 @@ window.ocMontar.iniciativa = function (sitio, opciones) {
     panelCombate.append(ventanita("¡combate!", "⚔️", [rondaC, toca, mandosC, listaC]));
     caja.append(barraModos, panelPreparar, panelCombate);
     sitio.replaceChildren(caja, aviso);
+    arreglarGrupos();
     pintar();
     cargarReglas();
     document.addEventListener("oc:reglas", cargarReglas);
@@ -4583,6 +4729,7 @@ window.ocMontar.iniciativa = function (sitio, opciones) {
         } catch (e) {
             return;
         }
+        arreglarGrupos();
         pintar();
     });
 };

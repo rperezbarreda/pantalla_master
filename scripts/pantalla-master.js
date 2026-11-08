@@ -5669,7 +5669,7 @@
                         const b = porEn[g.en];
                         for (let i = 0; i < g.n && b; i++) {
                             entran.push(meterEnIniciativa(iniDeBicho(b),
-                                (nombres, renombrar) => conNumero(b.nombre, nombres, renombrar)));
+                                (nombres, renombrar) => conNumero(b.nombre, nombres, renombrar), b.nombre));
                         }
                     });
                     avisar("A la iniciativa: " + entran.filter(Boolean).join(", ") + ".");
@@ -8316,7 +8316,7 @@
                                 const b = porEn[g.en];
                                 for (let k = 0; k < g.n && b; k++) {
                                     entran.push(meterEnIniciativa(iniDeBicho(b),
-                                        (nombres, renombrar) => conNumero(b.nombre, nombres, renombrar)));
+                                        (nombres, renombrar) => conNumero(b.nombre, nombres, renombrar), b.nombre));
                                 }
                             });
                             avisar("A la iniciativa: " + entran.filter(Boolean).join(", ") + ".");
@@ -9086,7 +9086,10 @@
     // Apuntar a alguien en la iniciativa («richi-oc-iniciativa»): tira
     // 1d20 + su bono y avisa a la ventana de la iniciativa. «c»: {nombre,
     // bono, ca, pg, color}. Devuelve el nombre con el que entra, o null.
-    function meterEnIniciativa(c, numerar) {
+    // «agrupar» (el nombre sin número: «Lobo»): si ya hay otros iguales
+    // (Lobo 1, Lobo 2…), entra en su grupo, con su iniciativa y detrás de
+    // ellos, sin tirar (en la iniciativa, 🔓 lo separa).
+    function meterEnIniciativa(c, numerar, agrupar) {
         const CLAVE_INI = "richi-oc-iniciativa";
         let datos = { lista: [], turno: -1, ronda: 1 };
         try {
@@ -9108,10 +9111,18 @@
             return null;
         }
         const bono = parseInt(c.bono, 10) || 0;
-        const r = window.ocDados ? window.ocDados.tirar("1d20" + (bono ? (bono > 0 ? "+" : "") + bono : ""),
-            "iniciativa de " + nombre) : null;
+        const patron = agrupar ? new RegExp("^" + agrupar.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "(?: \\d+)?$") : null;
+        const iguales = patron ? datos.lista.filter((x) => !x.pj && patron.test(x.nombre)) : [];
+        const con = iguales.length ? iguales[iguales.length - 1] : null;
+        const r = con || !window.ocDados ? null : window.ocDados.tirar("1d20" + (bono ? (bono > 0 ? "+" : "") + bono : ""),
+            "iniciativa de " + nombre);
         const entra = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), nombre, color: c.color,
-            ini: r ? r.total : 10 + bono, ca: parseInt(c.ca, 10) || "", pg: c.pg === undefined ? "" : c.pg };
+            ini: con ? con.ini : r ? r.total : 10 + bono, ca: parseInt(c.ca, 10) || "", pg: c.pg === undefined ? "" : c.pg };
+        if (con) {
+            const g = con.grupo || "g" + con.id;
+            con.grupo = g;
+            entra.grupo = g;
+        }
         // De la party (para llevar sus PG a su ficha), sus acciones
         // legendarias y su bono a la salvación de Constitución (concentración).
         ["pj", "leg", "con"].forEach((k) => {
@@ -9119,7 +9130,16 @@
                 entra[k] = c[k];
             }
         });
-        datos.lista.push(entra);
+        if (con) {
+            // Detrás del último de su grupo.
+            let i = datos.lista.indexOf(con);
+            while (i + 1 < datos.lista.length && datos.lista[i + 1].grupo === entra.grupo) {
+                i += 1;
+            }
+            datos.lista.splice(i + 1, 0, entra);
+        } else {
+            datos.lista.push(entra);
+        }
         try {
             localStorage.setItem(CLAVE_INI, JSON.stringify(datos));
         } catch (e) {
@@ -9150,8 +9170,8 @@
     function aLaIniciativa(b, boton, nombreBase) {
         // Una del tablero va con su nombre («Lobo 2», «Elminster») si no
         // está ya; si no, con número si se repite (Lobo 1, Lobo 2…).
-        const nombre = meterEnIniciativa(Object.assign(iniDeBicho(b), { nombre: nombreBase || b.nombre }), (nombres, renombrar) => (nombreBase && nombres.indexOf(nombreBase) < 0 ? nombreBase
-            : conNumero(b.nombre, nombres, renombrar)));
+        const nombre = meterEnIniciativa(Object.assign(iniDeBicho(b), { nombre: nombreBase || b.nombre }), (nombres, renombrar) => (nombreBase && nombreBase !== b.nombre && nombres.indexOf(nombreBase) < 0 ? nombreBase
+            : conNumero(b.nombre, nombres, renombrar)), b.nombre);
         avisar("A la iniciativa: " + nombre + ".");
         if (boton) {
             boton.focus();

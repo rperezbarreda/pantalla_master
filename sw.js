@@ -5,7 +5,7 @@
 // en herramientas/sw-plantilla.js. La versión cambia sola cuando cambia
 // cualquier archivo, y entonces la app avisa de que hay una nueva.
 // =========================================
-const VERSION = "ab2291d94111";
+const VERSION = "1ea822286496";
 const CACHE = "pantalla-master-" + VERSION;
 const ARCHIVOS = [
     "./",
