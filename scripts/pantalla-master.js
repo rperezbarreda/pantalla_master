@@ -15322,18 +15322,23 @@
     let todo = todas.campanas.find((c) => c.id === todas.activa) || todas.campanas[0];
     let estado = todo.perfiles.find((pf) => pf.id === todo.activo) || todo.perfiles[0];
 
+    // Lo que se guarda de una campaña (sin lo de la pantalla, como el
+    // elemento de cada ventana). También lo usa duplicarCampana.
+    const campanaGuardable = (c) => ({ id: c.id, nombre: c.nombre, activo: c.activo,
+        pjs: c.pjs, docs: c.docs, musica: c.musica, inventario: c.inventario, conParty: c.conParty, unidades: c.unidades,
+        edicion: c.edicion, jugadores: c.jugadores, linea: c.linea, relaciones: c.relaciones,
+        perfiles: c.perfiles.map((pf) => ({ id: pf.id, nombre: pf.nombre, color: pf.color || "",
+            colorPestana: pf.colorPestana, zoom: pf.zoom || 1,
+            modulos: pf.modulos.map((m) => ({ id: m.id, tipo: m.tipo, x: m.x, y: m.y, w: m.w, h: m.h,
+                titulo: m.titulo || "", color: m.color || "", plegado: !!m.plegado,
+                escala: m.escala || 1, grupo: m.grupo || undefined, delante: m.grupo ? !!m.delante : undefined,
+                datos: m.datos })) })) });
     function guardar() {
         if (sinGuardarTodavia) {
             return true;
         }
         todo.activo = estado.id;
-        const salida = { activa: todo.id, campanas: todas.campanas.map((c) => ({ id: c.id, nombre: c.nombre, activo: c.activo,
-            pjs: c.pjs, docs: c.docs, musica: c.musica, inventario: c.inventario, conParty: c.conParty, unidades: c.unidades, edicion: c.edicion, jugadores: c.jugadores, linea: c.linea, relaciones: c.relaciones, perfiles: c.perfiles.map((pf) => ({ id: pf.id, nombre: pf.nombre, color: pf.color || "",
-                colorPestana: pf.colorPestana, zoom: pf.zoom || 1,
-                modulos: pf.modulos.map((m) => ({ id: m.id, tipo: m.tipo, x: m.x, y: m.y, w: m.w, h: m.h,
-                    titulo: m.titulo || "", color: m.color || "", plegado: !!m.plegado,
-                    escala: m.escala || 1, grupo: m.grupo || undefined, delante: m.grupo ? !!m.delante : undefined,
-                    datos: m.datos })) })) })) };
+        const salida = { activa: todo.id, campanas: todas.campanas.map(campanaGuardable) };
         try {
             localStorage.setItem(CLAVE, JSON.stringify(salida));
             return true;
@@ -17297,7 +17302,7 @@
             + " con licencia CC BY 4.0. Tus propios audios son tuyos y se quedan en tu dispositivo.",
         [["Google Sound Library", "https://developers.google.com/assistant/tools/sound-library"],
             ["la licencia CC BY 4.0", "https://creativecommons.org/licenses/by/4.0/deed.es"]]],
-        ["🔤 Tipografías", "Space Grotesk, DM Mono, Jersey 10, Pangolin, Atkinson Hyperlegible y Noto, con licencia SIL Open Font"
+        ["🔤 Tipografías", "Space Grotesk, DM Mono, Jersey 10, Pangolin, Patrick Hand, Caveat, Atkinson Hyperlegible y Noto, con licencia SIL Open Font"
             + " License 1.1.", [["la licencia OFL", "https://openfontlicense.org"]]],
         ["🧩 La app", "Pantalla de máster, de Richi (rperezbarreda). El código tiene licencia MIT. Dungeons & Dragons y D&D son"
             + " marcas de Wizards of the Coast; esta app no está afiliada ni respaldada por ellos.",
@@ -17501,6 +17506,44 @@
         (fondo.querySelector(".master-entrada-campana") || input).focus();
     }
 
+    // DUPLICAR UNA CAMPAÑA: una copia entera (tableros, ventanas, party,
+    // documentos, música, línea temporal, relaciones…) con ids nuevos. Los
+    // archivos que usa (imágenes, PDF, audios: «a…», «f…», «j…») se copian
+    // también con id nuevo: si no, al borrar uno en una campaña se iría
+    // de la otra.
+    function duplicarCampana(c) {
+        guardar();
+        let texto = JSON.stringify(campanaGuardable(c));
+        const ids = Array.from(new Set(texto.match(/\b[afj](?=[a-z0-9]*\d)[a-z0-9]{9,}\b/g) || []));
+        return Promise.all(ids.map((id) => archivoLeer(id).catch(() => undefined).then((blob) => {
+            if (!blob) {
+                return null;
+            }
+            const nuevo = idDoc(id.charAt(0));
+            return archivoGuardar(nuevo, blob).then(() => [id, nuevo]).catch(() => null);
+        }))).then((pares) => {
+            pares.filter(Boolean).forEach(([viejo, nuevo]) => {
+                texto = texto.split(viejo).join(nuevo);
+            });
+            const x = JSON.parse(texto);
+            x.id = "c" + siguienteCampana++;
+            x.nombre = (c.nombre + " (copia)").slice(0, 40);
+            const perfiles = {};
+            x.perfiles.forEach((pf) => {
+                const nuevo = "p" + siguientePerfil++;
+                perfiles[pf.id] = nuevo;
+                pf.id = nuevo;
+                pf.modulos.forEach((m) => {
+                    m.id = "m" + siguienteId++;
+                });
+            });
+            x.activo = perfiles[x.activo] || x.perfiles[0].id;
+            todas.campanas.push(x);
+            guardar();
+            return x;
+        });
+    }
+
     function verCampanas() {
         const cuerpo = crear("div", "master-campanas");
         cuerpo.appendChild(crear("p", "oc-hoja-nota", "Cada campaña tiene sus pestañas, sus ventanas y su party: no se mezclan."));
@@ -17593,7 +17636,23 @@
         borrar.disabled = todas.campanas.length < 2;
         nueva.insertBefore(edicionNueva, nueva.querySelector("button"));
         nueva.insertBefore(medidasNueva, nueva.querySelector("button"));
-        cuerpo.append(ul, nueva, renombrarla, borrar);
+        const duplicar = botonDe("oc-vida-accion", "⧉ duplicar esta campaña", () => {
+            duplicar.disabled = true;
+            duplicar.textContent = "⧉ duplicando…";
+            duplicarCampana(todo).then((x) => {
+                cerrar();
+                activarCampana(x);
+                botonCampana.focus();
+                avisar("Duplicada: ahora estás en «" + x.nombre + "» (la original sigue igual).");
+            }).catch(() => {
+                duplicar.disabled = false;
+                duplicar.textContent = "⧉ duplicar esta campaña";
+                avisar("No se ha podido duplicar.");
+            });
+        }, "Duplicar la campaña " + todo.nombre + " (con sus tableros, party y documentos)");
+        const botonesC = crear("div", "master-anadir-otras");
+        botonesC.append(duplicar, borrar);
+        cuerpo.append(ul, nueva, renombrarla, botonesC);
         const cerrar = window.ocVentana.abrir({ titulo: "campañas", cuerpo, vuelta: botonCampana, clase: "es-ancha" });
     }
     pintarCampana();

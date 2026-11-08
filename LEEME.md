@@ -32,8 +32,8 @@ sw.js                   GENERADO: el service worker (sin conexión)
 scripts/                arranque.js (tema antes de pintar), app.js (Aa, sw),
                         pantalla-master.js, personajes.js, tema.js, ajustes.js
 estilos/                los del blog + app.css (lo propio de la app) y moderno.css
-                        y windows.css (los otros dos diseños, Aa → diseño: «moderno» y
-                        «windows 98»; sin ellos, el retro de siempre)
+                        windows.css y lapiz.css (los otros tres diseños, Aa → diseño:
+                        «moderno», «windows 98» y «a lápiz»; sin ellos, el retro de siempre)
 datos/                  el SRD 5.2 en español (CC BY 4.0) y las tablas
                         (compendio/: reglas.json, nombres.json, master-tablas.json…)
 tipografias/            las letras (con sus licencias OFL)
@@ -84,4 +84,4 @@ Los ejecutables de Windows se firman con un certificado de [SignPath Foundation]
 - Reglas, monstruos, conjuros, objetos, rasgos, dotes y habilidades: este trabajo incluye material del *System Reference Document 5.2* de Wizards of the Coast LLC, disponible en [dndbeyond.com/srd](https://www.dndbeyond.com/srd), con licencia [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/legalcode), traducido al español (no es una traducción oficial). Los rasgos y dotes, a partir de [5e-bits/5e-database](https://github.com/5e-bits/5e-database) (MIT).
 - Dungeons & Dragons y D&D son marcas de Wizards of the Coast; este proyecto no está afiliado ni respaldado por ellos.
 - Grabaciones (cuando estén en `sonidos/`): [Google Sound Library](https://developers.google.com/assistant/tools/sound-library), CC BY 4.0.
-- Tipografías: Space Grotesk, DM Mono, Jersey 10, Pangolin, Atkinson Hyperlegible y Noto, con sus licencias libres (las de Google Fonts).
+- Tipografías: Space Grotesk, DM Mono, Jersey 10, Pangolin, Patrick Hand, Caveat, Atkinson Hyperlegible y Noto, con sus licencias libres (las de Google Fonts).

@@ -5,7 +5,7 @@
 // en herramientas/sw-plantilla.js. La versión cambia sola cuando cambia
 // cualquier archivo, y entonces la app avisa de que hay una nueva.
 // =========================================
-const VERSION = "1910692da5b2";
+const VERSION = "04338e234087";
 const CACHE = "pantalla-master-" + VERSION;
 const ARCHIVOS = [
     "./",
@@ -27,6 +27,7 @@ const ARCHIVOS = [
     "estilos/base.responsive.css",
     "estilos/cabecera-ventana.css",
     "estilos/jugadores.css",
+    "estilos/lapiz.css",
     "estilos/moderno.css",
     "estilos/pantalla-master.css",
     "estilos/personajes.css",
@@ -63,6 +64,7 @@ const ARCHIVOS = [
     "tipografias/atkinson-mono-400-italica.woff2",
     "tipografias/atkinson-mono-400.woff2",
     "tipografias/atkinson-mono-700.woff2",
+    "tipografias/caveat-700.woff2",
     "tipografias/dm-mono-400.woff2",
     "tipografias/dm-mono-500.woff2",
     "tipografias/jersey-10-400.woff2",
@@ -83,6 +85,7 @@ const ARCHIVOS = [
     "tipografias/noto-shavian.woff2",
     "tipografias/noto-tifinagh.woff2",
     "tipografias/pangolin-400.woff2",
+    "tipografias/patrick-hand-400.woff2",
     "tipografias/space-grotesk-400.woff2",
     "tipografias/space-grotesk-500.woff2",
     "tipografias/space-grotesk-600.woff2"
