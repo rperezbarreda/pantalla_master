@@ -15417,11 +15417,57 @@
             ["ambiente", 1401, 20, 432, 688, "azul", 0, 1]
         ]]
     ];
+    // En la app de Android, la disposición de Richi para la tableta
+    // (hecha en una Galaxy Tab A7: 1333 × 800 en apaisado). Tras las
+    // ventanas, el zoom del tablero si no es 100 %.
+    const PERFILES_ANDROID = [
+        ["⭐home", "#000000", "", [
+            ["acciones", 910, 13, 596, 712, "#ad1f1f", 1, 1, "gm90", 1], ["reglas", 902, 126, 595, 706, "naranja", 1, 1, "gm89", 0],
+            ["conjuros", 910, 13, 596, 712, "celeste", 1, 1, "gm90", 0], ["notas", 6, 14, 827, 547, "#1b1818", 0, 1, "gm49", 1],
+            ["homebrew", 902, 126, 595, 706, "blanco", 1, 1, "gm89", 0], ["calendario", 902, 126, 595, 706, "gris", 1, 0.8, "gm89", 1],
+            ["bestiario", 904, 238, 600, 440, "#151619", 0, 1, "gm82", 0], ["party", 904, 238, 600, 440, "rosa", 0, 1, "gm82", 1],
+            ["dibujo", 6, 14, 827, 547, "blanco", 0, 1, "gm49", 0], ["condiciones", 910, 13, 596, 712, "coral", 1, 1, "gm90", 0],
+            ["rasgos", 910, 13, 596, 712, "amarillo", 1, 1, "gm90", 0]
+        ], 0.83],
+        ["📝notas", "noche", "oceano", [
+            ["dibujo", 375, 19, 900, 607, "arena", 0, 1, "gm76", 1], ["idiomas", 375, 19, 900, 607, "", 0, 1, "gm76", 0],
+            ["documentos", 1, 10, 362, 616, "", 0, 1], ["notas", 375, 19, 900, 607, "#575b60", 0, 1, "gm76", 0]
+        ]],
+        ["❌combate", "vino", "carmesi", [
+            ["iniciativa", 0, 0, 358, 625, "#ca1c1c", 0, 1, "gm43", 1], ["condiciones", 906, 0, 399, 609, "morado", 0, 1, "gm76", 1],
+            ["acciones", 906, 0, 399, 609, "fucsia", 0, 1, "gm76", 0], ["bestiario", 390, 0, 472, 617, "#000000", 0, 1, "gm72", 1],
+            ["relojes", 0, 0, 358, 625, "lavanda", 0, 1, "gm43", 0], ["encuentros", 390, 0, 472, 617, "turquesa", 0, 1, "gm72", 0],
+            ["party", 390, 0, 472, 617, "blanco", 0, 1, "gm72", 0]
+        ]],
+        ["💰tiendas", "uva", "arena", [
+            ["tienda", 0, 0, 488, 540, "coral", 0, 1, "gm81", 1], ["monedas", 0, 0, 488, 540, "amarillo", 0, 1, "gm81", 0],
+            ["taberna", 532, 0, 679, 542, "morado", 0, 1]
+        ]],
+        ["🧙‍♂️npcs", "bosque", null, [
+            ["nombres", 476, 4, 422, 549, "azul", 0, 1, "gm70", 1], ["pnj", 476, 4, 422, 549, "marron", 0, 1, "gm70", 0],
+            ["bestiario", 1, 0, 457, 554, "rojo", 0, 1], ["tarjeta", 950, 12, 317, 533, "amarillo", 0, 1, "gm75", 1],
+            ["tarjeta", 950, 12, 317, 533, "turquesa", 0, 1, "gm75", 0], ["tarjeta", 950, 12, 317, 533, "azul", 0, 1, "gm75", 0],
+            ["tarjeta", 950, 12, 317, 533, "morado", 0, 1, "gm75", 0], ["tarjeta", 950, 12, 317, 533, "coral", 0, 1, "gm75", 0]
+        ]],
+        ["🛡️party", "verde", null, [
+            ["party", 0, 0, 502, 645, "verde", 0, 1, "gm92", 0], ["inventario", 0, 0, 502, 645, "melocoton", 0, 1, "gm92", 1]
+        ]],
+        ["🎲generadores", "pizarra", null, [
+            ["dungeon", 0, 0, 814, 580, "gris", 0, 1], ["botin", 865, 13, 440, 456, "naranja", 0, 1, "gm95", 0],
+            ["nombres", 865, 13, 440, 456, "verde", 0, 1, "gm95", 1]
+        ]],
+        ["🎵música", "", "uva", [
+            ["musica", 5, 24, 1173, 588, "celeste", 0, 1, "gm97", 0], ["sonidos", 5, 24, 1173, 588, "marron", 0, 1, "gm97", 1],
+            ["ambiente", 5, 24, 1173, 588, "azul", 0, 1, "gm97", 0]
+        ]]
+    ];
     function perfilesDeSerie() {
-        return PERFILES_DE_SERIE.map(([nombre, color, colorPestana, ventanas]) => ({ nombre, color,
+        return (EN_ANDROID ? PERFILES_ANDROID : PERFILES_DE_SERIE).map(([nombre, color, colorPestana, ventanas, zoom]) => Object.assign({
+            nombre, color,
             colorPestana: colorPestana === null ? color : colorPestana,
             modulos: ventanas.filter((v) => MODULOS[v[0]]).map(([tipo, x, y, w, h, c, plegado, escala, grupo, delante]) => Object.assign(
-                { tipo, x, y, w, h, color: c, plegado: !!plegado, escala }, grupo ? { grupo, delante: !!delante } : {})) }));
+                { tipo, x, y, w, h, color: c, plegado: !!plegado, escala }, grupo ? { grupo, delante: !!delante } : {})) },
+            zoom ? { zoom } : {}));
     }
 
     // CAMPAÑAS: configuraciones separadas (dos campañas, dos partys que
@@ -16088,8 +16134,10 @@
             alFrente(m);
             const x0 = e.clientX;
             const y0 = e.clientY;
+            // Con el dedo, más margen: nunca se queda del todo quieto.
+            const margenQuieto = e.pointerType === "touch" ? 14 : 8;
             const quieto = (ev) => {
-                if (Math.abs(ev.clientX - x0) + Math.abs(ev.clientY - y0) > 8) {
+                if (Math.abs(ev.clientX - x0) + Math.abs(ev.clientY - y0) > margenQuieto) {
                     dejar();
                 }
             };
@@ -16105,6 +16153,10 @@
                 const my = m.y;
                 v.dataset.recienMovida = "si";
                 v.classList.add("es-arrastrada", "es-cogida");
+                // Con el dedo, un toque de vibración: ya se puede arrastrar.
+                if (e.pointerType === "touch" && navigator.vibrate) {
+                    navigator.vibrate(20);
+                }
                 // Soltarla sobre la barra de otra: se juntan en pestañas
                 // (la de debajo se marca mientras).
                 let destino = null;
@@ -16117,15 +16169,32 @@
                         destino.el.classList.add("es-destino");
                     }
                 };
+                // Mientras se mueve, con «transform»: no recoloca la página
+                // (va fluido también en tabletas modestas); al soltar, a su
+                // sitio de verdad. Qué ventana hay debajo, como mucho diez
+                // veces por segundo.
+                let mirado = 0;
                 arrastrar(e, cabeza, (dx, dy, ev) => {
                     m.x = Math.min(topeX(m), Math.max(0, mx + dx));
                     m.y = Math.max(0, my + dy);
-                    colocar(m);
+                    v.style.transform = "translate(" + (m.x - mx) + "px, " + (m.y - my) + "px)";
+                    const ahora = performance.now();
+                    if (ahora - mirado < 100) {
+                        return;
+                    }
+                    mirado = ahora;
                     const d = ventanaBajo(ev.clientX, ev.clientY, v);
                     if (d !== destino && !(d && m.grupo && d.grupo === m.grupo)) {
                         marcar(d);
                     }
-                }, () => {
+                }, (ev) => {
+                    v.style.transform = "";
+                    colocar(m);
+                    // Lo de debajo, mirado otra vez justo donde se suelta.
+                    const d = ev ? ventanaBajo(ev.clientX, ev.clientY, v) : null;
+                    if (d !== destino && !(d && m.grupo && d.grupo === m.grupo)) {
+                        marcar(d);
+                    }
                     v.classList.remove("es-arrastrada", "es-cogida");
                     setTimeout(() => delete v.dataset.recienMovida, 0);
                     if (destino) {
@@ -17037,8 +17106,9 @@
         }
         const x0 = e.clientX;
         const y0 = e.clientY;
+        const margenQuieto = e.pointerType === "touch" ? 14 : 8;
         const quieto = (ev) => {
-            if (Math.abs(ev.clientX - x0) + Math.abs(ev.clientY - y0) > 8) {
+            if (Math.abs(ev.clientX - x0) + Math.abs(ev.clientY - y0) > margenQuieto) {
                 dejar();
             }
         };
@@ -17050,6 +17120,9 @@
         };
         const reloj = setTimeout(() => {
             dejar();
+            if (e.pointerType === "touch" && navigator.vibrate) {
+                navigator.vibrate(20);
+            }
             arrastrarPestana(e, b);
         }, ESPERA_COGER);
         document.addEventListener("pointermove", quieto);
@@ -17382,7 +17455,9 @@
     }
     // EL TABLERO DE TUTORIAL: unos post-its que explican las opciones. Va
     // el primero en cada campaña nueva (se puede quitar como cualquiera).
-    const TUTORIAL = [
+    // Uno para el ordenador y otro para la tableta (la app de Android: con
+    // el dedo, sin teclado), con las tarjetas en el mismo orden.
+    const TUTORIAL_ORDENADOR = [
         ["👋 Bienvenida", "amarillo", "<p>Esto es tu <strong>pantalla de máster</strong>: un tablero con ventanas que pones, mueves y"
             + " quitas a tu gusto.</p><ul><li>Las <strong>pestañas de arriba</strong> son tus tableros (por ejemplo, uno para"
             + " combate y otro para la ciudad).</li><li>Cada ventana es una herramienta: la iniciativa, el bestiario, las"
@@ -17430,6 +17505,48 @@
             + "<li><strong>[</strong> y <strong>]</strong> tablero anterior y siguiente</li><li><strong>+</strong> y"
             + " <strong>−</strong> zoom del tablero</li></ul>"],
     ];
+    const TUTORIAL_TABLETA = [
+        ["👋 Bienvenida", "amarillo", "<p>Esto es tu <strong>pantalla de máster</strong>: un tablero con ventanas que pones, mueves y"
+            + " quitas a tu gusto.</p><ul><li>Las <strong>pestañas de arriba</strong> son tus tableros (uno para combate, otro"
+            + " para la ciudad…); desliza la fila con el dedo para ver todas.</li><li>Cada ventana es una herramienta: la"
+            + " iniciativa, el bestiario, las reglas, notas…</li><li>Este tablero es el tutorial: cuando ya no lo necesites,"
+            + " quítalo con <strong>✎</strong> (arriba, junto a las pestañas).</li></ul>"],
+        ["✋ Con el dedo", "celeste", "<ul><li><strong>Desliza</strong> para moverte por el tablero; con <strong>dos"
+            + " dedos</strong>, pellizcando, lo acercas o lo alejas (también en los dibujos).</li><li><strong>Toca la"
+            + " barra</strong> de una ventana para plegarla o desplegarla.</li><li>Para moverla, <strong>deja el dedo quieto"
+            + " en su barra</strong> hasta que la tablet vibre y la barra se marque, y arrastra.</li><li>La <strong>esquina de"
+            + " abajo a la derecha</strong> cambia su tamaño.</li><li>Suelta una ventana sobre la barra de otra y se"
+            + " <strong>juntan en pestañas</strong>; ⇱ la vuelve a sacar.</li><li><strong>✎</strong> le cambia el nombre, el"
+            + " color y la letra; <strong>−</strong> la pliega y <strong>✕</strong> la quita. El botón <strong>atrás</strong>"
+            + " cierra lo que tengas abierto.</li></ul>"],
+        ["🗂️ Tableros y campañas", "verde", "<ul><li><strong>＋</strong> (junto a las pestañas) crea un tablero nuevo, vacío o"
+            + " desde una plantilla; <strong>✎</strong> cambia el de ahora: nombre, colores o quitarlo.</li><li>Deja el dedo"
+            + " sobre una pestaña para <strong>cambiarla de sitio</strong>.</li><li><strong>📚</strong> son tus campañas: cada"
+            + " una con sus tableros, su party y sus documentos, sin mezclarse.</li></ul>"],
+        TUTORIAL_ORDENADOR[3],
+        ["🔍 Buscar, crear y ajustes", "morado", "<ul><li>El <strong>buscador</strong> de arriba encuentra conjuros,"
+            + " monstruos, reglas, objetos, rasgos, dotes y habilidades a la vez (también lo que añadas tú).</li>"
+            + "<li><strong>⚙</strong>: zoom, ordenar o quitar ventanas, las <strong>copias de seguridad</strong>, dónde se"
+            + " guarda, que la pantalla no se apague y buscar actualizaciones.</li><li><strong>Aa</strong>: tamaño del texto,"
+            + " letra más legible y los temas de color.</li></ul>"],
+        TUTORIAL_ORDENADOR[5],
+        ["🎲 Los dados", "rosa", "<ul><li>El <strong>botón redondo</strong> de abajo a la derecha abre los dados; tocándolo"
+            + " otra vez se pliegan.</li><li>Toca los dados que quieras, pon el modificador y <strong>tirar</strong>. Con"
+            + " ventaja o desventaja, el d20 se tira dos veces.</li><li>Las últimas tiradas quedan debajo, para"
+            + " repetirlas.</li><li>En las fichas, los números con dados también se tiran tocándolos: prueba aquí con"
+            + " 1d20+5.</li></ul>"],
+        ["💾 Tus datos", "gris", "<ul><li>Todo se guarda <strong>sólo en esta tablet</strong>: no se sube a ningún"
+            + " sitio.</li><li>Dentro de la app, si la desinstalas, se pierde. Mejor en una <strong>carpeta</strong> (⚙ →"
+            + " dónde se guarda): sigue ahí, se puede copiar al ordenador y la app deja una copia al día.</li><li>Haz de vez"
+            + " en cuando una copia con <strong>⚙ → exportar</strong>; para llevarlo a otro sitio, <strong>importar</strong>"
+            + " allí.</li><li>Desde otras apps, <strong>Compartir</strong> o <strong>Abrir con</strong> trae copias,"
+            + " imágenes, PDF y audios.</li></ul>"],
+        ["📺 En la mesa", "azul", "<ul><li>La <strong>pantalla de jugadores</strong> sale en la tele o el monitor si los"
+            + " conectas por cable; si no, en otra ventana, al lado si cabe.</li><li>La <strong>música</strong> sigue sonando"
+            + " aunque dejes la app detrás o apagues la pantalla, y los botones de volumen son los suyos.</li><li>Mientras la"
+            + " app está a la vista, <strong>la pantalla no se apaga</strong> (se cambia en ⚙).</li></ul>"],
+    ];
+    const TUTORIAL = EN_ANDROID ? TUTORIAL_TABLETA : TUTORIAL_ORDENADOR;
     // Los tableros de tutorial de antes: la nota nueva del compendio, y la
     // de «buscar» sin lo del ＋ de al lado del buscador (que ya no está).
     function ponerAlDiaTutorial() {
@@ -17437,6 +17554,17 @@
         const buscar = TUTORIAL.find((t) => t[0] === "🔍 Buscar, crear y ajustes");
         let algo = false;
         todas.campanas.forEach((c) => c.perfiles.filter((pf) => pf.nombre === "📖 tutorial").forEach((pf) => {
+            // En la app de Android, las tarjetas del de ordenador que siguen
+            // como venían pasan a las de la tableta (las tocadas, no).
+            if (EN_ANDROID) {
+                pf.modulos.forEach((m) => {
+                    const i = m.tipo === "tarjeta" && m.datos ? TUTORIAL_ORDENADOR.findIndex((t) => t[2] === m.datos.html) : -1;
+                    if (i >= 0 && TUTORIAL_TABLETA[i] !== TUTORIAL_ORDENADOR[i]) {
+                        [m.titulo, m.color, m.datos.html] = TUTORIAL_TABLETA[i];
+                        algo = true;
+                    }
+                });
+            }
             pf.modulos.filter((m) => m.tipo === "tarjeta" && m.titulo === "🔍 Buscar, crear y ajustes" && m.datos
                 && /tus\s+creaciones/.test(m.datos.html || "")).forEach((m) => {
                 m.datos.html = buscar[2];
@@ -17481,7 +17609,9 @@
     }
     function perfilTutorial() {
         return { nombre: "📖 tutorial", color: "", colorPestana: "",
-            modulos: TUTORIAL.map(([titulo, color, html], i) => ({ tipo: "tarjeta", x: (i % 4) * 430, y: Math.floor(i / 4) * 560,
+            // En filas de cuatro (en la tableta, de tres: lo que cabe).
+            modulos: TUTORIAL.map(([titulo, color, html], i) => ({ tipo: "tarjeta", x: (i % (EN_ANDROID ? 3 : 4)) * 430,
+                y: Math.floor(i / (EN_ANDROID ? 3 : 4)) * 560,
                 w: 410, h: 540, titulo, color, plegado: false, escala: 1, datos: { html } })) };
     }
     // Una campaña nueva: el tutorial y luego las plantillas de tableros.
