@@ -127,6 +127,67 @@ final class Red {
         }
     }
 
+    // ---- ¿HAY UNA VERSIÓN NUEVA? (sólo cuando se pide, en ⚙ opciones) ----
+    // La release «ultima» de GitHub se llama «Pantalla de máster (versión N)»,
+    // con N el número de la compilación (el versionCode de la app; ver
+    // .github/workflows/ejecutables.yml).
+    private static final Pattern VERSION = Pattern.compile("versi[oó]n\\s+(\\d+)");
+
+    static WebResourceResponse actualizacion(android.content.Context ctx) {
+        org.json.JSONObject r = new org.json.JSONObject();
+        HttpURLConnection c = null;
+        try {
+            android.content.pm.PackageInfo pi = ctx.getPackageManager().getPackageInfo(ctx.getPackageName(), 0);
+            @SuppressWarnings("deprecation")
+            long actual = android.os.Build.VERSION.SDK_INT >= 28 ? pi.getLongVersionCode() : pi.versionCode;
+            boolean prueba = ctx.getPackageName().endsWith(".prueba");
+            r.put("actual", actual);
+            r.put("prueba", prueba);
+            c = (HttpURLConnection) new URL("https://api.github.com/repos/rperezbarreda/pantalla_master/releases/latest")
+                    .openConnection();
+            c.setConnectTimeout(ESPERA);
+            c.setReadTimeout(ESPERA);
+            c.setRequestProperty("User-Agent", AGENTE);
+            c.setRequestProperty("Accept", "application/vnd.github+json");
+            if (c.getResponseCode() != 200) {
+                r.put("error", "GitHub no contesta (" + c.getResponseCode() + ")");
+            } else {
+                org.json.JSONObject o = new org.json.JSONObject(new String(leerHasta(c.getInputStream(), 1 << 20), "UTF-8"));
+                java.util.regex.Matcher m = VERSION.matcher(o.optString("name", "") + " " + o.optString("body", ""));
+                long ultima = m.find() ? Long.parseLong(m.group(1)) : 0;
+                String apk = "";
+                org.json.JSONArray a = o.optJSONArray("assets");
+                for (int i = 0; a != null && i < a.length(); i++) {
+                    org.json.JSONObject x = a.getJSONObject(i);
+                    if (x.optString("name").endsWith(".apk")) {
+                        apk = x.optString("browser_download_url");
+                    }
+                }
+                r.put("ultima", ultima);
+                r.put("url", apk.isEmpty() ? o.optString("html_url") : apk);
+                r.put("hay", !prueba && ultima > actual && !apk.isEmpty());
+            }
+        } catch (IOException e) {
+            put(r, "error", "sin conexión");
+        } catch (Exception e) {
+            put(r, "error", "la respuesta no se entiende");
+        } finally {
+            if (c != null) {
+                c.disconnect();
+            }
+        }
+        return new WebResourceResponse("application/json", "utf-8", 200, "OK", sinGuardar(),
+                new ByteArrayInputStream(r.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+    }
+
+    private static void put(org.json.JSONObject o, String k, String v) {
+        try {
+            o.put(k, v);
+        } catch (org.json.JSONException e) {
+            // No pasa.
+        }
+    }
+
     private static byte[] leerHasta(InputStream in, int limite) throws IOException {
         try (InputStream entrada = in) {
             java.io.ByteArrayOutputStream sale = new java.io.ByteArrayOutputStream();

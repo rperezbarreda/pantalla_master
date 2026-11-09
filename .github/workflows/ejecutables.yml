@@ -5,6 +5,9 @@
 #   - la app de Android (PantallaMaster-Android.apk), firmada con la clave de
 #     los secretos (ver LEEME). El .aab para Google Play queda en
 #     «Artifacts» de la ejecución (PantallaMaster-Android-Play).
+# El título de la release lleva el número de esta ejecución, que es también
+# el de la versión de la app de Android: la app lo compara con el suyo al
+# buscar actualizaciones (android/…/Red.java).
 name: ejecutables
 
 on:
@@ -112,5 +115,5 @@ jobs:
         run: |
           gh release delete ultima --yes --cleanup-tag || true
           gh release create ultima dist/* --latest \
-            --title "Pantalla de máster" \
+            --title "Pantalla de máster (versión ${{ github.run_number }})" \
             --notes "Baja el .zip de tu sistema, descomprímelo y abre «Pantalla de máster» con doble clic (junto a él va la carpeta «archivos»: déjalos juntos). Windows: PantallaMaster-Windows.zip. Mac: el de tu procesador (Apple Silicon = M1, M2…; si no, Intel). Linux: PantallaMaster-Linux.zip. Tablets Android: PantallaMaster-Android.apk (ábrelo en la tablet y permite instalar apps de esta fuente). Todo lo que hagas se guarda en tu dispositivo; funciona sin conexión."

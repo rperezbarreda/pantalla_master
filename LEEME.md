@@ -17,6 +17,10 @@ Es gratis, sin anuncios y sin nada de pago. Sale de la pantalla de máster de [E
   - La pantalla de jugadores sale en la pantalla externa si hay una conectada (una tele o un monitor por HDMI o USB-C); si no, en otra ventana de la app, al lado si cabe (pantalla partida). El reproductor de música, en su ventana.
   - Atrás cierra lo que haya abierto (como Escape); sin nada abierto, la app se queda en segundo plano tal cual estaba.
   - Exportar y descargar abren el selector de Android para elegir dónde guardar; los PDF e imágenes de documentos se abren con su app.
+  - **Dónde se guarda** (⚙ opciones): dentro de la app (se borra si la desinstalas) o en una carpeta que elijas, por ejemplo «Documentos/Pantalla de máster». En la carpeta va igual que «mis-datos» en el programa (`almacen.json` y `archivos/`): sigue ahí aunque desinstales la app y se puede copiar del ordenador a la tablet y al revés. Al elegir una carpeta vacía, la entrada ofrece traer lo que había dentro de la app.
+  - **La música sigue sonando** con la app detrás (mirando otra cosa o con la pantalla apagada): mientras suena música o un ambiente, la app lo dice en la barra de notificaciones (Android 13 o más pide permiso para ese aviso una vez).
+  - **La pantalla no se apaga sola** mientras la app está a la vista (⚙ opciones → «La pantalla, durante la partida»; en Android viene encendida; en un navegador que lo permita también se puede elegir).
+  - **Actualizaciones** (⚙ opciones): «buscar actualizaciones» mira en GitHub si hay una versión nueva (sólo al pulsarlo); si la hay, la baja con el navegador y, al abrirla, Android la instala encima sin perder nada.
   - Con el dedo: deslizar mueve el tablero y la fila de pestañas; dos dedos amplían el tablero y los dibujos (y se mueven por ellos); mantener pulsada la barra de una ventana o una pestaña la coge para moverla. Con lápiz, la palma no pinta.
   - Usa el tamaño de letra del sistema, se puede ampliar la página con dos dedos fuera del tablero y funciona con TalkBack y con teclado.
 - **En el ordenador:** abre la web y, si quieres, instálala desde el navegador (Chrome/Edge: el icono de instalar de la barra de direcciones).
@@ -25,7 +29,7 @@ Es gratis, sin anuncios y sin nada de pago. Sale de la pantalla de máster de [E
 
 ## Dónde se guarda lo tuyo
 
-Todo lo que haces (campañas, tableros, notas, documentos, imágenes, música, tus creaciones…) se queda **sólo en el dispositivo**: en el navegador, en la carpeta «mis-datos» (el programa de escritorio) o dentro de la app de Android (se borra si se desinstala). No se sube a ningún sitio. Para no perderlo o pasarlo a otro dispositivo: ⚙ → exportar (y luego importar).
+Todo lo que haces (campañas, tableros, notas, documentos, imágenes, música, tus creaciones…) se queda **sólo en el dispositivo**: en el navegador, en la carpeta «mis-datos» (el programa de escritorio) o en la app de Android (dentro de ella, y se borra si se desinstala, o en la carpeta que elijas). No se sube a ningún sitio. Para no perderlo o pasarlo a otro dispositivo: ⚙ → exportar (y luego importar).
 
 ## Para quien la mantiene
 
@@ -73,6 +77,9 @@ Rehace `sw.js` con la lista de archivos y una versión nueva (si no, los disposi
 
 **La app de Android** (`android/`): una actividad con un WebView que sirve la web desde el APK (`https://appassets.androidplatform.net/`, sin service worker). Al compilar, Gradle copia en `assets/web/` lo mismo que lleva el ejecutable (menos `sw.js`), así que **no hay que tocar nada en `android/` cuando cambia la web**. Lo que en el navegador hace el navegador va en `android/app/src/main/assets/android.js` (se mete en cada página antes que el resto) y en el Java (`Base.java`: elegir archivos, guardar, abrir, atrás; `Principal.java`: la pantalla externa y las ventanas; `Red.java`: importar por enlace, como el lanzador). La web sólo mira `window.ocAndroid` para saber que está dentro (sin el aviso de la web, importar por enlace, los PDF con su visor).
 
+- **Lo guardado en carpeta** (`Carpeta.java`): la elige cada uno con el selector de Android (permiso sólo a esa carpeta); una sola copia de los datos para todas las ventanas (cada una lee y escribe clave a clave por el puente, así la de jugadores no pisa a la del máster) que se escribe en `almacen.json` un momento después de cada cambio y al dejar la app (antes, `almacen.copia.json`, por si se corta). Los archivos se leen como en el programa (`GET /__archivos`) y se escriben por el puente (`window.ocAlmacen.guardarArchivo`). Si dentro de la carpeta elegida hay un `mis-datos` con datos (copiado del ordenador), se usa ese.
+- **La música** (`Servicio.java`): `android.js` mira si suena algo largo (música, un ambiente en bucle; no los efectos) y la app tiene un servicio «en primer plano» con su aviso mientras tanto (se va 20 s después de que pare, para el cambio de canción).
+- **Las actualizaciones** (`Red.java`): el título de la release «ultima» lleva el número de la ejecución de `ejecutables.yml` («versión N»), que es el `versionCode` del APK; la app compara los dos.
 - **De prueba:** cada subida a `desarrollo` hace «Máster (prueba)» (`.github/workflows/android.yml`; en Actions, «android-prueba» → la ejecución → Artifacts). Es otra app (`blog.richi.pantallamaster.prueba`): convive con la de verdad y se instala encima de la anterior sin perder lo guardado (va firmada con `android/prueba.keystore`, que sólo sirve para eso).
 - **La de verdad:** al subir a `main`, `ejecutables.yml` hace el APK firmado, lo pone en la release «ultima» y deja el `.aab` para Google Play en Artifacts («PantallaMaster-Android-Play»). Necesita cuatro secretos del repo (Settings → Secrets and variables → Actions): `ANDROID_ALMACEN_BASE64` (el almacén de claves en base64), `ANDROID_ALMACEN_CLAVE`, `ANDROID_ALIAS` y `ANDROID_ALIAS_CLAVE`. Sin ellos se publica lo de escritorio y la de Android no. El almacén se hace una vez (`keytool -genkeypair -keystore pantalla-master.jks -alias pantalla-master -keyalg RSA -keysize 4096 -validity 10000`) y **no se puede perder**: sin él, las versiones nuevas no se instalan encima de las viejas.
 - **Google Play:** la ficha usa `imagenes/icono-maskable-512.png` como icono; el `.aab` se sube a mano desde la consola de Play (con «Firma de apps de Google Play»: Google firma lo que se instala desde Play, así que esa app y la del APK de GitHub no se actualizan la una con la otra). Es gratis, sin anuncios y sin compras; no recoge datos.
@@ -93,8 +100,8 @@ Los ejecutables de Windows se firman con un certificado de [SignPath Foundation]
 - **Quién:** Richi ([@rperezbarreda](https://github.com/rperezbarreda)) es el autor y quien aprueba cada versión.
 - **Cómo:** los ejecutables se construyen sólo en GitHub Actions, a partir del código de este repositorio (`.github/workflows/ejecutables.yml`); nada se firma desde un ordenador.
 - **Qué:** sólo se firman las versiones publicadas desde `main`, después de aprobarlas a mano en SignPath.
-- **Privacidad:** ni el programa ni la app de Android envían datos a ningún sitio. Sólo se conectan a internet cuando tú pides importar un personaje de D&D Beyond o de Nivel20 (o abres un enlace de fuera, en el navegador); todo lo demás se guarda en tu dispositivo (en el ordenador, en la carpeta `mis-datos`).
-- **Android:** el APK se firma también sólo en GitHub Actions, con la clave de los secretos del repositorio.
+- **Privacidad:** ni el programa ni la app de Android envían datos a ningún sitio. Sólo se conectan a internet cuando tú pides importar un personaje de D&D Beyond o de Nivel20, buscar actualizaciones (la app de Android, que pregunta a GitHub) o abres un enlace de fuera (en el navegador); todo lo demás se guarda en tu dispositivo (en el ordenador, en la carpeta `mis-datos`; en Android, dentro de la app o en tu carpeta).
+- **Android:** el APK se firma también sólo en GitHub Actions, con la clave de los secretos del repositorio. Sus permisos: internet (lo de arriba), el servicio y el aviso de la música (para que siga con la app detrás) y no dormir el procesador mientras suena; la carpeta, sólo la que eliges tú.
 
 ## Créditos
 

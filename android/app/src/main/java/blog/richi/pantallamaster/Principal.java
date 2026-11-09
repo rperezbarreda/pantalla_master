@@ -86,6 +86,7 @@ public class Principal extends Base {
     private static final class Jugadores extends Presentation {
         private final Base duena;
         private WebView web;
+        private Puente puente;
 
         Jugadores(Base duena, Display d) {
             super(duena, d);
@@ -95,7 +96,8 @@ public class Principal extends Base {
         @Override
         protected void onCreate(Bundle guardado) {
             super.onCreate(guardado);
-            web = Web.crear(getContext(), new Puente(duena, true), this::dismiss);
+            puente = new Puente(duena, true);
+            web = Web.crear(getContext(), puente, this::dismiss);
             web.setBackgroundColor(duena.getColor(R.color.fondo));
             setContentView(web);
             web.loadUrl(Web.RAIZ + "jugadores.html");
@@ -103,6 +105,9 @@ public class Principal extends Base {
 
         @Override
         protected void onStop() {
+            if (puente != null) {
+                puente.olvidar();
+            }
             if (web != null) {
                 web.destroy();
                 web = null;

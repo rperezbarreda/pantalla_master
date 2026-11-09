@@ -1,9 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Sólo internet, y sólo para importar un personaje por su enlace (D&D
-     Beyond, Nivel20); todo lo demás va dentro de la app, sin conexión. -->
+<!-- Internet, sólo para importar un personaje por su enlace (D&D Beyond,
+     Nivel20) y para mirar si hay versión nueva cuando se pide; todo lo demás
+     va dentro de la app, sin conexión. El servicio, los avisos y no dormir:
+     para que la música siga sonando con la app detrás (Servicio.java). -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
 
     <application
         android:allowBackup="true"
@@ -34,6 +40,11 @@
             android:exported="false"
             android:label="@string/app_name"
             android:windowSoftInputMode="adjustResize" />
+
+        <service
+            android:name=".Servicio"
+            android:exported="false"
+            android:foregroundServiceType="mediaPlayback" />
 
         <provider
             android:name=".Archivos"

@@ -10282,17 +10282,62 @@
     const CON_RED = EN_CARPETA || !!window.ocAndroid;
     // Dentro de la app de Android (android/: window.ocAndroid lo pone ella).
     const EN_ANDROID = !!window.ocAndroid;
-    const rutaArchivo = (id) => "__archivos/" + encodeURIComponent(id);
-    const carpetaGuardar = (id, blob) => fetch(rutaArchivo(id), { method: "PUT", body: blob,
-        headers: { "Content-Type": blob.type || "application/octet-stream" } }).then((r) => {
-        if (!r.ok) {
-            throw new Error("no se ha guardado");
+
+    // LA PANTALLA ENCENDIDA durante la partida (⚙ opciones): en la app de
+    // Android, con la propia app (por defecto, sí); en un navegador que
+    // sepa hacerlo, con el «wake lock» (por defecto, no), y sólo mientras
+    // la página está a la vista.
+    const CLAVE_ENCENDIDA = "richi-master-pantalla-encendida";
+    const PUEDE_ENCENDIDA = EN_ANDROID || !!(navigator.wakeLock && navigator.wakeLock.request);
+    let cerrojoPantalla = null;
+    function encendidaElegida() {
+        let v = null;
+        try {
+            v = localStorage.getItem(CLAVE_ENCENDIDA);
+        } catch (e) {
+            v = null;
         }
-    });
+        return v === null ? EN_ANDROID : v === "si";
+    }
+    function aplicarEncendida() {
+        const si = encendidaElegida();
+        if (EN_ANDROID) {
+            window.ocAndroid.encendida(si);
+            return;
+        }
+        if (!PUEDE_ENCENDIDA) {
+            return;
+        }
+        if (si && document.visibilityState === "visible" && !cerrojoPantalla) {
+            navigator.wakeLock.request("screen").then((c) => {
+                cerrojoPantalla = c;
+                c.addEventListener("release", () => {
+                    cerrojoPantalla = null;
+                });
+            }).catch(() => {});
+        } else if (!si && cerrojoPantalla) {
+            cerrojoPantalla.release().catch(() => {});
+            cerrojoPantalla = null;
+        }
+    }
+    document.addEventListener("visibilitychange", aplicarEncendida);
+    aplicarEncendida();
+    const rutaArchivo = (id) => "__archivos/" + encodeURIComponent(id);
+    // En la app de Android, la carpeta se escribe por su puente (android.js);
+    // leer es igual que en el programa (GET __archivos).
+    const carpetaGuardar = (id, blob) => (window.ocAlmacen && window.ocAlmacen.guardarArchivo
+        ? window.ocAlmacen.guardarArchivo(id, blob)
+        : fetch(rutaArchivo(id), { method: "PUT", body: blob,
+            headers: { "Content-Type": blob.type || "application/octet-stream" } }).then((r) => {
+            if (!r.ok) {
+                throw new Error("no se ha guardado");
+            }
+        }));
     const carpetaLeer = (id) => fetch(rutaArchivo(id), { cache: "no-store" }).then((r) => (r.ok ? r.blob() : undefined));
     const archivoGuardar = (id, blob) => (EN_CARPETA ? carpetaGuardar(id, blob) : idbGuardar(id, blob));
     const archivoLeer = (id) => (EN_CARPETA ? carpetaLeer(id) : idbLeer(id));
-    const archivoBorrar = (id) => (EN_CARPETA ? fetch(rutaArchivo(id), { method: "DELETE" }).catch(() => {})
+    const archivoBorrar = (id) => (EN_CARPETA ? (window.ocAlmacen.borrarArchivo ? window.ocAlmacen.borrarArchivo(id)
+        : fetch(rutaArchivo(id), { method: "DELETE" })).catch(() => {})
         : enArchivos("readwrite", (a) => a.delete(id)).catch(() => {}));
     const todosLosArchivos = () => (EN_CARPETA ? fetch("__archivos", { cache: "no-store" }).then((r) => r.json())
         .then((lista) => Promise.all(lista.map((x) => carpetaLeer(x.id).then((blob) => [x.id, blob])))) : idbTodos());
@@ -16471,7 +16516,7 @@
     // perfiles con sus ventanas, la iniciativa, las marcas propias y las
     // tiradas guardadas) a un archivo .json, y de vuelta. Para guardarlo,
     // pasarlo a otro navegador o compartir un tablero montado. ----
-    const CLAVES = (k) => k === CLAVE || k === CLAVE_HOMEBREW || k === CLAVE_IMAGENES || k === CLAVE_PLANTILLAS || k === CLAVE_PROPIOS || k === CLAVE_ASPECTOS || k === CLAVE_TABLAS || k === CLAVE_NOMBRES || k === window.ocReglas.CLAVE || /^richi-oc-(iniciativa|marcas|partida-pantalla-master)/.test(k);
+    const CLAVES = (k) => k === CLAVE || k === CLAVE_HOMEBREW || k === CLAVE_IMAGENES || k === CLAVE_PLANTILLAS || k === CLAVE_PROPIOS || k === CLAVE_ASPECTOS || k === CLAVE_TABLAS || k === CLAVE_NOMBRES || k === window.ocReglas.CLAVE || k === CLAVE_ENCENDIDA || /^richi-oc-(iniciativa|marcas|partida-pantalla-master)/.test(k);
 
     function copias(alTerminar) {
         const caja = crear("div", "master-anadir-otras");
@@ -17619,7 +17664,10 @@
                         avisar("No se ha podido traer todo.");
                     });
             });
-            caja2.append(crear("p", "oc-hoja-nota", "Este ordenador tiene guardado lo de una versión anterior de la pantalla"
+            caja2.append(crear("p", "oc-hoja-nota", EN_ANDROID
+                ? "Esta app tiene guardado lo de antes de elegir la carpeta (dentro de la app). La carpeta empieza vacía;"
+                    + " si quieres seguir con aquello, tráelo aquí:"
+                : "Este ordenador tiene guardado lo de una versión anterior de la pantalla"
                 + " (en el navegador). Esta carpeta empieza vacía; si quieres seguir con aquello, tráelo aquí:"), traerB);
             caja.appendChild(caja2);
         }
@@ -17634,8 +17682,9 @@
             });
             caja.appendChild(traer);
         }
-        caja.appendChild(crear("p", "oc-hoja-nota master-entrada-privado", EN_CARPETA
-            ? "🔒 Todo se guarda en la carpeta «mis-datos», junto al programa." : "🔒 Todo se guarda sólo en este dispositivo."));
+        caja.appendChild(crear("p", "oc-hoja-nota master-entrada-privado", EN_CARPETA && EN_ANDROID
+            ? "🔒 Todo se guarda en tu carpeta «" + window.ocAlmacen.nombre + "», en este dispositivo."
+            : EN_CARPETA ? "🔒 Todo se guarda en la carpeta «mis-datos», junto al programa." : "🔒 Todo se guarda sólo en este dispositivo."));
         // El aviso de licencias, plegado (también en ⚙ opciones).
         const avisoLic = crear("details", "master-entrada-licencias");
         avisoLic.append(crear("summary", "", "📜 Incluye material del SRD 5.2 de Wizards of the Coast (CC BY 4.0) · licencias y"
@@ -18005,6 +18054,84 @@
             avisar(v === "metrico" ? "Medidas en metros, kilos y kilómetros." : "Medidas en pies, libras y millas.");
         }), notaMedidas);
         fila("Copia de seguridad", copias(() => cerrar()));
+        if (EN_ANDROID) {
+            // Dónde se guarda: dentro de la app o en una carpeta (como
+            // «mis-datos» en el programa; ver android/…/Carpeta.java).
+            const donde = crear("div", "master-anadir-otras");
+            donde.append(botonDe("oc-vida-accion", EN_CARPETA ? "📁 cambiar de carpeta" : "📁 guardar en una carpeta", () => {
+                cerrar();
+                window.ocAndroid.elegirCarpeta();
+            }));
+            if (EN_CARPETA) {
+                donde.append(botonDe("oc-vida-accion", "📱 guardarlo dentro de la app", () => {
+                    cerrar();
+                    window.ocAndroid.quitarCarpeta();
+                }));
+            }
+            fila("Dónde se guarda", crear("p", "oc-hoja-nota", EN_CARPETA
+                ? "En tu carpeta «" + window.ocAlmacen.nombre + "»: almacen.json y la carpeta «archivos» (imágenes, PDF y"
+                    + " música), como «mis-datos» en el programa del ordenador. Sigue ahí aunque desinstales la app, y se"
+                    + " puede copiar al ordenador y al revés."
+                : (window.ocAndroid.carpetaPerdida ? "La carpeta que elegiste ya no se puede usar (¿se borró o se movió?):"
+                    + " ahora se guarda dentro de la app. " : "")
+                    + "Dentro de la app: si la desinstalas, se borra. En una carpeta (por ejemplo, «Documentos/Pantalla de"
+                    + " máster») sigue ahí aunque desinstales la app y se puede copiar al ordenador: es como «mis-datos»"
+                    + " en el programa."), donde);
+        }
+        if (PUEDE_ENCENDIDA) {
+            fila("La pantalla, durante la partida", botonesDe("pantalla", [["si", "💡 siempre encendida"],
+                ["no", "se apaga como siempre"]], encendidaElegida() ? "si" : "no", (v) => {
+                try {
+                    localStorage.setItem(CLAVE_ENCENDIDA, v);
+                } catch (e) {
+                    // Sin guardar: vale para esta vez.
+                }
+                aplicarEncendida();
+                avisar(v === "si" ? "La pantalla no se apagará sola mientras la pantalla de máster esté a la vista."
+                    : "La pantalla se apagará como siempre.");
+            }), crear("p", "oc-hoja-nota", "Con «siempre encendida», mientras la pantalla de máster está a la vista el"
+                + " dispositivo no se bloquea solo."));
+        }
+        if (EN_ANDROID) {
+            // ¿Hay versión nueva? Sólo se mira en GitHub al pulsar.
+            const notaVersion = crear("p", "oc-hoja-nota", "Tienes la versión " + window.ocAndroid.version
+                + ". Mira en GitHub si hay una nueva (sólo cuando lo pulses).");
+            const versiones = crear("div", "master-anadir-otras");
+            const buscarVersion = botonDe("oc-vida-accion", "🔄 buscar actualizaciones", () => {
+                buscarVersion.disabled = true;
+                avisar("Mirando en GitHub…");
+                fetch("__actualizacion", { cache: "no-store" }).then((r) => r.json()).then((x) => {
+                    buscarVersion.disabled = false;
+                    let dicho;
+                    if (x.error) {
+                        dicho = "No se ha podido mirar: " + x.error + ".";
+                    } else if (x.prueba) {
+                        dicho = "Es una versión de prueba: la última publicada es la " + (x.ultima || "?")
+                            + ". Las de prueba se bajan de GitHub Actions.";
+                    } else if (!x.hay) {
+                        dicho = "Tienes la última versión (" + x.actual + ").";
+                    } else {
+                        dicho = "Hay una versión nueva: la " + x.ultima + " (tienes la " + x.actual + "). Bájala, ábrela y"
+                            + " Android la instala encima, sin perder lo guardado.";
+                        const bajar = botonDe("oc-vida-accion", "⬇️ bajar la versión " + x.ultima, () => {
+                            window.ocAndroid.abrirFuera(x.url);
+                        });
+                        bajar.setAttribute("aria-label", "Bajar la versión " + x.ultima + " (se abre en el navegador)");
+                        versiones.querySelectorAll("[data-bajar]").forEach((b) => b.remove());
+                        bajar.dataset.bajar = "";
+                        versiones.append(bajar);
+                    }
+                    notaVersion.textContent = dicho;
+                    avisar(dicho);
+                }).catch(() => {
+                    buscarVersion.disabled = false;
+                    notaVersion.textContent = "No se ha podido mirar (¿sin conexión?).";
+                    avisar(notaVersion.textContent);
+                });
+            });
+            versiones.append(buscarVersion);
+            fila("Actualizaciones", notaVersion, versiones);
+        }
         // En la web (no en el ejecutable ni en la app de Android, que ya
         // son la app): de dónde bajarla para usarla sin el navegador.
         if (!(location.hostname === "127.0.0.1" && location.port === "47321") && !EN_ANDROID) {

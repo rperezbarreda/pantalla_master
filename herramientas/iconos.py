@@ -9,6 +9,7 @@ Hace, con el mismo marco de siempre (el cuadrado morado oscuro redondeado):
   android/…/drawable/ic_frente.xml y ic_mono.xml (el icono adaptable de Android:
   la cruz y, para los iconos con el color del sistema, su silueta con la
   cruz hueca)
+  android/…/drawable/ic_aviso.xml (el iconito blanco del aviso de la música)
   android/…/mipmap-*/ic_launcher.png (Android 7)
 Los del ejecutable (Windows, macOS) salen de icono-512.png al construirlos.
 
@@ -98,9 +99,10 @@ def svg():
         f.write("\n".join(lineas))
 
 
-def vector_android(nombre, silueta):
+def vector_android(nombre, silueta, dp=108):
     """El primer plano del icono adaptable (108 dp): la cruz entera dentro
-    del círculo seguro de 66 dp, con un poco de aire."""
+    del círculo seguro de 66 dp, con un poco de aire. Con dp=24, el del
+    aviso: la silueta llenando casi todo."""
     g = cruz()
     c = colores(g)
     if silueta:
@@ -110,13 +112,14 @@ def vector_android(nombre, silueta):
     # Lo más lejos del centro que llega la cruz, en píxeles suyos.
     cx, cy = g.width / 2, g.height / 2
     radio = max(math.hypot(x + 0.5 - cx, y + 0.5 - cy) + 0.71 for pts in colores(g).values() for x, y in pts)
-    lado = math.ceil(radio * 2 * 108 / 62)  # el círculo de la cruz, 62 de los 108 dp
+    lado = math.ceil(radio * 2 * 108 / 62) if dp == 108 else max(g.width, g.height) + 4
+    # (en el de 108: el círculo de la cruz, 62 de los 108 dp)
     x0, y0 = (lado - g.width) // 2, (lado - g.height) // 2
     tr = caminos(c, x0, y0)
     lineas = ['<?xml version="1.0" encoding="utf-8"?>',
               "<!-- Hecho por herramientas/iconos.py: la cruz de azufre del blog, en píxeles. -->",
               '<vector xmlns:android="http://schemas.android.com/apk/res/android"',
-              '    android:width="108dp"', '    android:height="108dp"',
+              '    android:width="%ddp"' % dp, '    android:height="%ddp"' % dp,
               '    android:viewportWidth="%d"' % lado, '    android:viewportHeight="%d">' % lado]
     for color, d in tr.items():
         lineas += ["    <path", '        android:fillColor="#%02X%02X%02X"' % color, '        android:pathData="%s" />' % d]
@@ -139,6 +142,7 @@ def main():
     if os.path.isdir(RES):
         vector_android("ic_frente.xml", False)
         vector_android("ic_mono.xml", True)
+        vector_android("ic_aviso.xml", True, dp=24)
         grande = Image.open(os.path.join(IMAGENES, "icono-512.png"))
         for carpeta, px in [("mdpi", 48), ("hdpi", 72), ("xhdpi", 96), ("xxhdpi", 144), ("xxxhdpi", 192)]:
             grande.resize((px, px), Image.LANCZOS).save(os.path.join(RES, "mipmap-" + carpeta, "ic_launcher.png"), optimize=True)

@@ -11,12 +11,76 @@
 //     ventana (o en la pantalla externa); lo de fuera, en el navegador.
 //   - Las barras del sistema, del color del tema (<meta name="theme-color">).
 //   - Atrás cierra lo que haya abierto (como Escape).
+//   - Si se eligió una carpeta (⚙ opciones), lo guardado va allí, como
+//     «mis-datos» en el programa: localStorage se cambia por uno que lee y
+//     escribe en la app clave a clave (Carpeta.java), y window.ocAlmacen
+//     es como el del programa (arranque.js) más guardarArchivo/borrarArchivo.
+//   - Si suena algo largo (música, ambiente), se lo dice a la app para que
+//     siga sonando con la app detrás (Servicio.java).
 // =========================================
 (function () {
     "use strict";
     var nativo = window.ocAndroidNativo;
     if (!nativo) {
         return;
+    }
+
+    // ---- LO GUARDADO, EN LA CARPETA ----
+    if (nativo.carpetaHay()) {
+        var navegador = window.localStorage;
+        var almacen = {
+            getItem: function (k) {
+                return JSON.parse(nativo.datoLeer(String(k)));
+            },
+            setItem: function (k, v) {
+                nativo.datoPoner(String(k), String(v));
+            },
+            removeItem: function (k) {
+                nativo.datoQuitar(String(k));
+            },
+            clear: function () {
+                nativo.datosVaciar();
+            },
+            key: function (i) {
+                return JSON.parse(nativo.datosClaves())[i] || null;
+            }
+        };
+        Object.defineProperty(almacen, "length", { get: function () {
+            return JSON.parse(nativo.datosClaves()).length;
+        } });
+        var cambiado = false;
+        try {
+            Object.defineProperty(window, "localStorage", { configurable: true, get: function () {
+                return almacen;
+            } });
+            cambiado = true;
+        } catch (e) {
+            cambiado = false;
+        }
+        if (cambiado) {
+            window.ocAlmacen = {
+                enCarpeta: true,
+                android: true,
+                nombre: nativo.carpetaNombre(),
+                vacio: nativo.datosVacios(),
+                navegador: navegador,
+                guardarYa: function () {
+                    return nativo.datosGuardarYa() ? Promise.resolve() : Promise.reject(new Error("no se ha guardado"));
+                },
+                // Un archivo subido (imagen, PDF, música) a «archivos/» de la carpeta.
+                guardarArchivo: function (id, blob) {
+                    return pasar(blob, String(id), blob.type || "").then(function (tok) {
+                        if (!nativo.archivoGuardar(tok, String(id))) {
+                            throw new Error("no se ha guardado");
+                        }
+                    });
+                },
+                borrarArchivo: function (id) {
+                    nativo.archivoBorrar(String(id));
+                    return Promise.resolve();
+                }
+            };
+        }
     }
 
     try {
@@ -84,17 +148,17 @@
     // Se pasa a la app por trozos (las copias de seguridad con música
     // pueden ser grandes).
     var TROZO = 768 * 1024;
-    function mandar(blob, nombre, modo) {
-        var id = nativo.descargaEmpezar(nombre || "archivo", blob.type || "");
+    // Pasa el blob a la app; luego se termina con descargaTerminar (guardar
+    // o ver) o archivoGuardar (a la carpeta).
+    function pasar(blob, nombre, tipo) {
+        var id = nativo.descargaEmpezar(nombre || "archivo", tipo);
         if (!id) {
-            nativo.aviso("No se ha podido preparar el archivo.");
-            return;
+            return Promise.reject(new Error("no se ha podido preparar"));
         }
         var pos = 0;
         function siguiente() {
             if (pos >= blob.size) {
-                nativo.descargaTerminar(id, modo);
-                return Promise.resolve();
+                return Promise.resolve(id);
             }
             var trozo = blob.slice(pos, pos + TROZO);
             pos += TROZO;
@@ -105,8 +169,15 @@
                 return siguiente();
             });
         }
-        siguiente().catch(function () {
+        return siguiente().catch(function (e) {
             nativo.descargaCancelar(id);
+            throw e;
+        });
+    }
+    function mandar(blob, nombre, modo) {
+        pasar(blob, nombre, blob.type || "").then(function (id) {
+            nativo.descargaTerminar(id, modo);
+        }).catch(function () {
             nativo.aviso("No se ha podido guardar el archivo.");
         });
     }
@@ -170,12 +241,86 @@
         }
     });
 
+    // ---- ¿SUENA ALGO LARGO? (música, ambiente en bucle; no los efectos) ----
+    var suenan = new Set();
+    var dicho = false;
+    function contar() {
+        var si = suenan.size > 0;
+        if (si !== dicho) {
+            dicho = si;
+            nativo.sonando(si);
+        }
+    }
+    function mirar(el) {
+        if (el.__ocMirado) {
+            return;
+        }
+        el.__ocMirado = true;
+        el.addEventListener("playing", function () {
+            if (el.loop || !isFinite(el.duration) || el.duration > 20) {
+                suenan.add(el);
+                contar();
+            }
+        });
+        ["pause", "ended", "emptied", "abort", "error"].forEach(function (t) {
+            el.addEventListener(t, function () {
+                suenan.delete(el);
+                contar();
+            });
+        });
+    }
+    var tocar = HTMLMediaElement.prototype.play;
+    HTMLMediaElement.prototype.play = function () {
+        mirar(this);
+        return tocar.apply(this, arguments);
+    };
+    document.addEventListener("play", function (e) {
+        if (e.target instanceof HTMLMediaElement) {
+            mirar(e.target);
+        }
+    }, true);
+    // Lo de Web Audio (los sonidos propios del ambiente).
+    var Fuente = window.AudioScheduledSourceNode;
+    if (Fuente && Fuente.prototype.start) {
+        var empezar = Fuente.prototype.start;
+        Fuente.prototype.start = function () {
+            var n = this;
+            if (n.loop || (n.buffer && n.buffer.duration > 20)) {
+                suenan.add(n);
+                contar();
+                n.addEventListener("ended", function () {
+                    suenan.delete(n);
+                    contar();
+                });
+            }
+            return empezar.apply(this, arguments);
+        };
+    }
+    window.addEventListener("pagehide", function () {
+        suenan.clear();
+        contar();
+    });
+
     function visible(el) {
         return el.isConnected && el.getClientRects().length > 0;
     }
 
     window.ocAndroid = {
         version: nativo.version(),
+        // ⚙ opciones: dónde se guarda, la pantalla encendida y abrir fuera.
+        carpetaPerdida: nativo.carpetaPerdida(),
+        elegirCarpeta: function () {
+            nativo.carpetaElegir();
+        },
+        quitarCarpeta: function () {
+            nativo.carpetaQuitar();
+        },
+        encendida: function (si) {
+            nativo.encendida(!!si);
+        },
+        abrirFuera: function (url) {
+            nativo.abrirFuera(String(url));
+        },
         // Atrás: cierra la ventanita o el diálogo de encima (como Escape).
         // Si no hay ninguno, devuelve false y la app hace lo suyo.
         atras: function () {

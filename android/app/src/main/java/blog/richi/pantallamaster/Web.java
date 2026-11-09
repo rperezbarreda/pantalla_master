@@ -131,10 +131,17 @@ final class Web {
                     return Red.nivel20(u);
                 case "/__imagen":
                     return Red.imagen(u);
+                case "/__actualizacion":
+                    return Red.actualizacion(ctx);
+                case "/__archivos":
+                    return Carpeta.de(ctx).hay() ? texto("application/json", Carpeta.de(ctx).lista()) : noEsta();
                 case "/sw.js":
                     // Sin service worker: los archivos ya están en la app.
                     return noEsta();
                 default:
+                    if (ruta.startsWith("/__archivos/")) {
+                        return deLaCarpeta(ctx, ruta.substring("/__archivos/".length()), r.getRequestHeaders());
+                    }
                     if (ruta.contains("..") || ruta.contains("\\")) {
                         return noEsta();
                     }
@@ -200,6 +207,33 @@ final class Web {
         c.put("Cache-Control", "no-store");
         c.put("X-Content-Type-Options", "nosniff");
         return c;
+    }
+
+    static WebResourceResponse texto(String tipo, String t) {
+        return new WebResourceResponse(tipo, "utf-8", 200, "OK", cabecerasBase(),
+                new ByteArrayInputStream(t.getBytes(StandardCharsets.UTF_8)));
+    }
+
+    /** Un archivo subido, de la carpeta (como GET /__archivos/<id> en el programa). */
+    private static WebResourceResponse deLaCarpeta(Context ctx, String id, Map<String, String> pedidas) {
+        Carpeta c = Carpeta.de(ctx);
+        InputStream in = c.abrirArchivo(id);
+        if (in == null) {
+            return noEsta();
+        }
+        String tipo = c.tipoDe(id);
+        if (tipo.isEmpty()) {
+            tipo = "application/octet-stream";
+        }
+        String rango = pedidas == null ? null : cabecera(pedidas, "Range");
+        try {
+            if (rango != null && (tipo.startsWith("audio/") || tipo.startsWith("video/"))) {
+                return trozo(leer(in), rango, tipo, cabecerasBase());
+            }
+        } catch (IOException e) {
+            return noEsta();
+        }
+        return new WebResourceResponse(tipo, null, 200, "OK", cabecerasBase(), in);
     }
 
     static WebResourceResponse noEsta() {

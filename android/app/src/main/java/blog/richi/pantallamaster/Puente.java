@@ -15,8 +15,10 @@ import java.util.UUID;
 /**
  * EL PUENTE entre la web (android.js, como window.ocAndroidNativo) y la
  * app. Sólo lo justo: el color de las barras, abrir la pantalla de los
- * jugadores o el reproductor, abrir un enlace fuera y pasar un archivo
- * (para guardarlo donde se elija o abrirlo con otra app). Los métodos
+ * jugadores o el reproductor, abrir un enlace fuera, pasar un archivo
+ * (para guardarlo donde se elija o abrirlo con otra app), lo guardado
+ * cuando va en una carpeta ({@link Carpeta}), si suena música
+ * ({@link Servicio}), la pantalla encendida y la versión. Los métodos
  * llegan desde un hilo aparte, de uno en uno.
  */
 final class Puente {
@@ -51,6 +53,125 @@ final class Puente {
         } catch (Exception e) {
             return "";
         }
+    }
+
+    // ---- LO GUARDADO, EN LA CARPETA (si se eligió una) ----
+
+    private Carpeta carpeta() {
+        return Carpeta.de(actividad);
+    }
+
+    @JavascriptInterface
+    public boolean carpetaHay() {
+        return carpeta().hay();
+    }
+
+    @JavascriptInterface
+    public boolean carpetaPerdida() {
+        return carpeta().perdida();
+    }
+
+    @JavascriptInterface
+    public String carpetaNombre() {
+        return carpeta().nombre();
+    }
+
+    @JavascriptInterface
+    public void carpetaElegir() {
+        if (!deLaPantallaExterna) {
+            actividad.runOnUiThread(actividad::elegirCarpeta);
+        }
+    }
+
+    @JavascriptInterface
+    public void carpetaQuitar() {
+        if (!deLaPantallaExterna) {
+            actividad.runOnUiThread(actividad::quitarCarpeta);
+        }
+    }
+
+    /** El valor en JSON («null» si no está): así se distingue nada de vacío. */
+    @JavascriptInterface
+    public String datoLeer(String k) {
+        String v = carpeta().leerDato(k);
+        return v == null ? "null" : org.json.JSONObject.quote(v);
+    }
+
+    @JavascriptInterface
+    public void datoPoner(String k, String v) {
+        carpeta().ponerDato(k, v);
+    }
+
+    @JavascriptInterface
+    public void datoQuitar(String k) {
+        carpeta().quitarDato(k);
+    }
+
+    @JavascriptInterface
+    public void datosVaciar() {
+        carpeta().vaciarDatos();
+    }
+
+    @JavascriptInterface
+    public String datosClaves() {
+        return carpeta().claves();
+    }
+
+    @JavascriptInterface
+    public boolean datosVacios() {
+        return carpeta().vacia();
+    }
+
+    @JavascriptInterface
+    public boolean datosGuardarYa() {
+        return carpeta().guardarYa();
+    }
+
+    /** Un archivo subido (imagen, PDF, música) a la carpeta: llega por trozos como una descarga. */
+    @JavascriptInterface
+    public boolean archivoGuardar(String idDescarga, String id) {
+        Descarga d;
+        synchronized (descargas) {
+            d = descargas.remove(idDescarga);
+        }
+        if (d == null) {
+            return false;
+        }
+        try {
+            d.sale.close();
+            return carpeta().guardarArchivo(id, d.tipo, d.archivo);
+        } catch (IOException e) {
+            return false;
+        } finally {
+            borrar(d.archivo);
+        }
+    }
+
+    @JavascriptInterface
+    public void archivoBorrar(String id) {
+        carpeta().borrarArchivo(id);
+    }
+
+    // ---- LA MÚSICA Y LA PANTALLA ----
+
+    @JavascriptInterface
+    public void sonando(boolean si) {
+        Servicio.marcar(actividad, this, si);
+        if (si && !deLaPantallaExterna) {
+            actividad.runOnUiThread(actividad::pedirAvisos);
+        }
+    }
+
+    @JavascriptInterface
+    public void encendida(boolean si) {
+        if (!deLaPantallaExterna) {
+            actividad.runOnUiThread(() -> actividad.pantallaEncendida(si));
+        }
+    }
+
+    /** Para que una ventana que se cierra no se quede «sonando». */
+    void olvidar() {
+        Servicio.marcar(actividad, this, false);
     }
 
     @JavascriptInterface

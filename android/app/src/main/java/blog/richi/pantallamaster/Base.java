@@ -1,6 +1,8 @@
 package blog.richi.pantallamaster;
 
+import android.Manifest;
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.ActivityNotFoundException;
 import android.content.ClipData;
 import android.content.Intent;
@@ -10,8 +12,10 @@ import android.graphics.Insets;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.provider.DocumentsContract;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.WindowManager;
 import android.view.WindowInsets;
 import android.view.WindowInsetsController;
 import android.webkit.MimeTypeMap;
@@ -27,7 +31,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Set;
+import java.util.WeakHashMap;
 import java.util.Locale;
 
 /**
@@ -40,11 +47,16 @@ import java.util.Locale;
 public abstract class Base extends Activity {
     private static final int PIDE_ARCHIVO = 1;
     private static final int PIDE_GUARDAR = 2;
+    private static final int PIDE_CARPETA = 3;
+    private static final int PIDE_AVISOS = 4;
+    // Las ventanas abiertas: al cambiar dónde se guarda, se recargan todas.
+    private static final Set<Base> ABIERTAS = Collections.newSetFromMap(new WeakHashMap<>());
     // Android 15 en adelante: la app se pinta también debajo de las barras
     // del sistema y hay que dejarles su hueco a mano.
     private static final boolean BAJO_LAS_BARRAS = Build.VERSION.SDK_INT >= 35;
 
     protected WebView web;
+    private Puente puente;
     private FrameLayout raiz;
     private ValueCallback<Uri[]> eligiendo;
     private File porGuardar;
@@ -68,6 +80,7 @@ public abstract class Base extends Activity {
         raiz.setBackgroundColor(getColor(R.color.fondo));
         setContentView(raiz);
         prepararBarras();
+        ABIERTAS.add(this);
         montarWeb();
         if (Build.VERSION.SDK_INT >= 33) {
             getOnBackInvokedDispatcher().registerOnBackInvokedCallback(
@@ -80,7 +93,11 @@ public abstract class Base extends Activity {
             raiz.removeView(web);
             web.destroy();
         }
-        web = Web.crear(this, new Puente(this, false), () -> runOnUiThread(this::montarWeb));
+        if (puente != null) {
+            puente.olvidar();
+        }
+        puente = new Puente(this, false);
+        web = Web.crear(this, puente, () -> runOnUiThread(this::montarWeb));
         web.setWebChromeClient(new Cromo());
         raiz.addView(web, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT));
@@ -96,12 +113,114 @@ public abstract class Base extends Activity {
     }
 
     @Override
+    protected void onStop() {
+        super.onStop();
+        // Lo que falte por escribir en la carpeta, ya (por si Android cierra la app).
+        new Thread(() -> Carpeta.de(this).guardarYa()).start();
+    }
+
+    @Override
     protected void onDestroy() {
+        ABIERTAS.remove(this);
+        if (puente != null) {
+            puente.olvidar();
+        }
         if (web != null) {
             web.destroy();
             web = null;
         }
         super.onDestroy();
+    }
+
+    // ---- DÓNDE SE GUARDA: una carpeta (como «mis-datos») o dentro de la app ----
+
+    void elegirCarpeta() {
+        Intent i = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
+        i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
+        try {
+            startActivityForResult(i, PIDE_CARPETA);
+        } catch (ActivityNotFoundException e) {
+            Toast.makeText(this, "Este dispositivo no deja elegir carpetas.", Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private void alElegirCarpeta(Uri u) {
+        String nombre = "esa carpeta";
+        try (android.database.Cursor c = getContentResolver().query(
+                DocumentsContract.buildDocumentUriUsingTree(u, DocumentsContract.getTreeDocumentId(u)),
+                new String[] { DocumentsContract.Document.COLUMN_DISPLAY_NAME }, null, null, null)) {
+            if (c != null && c.moveToFirst()) {
+                nombre = "«" + c.getString(0) + "»";
+            }
+        } catch (RuntimeException e) {
+            // Sin nombre.
+        }
+        boolean conDatos = Carpeta.de(this).tieneDatos(u);
+        String texto = conDatos
+                ? "La carpeta " + nombre + " ya tiene datos de la pantalla de máster: a partir de ahora se usarán esos."
+                    + " Lo que hay dentro de la app se queda ahí, por si vuelves."
+                : "A partir de ahora se guardará en " + nombre + " (almacen.json y la carpeta «archivos», como «mis-datos»"
+                    + " en el programa del ordenador). Al volver, la entrada te ofrece traer lo que tienes dentro de la app.";
+        new AlertDialog.Builder(this)
+                .setTitle("Guardar en una carpeta")
+                .setMessage(texto)
+                .setPositiveButton("Usar esta carpeta", (d, w) -> {
+                    try {
+                        Carpeta.de(this).usar(u);
+                        recargarTodas();
+                    } catch (SecurityException e) {
+                        Toast.makeText(this, "Android no deja usar esa carpeta: elige otra.", Toast.LENGTH_LONG).show();
+                    }
+                })
+                .setNegativeButton("Cancelar", null)
+                .show();
+    }
+
+    void quitarCarpeta() {
+        new AlertDialog.Builder(this)
+                .setTitle("Guardarlo dentro de la app")
+                .setMessage("Lo de la carpeta se queda en la carpeta (no se borra nada). Dentro de la app verás lo que"
+                        + " había antes de elegirla; si quieres lo de la carpeta, exporta antes una copia de seguridad"
+                        + " (⚙ → exportar) e impórtala después.")
+                .setPositiveButton("Guardar dentro de la app", (d, w) -> {
+                    Carpeta.de(this).usar(null);
+                    recargarTodas();
+                })
+                .setNegativeButton("Cancelar", null)
+                .show();
+    }
+
+    private static void recargarTodas() {
+        for (Base b : new ArrayList<>(ABIERTAS)) {
+            if (b.web != null) {
+                b.web.reload();
+            }
+        }
+    }
+
+    // ---- LA PANTALLA ENCENDIDA Y EL PERMISO DE LOS AVISOS ----
+
+    void pantallaEncendida(boolean si) {
+        if (si) {
+            getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        } else {
+            getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        }
+    }
+
+    /** El aviso de «suena la música» (Android 13 en adelante lo pide una vez). */
+    void pedirAvisos() {
+        if (Build.VERSION.SDK_INT < 33 || !hasWindowFocus()
+                || checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            return;
+        }
+        android.content.SharedPreferences p = getSharedPreferences("avisos", MODE_PRIVATE);
+        if (p.getBoolean("pedido", false)) {
+            return;
+        }
+        p.edit().putBoolean("pedido", true).apply();
+        requestPermissions(new String[] { Manifest.permission.POST_NOTIFICATIONS }, PIDE_AVISOS);
     }
 
     // ---- ATRÁS: primero cierra lo que haya abierto en la página ----
@@ -335,6 +454,12 @@ public abstract class Base extends Activity {
                 }
             }
             cb.onReceiveValue(elegidos);
+            return;
+        }
+        if (pedido == PIDE_CARPETA) {
+            if (resultado == RESULT_OK && datos != null && datos.getData() != null) {
+                alElegirCarpeta(datos.getData());
+            }
             return;
         }
         if (pedido == PIDE_GUARDAR) {
