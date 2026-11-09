@@ -6245,6 +6245,108 @@
             });
         }
 
+        // DOS DEDOS sobre el dibujo: pellizco para el zoom y, a la vez,
+        // moverse por él (un dedo dibuja). Si el segundo llega cuando el
+        // primero ya había empezado a pintar, eso se deshace. Mientras se
+        // pinta con un lápiz, la palma no pinta. Va antes que lo del ratón
+        // (en captura) y, cuando es suyo, no lo deja pasar.
+        const toques = new Map();
+        let dosDedos = null;
+        // Lo que se desplaza de lado (el visor del dibujo) y lo que se
+        // desplaza hacia abajo (la ventana, o la página) no tiene por qué
+        // ser lo mismo: en cada eje, lo primero que de verdad se desplaza.
+        const cajaDelDibujo = (eje) => {
+            for (let x = marco.parentElement; x && x !== document.body; x = x.parentElement) {
+                const sobra = eje === "x" ? x.scrollWidth > x.clientWidth + 1 : x.scrollHeight > x.clientHeight + 1;
+                if (sobra && /(auto|scroll)/.test(getComputedStyle(x)[eje === "x" ? "overflowX" : "overflowY"])) {
+                    return x;
+                }
+            }
+            return document.scrollingElement;
+        };
+        const entreDedos = () => {
+            const [a, b] = Array.from(toques.values());
+            return { x: (a[0] + b[0]) / 2, y: (a[1] + b[1]) / 2, d: Math.hypot(a[0] - b[0], a[1] - b[1]) || 1 };
+        };
+        const deshacerEmpezado = () => {
+            if (gesto && (gesto.que === "trazo" || gesto.que === "figura")) {
+                const x = atras.pop();
+                if (x && lienzos[x.id]) {
+                    const c = lienzos[x.id].getContext("2d");
+                    c.globalCompositeOperation = "source-over";
+                    c.putImageData(x.px, 0, 0);
+                }
+                figura = null;
+                pintarMandos();
+            }
+            gesto = null;
+            repintar();
+        };
+        encima.addEventListener("pointerdown", (e) => {
+            if (e.pointerType !== "touch") {
+                return;
+            }
+            if (gesto && gesto.tipo === "pen") {
+                e.stopImmediatePropagation();
+                return;
+            }
+            toques.set(e.pointerId, [e.clientX, e.clientY]);
+            try {
+                encima.setPointerCapture(e.pointerId);
+            } catch (err) {
+                // Sin captura: se pierde al salir del lienzo.
+            }
+            if (toques.size === 2 && !dosDedos) {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                deshacerEmpezado();
+                const c = entreDedos();
+                const r = marco.getBoundingClientRect();
+                dosDedos = { d: c.d, z: zoomD, fx: (c.x - r.left) / r.width, fy: (c.y - r.top) / r.height };
+            } else if (toques.size > 1) {
+                e.stopImmediatePropagation();
+            }
+        }, true);
+        encima.addEventListener("pointermove", (e) => {
+            if (toques.has(e.pointerId)) {
+                toques.set(e.pointerId, [e.clientX, e.clientY]);
+            }
+            if (dosDedos) {
+                e.stopImmediatePropagation();
+                if (toques.size !== 2) {
+                    return;
+                }
+                const c = entreDedos();
+                const z = Math.min(ZOOMS_DIBUJO[ZOOMS_DIBUJO.length - 1], Math.max(ZOOMS_DIBUJO[0],
+                    Math.round(dosDedos.z * c.d / dosDedos.d * 100) / 100));
+                if (z !== zoomD) {
+                    zoomD = z;
+                    marco.style.width = z === 1 ? "" : (z * 100) + "%";
+                    valorZoom.textContent = Math.round(z * 100) + " %";
+                }
+                // Lo que estaba entre los dedos, que siga entre los dedos.
+                const r = marco.getBoundingClientRect();
+                cajaDelDibujo("x").scrollLeft += r.left + dosDedos.fx * r.width - c.x;
+                cajaDelDibujo("y").scrollTop += r.top + dosDedos.fy * r.height - c.y;
+            } else if (gesto && gesto.id !== undefined && e.pointerId !== gesto.id) {
+                e.stopImmediatePropagation();
+            }
+        }, true);
+        const dedoFuera = (e) => {
+            toques.delete(e.pointerId);
+            if (dosDedos) {
+                e.stopImmediatePropagation();
+                if (toques.size < 2) {
+                    dosDedos = null;
+                    ponerZoomD(zoomD, true);
+                }
+            } else if (gesto && gesto.id !== undefined && e.pointerId !== gesto.id) {
+                e.stopImmediatePropagation();
+            }
+        };
+        encima.addEventListener("pointerup", dedoFuera, true);
+        encima.addEventListener("pointercancel", dedoFuera, true);
+
         // EL RATÓN (o el dedo, o el lápiz) sobre el lienzo.
         let gesto = null;
         encima.addEventListener("pointerdown", (e) => {
@@ -6323,6 +6425,12 @@
                 gesto = { que: "figura", capa: c.id };
             }
             repintar();
+        });
+        encima.addEventListener("pointerdown", (e) => {
+            if (gesto && gesto.id === undefined) {
+                gesto.id = e.pointerId;
+                gesto.tipo = e.pointerType;
+            }
         });
         const CURSOR_ASA = { nw: "nwse-resize", se: "nwse-resize", ne: "nesw-resize", sw: "nesw-resize", n: "ns-resize", s: "ns-resize",
             e: "ew-resize", w: "ew-resize" };
@@ -6758,7 +6866,10 @@
         // EL ZOOM DEL LIENZO (d.zoom): − 100 % +, y Ctrl + rueda encima. A
         // más del 100 %, el lienzo se desliza dentro de su visor.
         const ZOOMS_DIBUJO = [0.5, 0.75, 1, 1.5, 2, 3, 4];
-        let zoomD = ZOOMS_DIBUJO.indexOf(Number(d.zoom)) >= 0 ? Number(d.zoom) : 1;
+        // Con los botones va de uno en uno de la lista; con el pellizco,
+        // cualquiera entre el primero y el último.
+        const zoomGuardado = Number(d.zoom);
+        let zoomD = zoomGuardado >= ZOOMS_DIBUJO[0] && zoomGuardado <= ZOOMS_DIBUJO[ZOOMS_DIBUJO.length - 1] ? zoomGuardado : 1;
         const visor = crear("div", "master-dibujo-visor");
         const valorZoom = botonDe("master-postit-boton master-dibujo-zoom-valor", "100 %", () => ponerZoomD(1, true),
             "Zoom del lienzo al 100 %");
@@ -16544,37 +16655,46 @@
         clearTimeout(lienzo.esperaZoom);
         lienzo.esperaZoom = setTimeout(() => ponerZoom(estado.zoom, true), 300);
     }, { passive: false });
-    // El pellizco con dos dedos en el fondo del tablero (en la tableta).
-    const dedos = new Map();
+    // El pellizco con dos dedos en el tablero (en la tableta), también
+    // encima de las ventanas, menos donde el dedo ya hace otra cosa
+    // (dibujar, el mapa de relaciones, mover o cambiar el tamaño de una
+    // ventana, escribir). Con eventos táctiles y no de puntero: los dedos
+    // nunca llegan a la vez y, si el primero ya ha empezado a desplazar el
+    // tablero, el navegador cancela sus punteros pero los toques siguen
+    // llegando (entonces desplaza y amplía a la vez; si aún no desplazaba,
+    // sólo amplía).
+    const GESTO_PROPIO = ".master-dibujo-encima, .master-rel-mapa, .master-ventana-barra, .master-ventana-tamano,"
+        + " input, textarea, select, [contenteditable]";
     let pellizco = null;
-    lienzo.addEventListener("pointerdown", (e) => {
-        if (e.pointerType !== "touch" || e.target !== lienzo || !HAY_ZOOM || enMovil.matches) {
+    const separacion = (t) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY) || 1;
+    lienzo.addEventListener("touchstart", (e) => {
+        pellizco = null;
+        if (e.touches.length !== 2 || !HAY_ZOOM || enMovil.matches) {
             return;
         }
-        dedos.set(e.pointerId, [e.clientX, e.clientY]);
-        if (dedos.size === 2) {
-            const [a, b] = Array.from(dedos.values());
-            pellizco = { d: Math.hypot(a[0] - b[0], a[1] - b[1]) || 1, z: estado.zoom || 1 };
-        }
-    });
-    lienzo.addEventListener("pointermove", (e) => {
-        if (!dedos.has(e.pointerId)) {
+        const t = Array.from(e.touches);
+        if (t.some((x) => !(x.target instanceof Element) || !lienzo.contains(x.target) || x.target.closest(GESTO_PROPIO))) {
             return;
         }
-        dedos.set(e.pointerId, [e.clientX, e.clientY]);
-        if (pellizco && dedos.size === 2) {
-            const [a, b] = Array.from(dedos.values());
-            ponerZoom(pellizco.z * Math.hypot(a[0] - b[0], a[1] - b[1]) / pellizco.d, false);
+        pellizco = { d: separacion(t), z: estado.zoom || 1 };
+    }, { passive: true });
+    lienzo.addEventListener("touchmove", (e) => {
+        if (!pellizco || e.touches.length !== 2) {
+            return;
         }
-    });
-    const sinDedo = (e) => {
-        if (dedos.delete(e.pointerId) && pellizco && dedos.size < 2) {
+        if (e.cancelable) {
+            e.preventDefault();
+        }
+        ponerZoom(pellizco.z * separacion(Array.from(e.touches)) / pellizco.d, false);
+    }, { passive: false });
+    const sinDedos = (e) => {
+        if (pellizco && e.touches.length < 2) {
             pellizco = null;
             ponerZoom(estado.zoom, true);
         }
     };
-    lienzo.addEventListener("pointerup", sinDedo);
-    lienzo.addEventListener("pointercancel", sinDedo);
+    lienzo.addEventListener("touchend", sinDedos);
+    lienzo.addEventListener("touchcancel", sinDedos);
 
     function colorTablero() {
         const t = hexTablero(estado.color);
@@ -16757,6 +16877,21 @@
         } catch (err) {
             // Sin captura: siguen llegando al documento.
         }
+        // Cogida con el dedo, que al moverlo no deslice la fila (sin coger,
+        // sí: ver .master-pestana en el CSS).
+        const quieta = (ev) => {
+            if (ev.cancelable) {
+                ev.preventDefault();
+            }
+        };
+        b.addEventListener("touchmove", quieta, { passive: false });
+        const soltarDedo = () => {
+            b.removeEventListener("touchmove", quieta);
+            b.removeEventListener("lostpointercapture", soltarDedo);
+            document.removeEventListener("pointerup", soltarDedo);
+        };
+        b.addEventListener("lostpointercapture", soltarDedo);
+        document.addEventListener("pointerup", soltarDedo);
         pestanaMovida = true;
         b.classList.add("es-cogida");
         const yo = b.parentNode;

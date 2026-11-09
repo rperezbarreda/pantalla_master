@@ -294,11 +294,12 @@
 }
 
 /* Mantener pulsada una pestaña la coge para moverla: que no seleccione
-   texto ni saque el menú del sistema, y que el dedo no deslice la fila
-   (para eso están las flechas ‹ ›). */
+   texto ni saque el menú del sistema. Sin cogerla, el dedo desliza la
+   fila de lado (además de las flechas ‹ ›); cogida, ya no (lo frena el
+   script). */
 .master-pestana {
     -webkit-touch-callout: none;
-    touch-action: none;
+    touch-action: pan-x;
     user-select: none;
 }
 
@@ -356,6 +357,14 @@
 .master-pestana-caja:hover .master-pestana-cerrar,
 .master-pestana-cerrar.es-seguro {
     opacity: 1;
+}
+
+/* Con el dedo no hay «pasar por encima»: la ✕ que no se ve tampoco se
+   toca (un toque ahí elige la pestaña, no empieza a cerrarla). */
+@media (hover: none) {
+    .master-pestana-caja:not(.es-elegida) .master-pestana-cerrar:not(.es-seguro) {
+        pointer-events: none;
+    }
 }
 
 .master-pestana-cerrar:hover {
@@ -472,8 +481,8 @@
 .master-lienzo {
     position: relative;
     min-height: 400px;
-    /* Los dos dedos en el fondo son el zoom del tablero, no el de la
-       página. */
+    /* Los dos dedos en el tablero son su zoom, no el de la página (ver el
+       pellizco en pantalla-master.js). */
     touch-action: pan-x pan-y;
     overflow-x: auto;
     overflow-y: hidden;
@@ -636,6 +645,14 @@
     clip-path: polygon(100% 0, 100% 100%, 0 100%);
     cursor: nwse-resize;
     touch-action: none;
+}
+
+/* Con el dedo (pantallas táctiles): más grande, que se coja bien. */
+@media (pointer: coarse) {
+    .master-ventana-tamano {
+        width: 40px;
+        height: 40px;
+    }
 }
 
 .master-ventana.es-plegada .master-ventana-tamano {
@@ -3764,6 +3781,12 @@
 
     .master-ventana-barra {
         cursor: default;
+    }
+
+    /* Aquí el tablero no tiene zoom: dos dedos amplían la página, como
+       en cualquier web. */
+    .master-lienzo {
+        touch-action: auto;
     }
 }
 

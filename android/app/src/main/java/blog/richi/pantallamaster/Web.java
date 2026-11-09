@@ -51,7 +51,13 @@ final class Web {
         s.setMediaPlaybackRequiresUserGesture(false);
         s.setSupportMultipleWindows(false);
         s.setJavaScriptCanOpenWindowsAutomatically(false);
-        // Se puede ampliar con dos dedos (sin los botones de zoom).
+        // Como en Chrome: la página manda con su <meta name="viewport">
+        // (ancho del dispositivo, sin el zoom del doble toque ni la espera
+        // de cada toque que trae), y se puede ampliar con dos dedos (sin
+        // los botones de zoom) donde la página no usa ese gesto (en el
+        // tablero, los dos dedos son su zoom).
+        s.setUseWideViewPort(true);
+        s.setLoadWithOverviewMode(false);
         s.setBuiltInZoomControls(true);
         s.setDisplayZoomControls(false);
         s.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
