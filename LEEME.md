@@ -2,7 +2,7 @@
 
 Una pantalla de máster para rol (D&D 5e, SRD 5.2) que funciona **sin conexión** en el navegador del ordenador y en tablets: un tablero de ventanas que se mueven con la iniciativa, las reglas, el bestiario, los conjuros, los dados, las notas y documentos, los generadores (dungeons, negocios, PNJ, botín, encuentros…), el sonido ambiente, los efectos de sonido, la música y tus creaciones.
 
-Sale de la pantalla de máster de [El Blog de Richi](https://richi.blog/web/pantalla_master/pantalla_master.html), con su diseño y sus temas de accesibilidad, pero sin el blog alrededor.
+Es gratis, sin anuncios y sin nada de pago. Sale de la pantalla de máster de [El Blog de Richi](https://richi.blog/web/pantalla_master/pantalla_master.html), con su diseño y sus temas de accesibilidad, pero sin el blog alrededor.
 
 ## Usarla
 
@@ -13,13 +13,18 @@ Sale de la pantalla de máster de [El Blog de Richi](https://richi.blog/web/pant
   - El programa y la carpeta «archivos» tienen que estar juntos: si mueves uno, mueve los dos (o la carpeta «Pantalla de máster» entera). Puedes hacerle un acceso directo al programa.
   - Usa Edge o Chrome en modo app si los tienes; si no, el navegador de siempre. Se cierra solo al cerrar la ventana.
   - Lo que guardes con el programa (campañas, tableros, notas, tus creaciones, imágenes, PDF, música…) va a la carpeta **«mis-datos»**, junto al programa (en un Mac, junto a la app). Cada copia de la carpeta lleva lo suyo: una descarga nueva empieza vacía, y para llevarte lo tuyo basta copiar «mis-datos» (o ⚙ → exportar / importar). Si el navegador tenía lo de una versión anterior, la entrada ofrece «📥 traer lo de antes».
+- **En una tablet Android (la app):** baja `PantallaMaster-Android.apk` de [la última versión](https://github.com/rperezbarreda/pantalla_master/releases/latest) en la tablet y ábrelo; Android pedirá permiso para instalar apps de esa fuente (el navegador o el gestor de archivos). Lleva todo dentro: funciona sin conexión desde el primer momento y no depende de ninguna web. Internet sólo se usa si pides importar un personaje por su enlace (D&D Beyond, Nivel20) o abres un enlace de fuera (se abre en el navegador).
+  - La pantalla de jugadores sale en la pantalla externa si hay una conectada (una tele o un monitor por HDMI o USB-C); si no, en otra ventana de la app, al lado si cabe (pantalla partida). El reproductor de música, en su ventana.
+  - Atrás cierra lo que haya abierto (como Escape); sin nada abierto, la app se queda en segundo plano tal cual estaba.
+  - Exportar y descargar abren el selector de Android para elegir dónde guardar; los PDF e imágenes de documentos se abren con su app.
+  - Usa el tamaño de letra del sistema, se puede ampliar con dos dedos y funciona con TalkBack y con teclado.
 - **En el ordenador:** abre la web y, si quieres, instálala desde el navegador (Chrome/Edge: el icono de instalar de la barra de direcciones).
 - **En una tablet:** ábrela en el navegador y «Añadir a pantalla de inicio» (iPad: Safari → Compartir; Android: Chrome → menú).
 - La primera vez se guarda entera en el dispositivo; desde entonces funciona **sin internet**. Cuando hay una versión nueva, avisa con «↻ actualizar» (no se recarga sola en mitad de una partida).
 
 ## Dónde se guarda lo tuyo
 
-Todo lo que haces (campañas, tableros, notas, documentos, imágenes, música, tus creaciones…) se queda **sólo en el dispositivo**, en el navegador: no se sube a ningún sitio. Para no perderlo o pasarlo a otro dispositivo: ⚙ → exportar (y luego importar).
+Todo lo que haces (campañas, tableros, notas, documentos, imágenes, música, tus creaciones…) se queda **sólo en el dispositivo**: en el navegador, en la carpeta «mis-datos» (el programa de escritorio) o dentro de la app de Android (se borra si se desinstala). No se sube a ningún sitio. Para no perderlo o pasarlo a otro dispositivo: ⚙ → exportar (y luego importar).
 
 ## Para quien la mantiene
 
@@ -41,6 +46,7 @@ imagenes/               iconos y fondos
 sonidos/                las grabaciones (ver sonidos/LEEME.txt)
 herramientas/           precache.py, construir-ejecutables.py y la plantilla del sw
 lanzador/               el ejecutable (Go)
+android/                la app de Android (Java, sin librerías; ver abajo)
 ```
 
 **Las reglas y los nombres se cambian en sus JSON** (`datos/personajes/compendio/`):
@@ -62,9 +68,16 @@ Rehace `sw.js` con la lista de archivos y una versión nueva (si no, los disposi
 
 **Los ejecutables** (`lanzador/main.go`; lo guardado, a `mis-datos/` con `lanzador/almacen.go`, y en `scripts/arranque.js` el `localStorage` que escribe allí: un servidor pequeño en Go que sirve la carpeta «archivos» de su lado en `http://127.0.0.1:47321`, sólo para ese ordenador; el puerto es fijo para que no se pierda lo guardado): `python3 herramientas/construir-ejecutables.py` deja los .zip en `dist/` (necesita Go). Al subir a `main`, GitHub los construye solo y los publica en la release «ultima» (`.github/workflows/ejecutables.yml`).
 
+**La app de Android** (`android/`): una actividad con un WebView que sirve la web desde el APK (`https://appassets.androidplatform.net/`, sin service worker). Al compilar, Gradle copia en `assets/web/` lo mismo que lleva el ejecutable (menos `sw.js`), así que **no hay que tocar nada en `android/` cuando cambia la web**. Lo que en el navegador hace el navegador va en `android/app/src/main/assets/android.js` (se mete en cada página antes que el resto) y en el Java (`Base.java`: elegir archivos, guardar, abrir, atrás; `Principal.java`: la pantalla externa y las ventanas; `Red.java`: importar por enlace, como el lanzador). La web sólo mira `window.ocAndroid` para saber que está dentro (sin el aviso de la web, importar por enlace, los PDF con su visor).
+
+- **De prueba:** cada subida a `desarrollo` hace «Máster (prueba)» (`.github/workflows/android.yml`; en Actions, «android-prueba» → la ejecución → Artifacts). Es otra app (`blog.richi.pantallamaster.prueba`): convive con la de verdad y se instala encima de la anterior sin perder lo guardado (va firmada con `android/prueba.keystore`, que sólo sirve para eso).
+- **La de verdad:** al subir a `main`, `ejecutables.yml` hace el APK firmado, lo pone en la release «ultima» y deja el `.aab` para Google Play en Artifacts («PantallaMaster-Android-Play»). Necesita cuatro secretos del repo (Settings → Secrets and variables → Actions): `ANDROID_ALMACEN_BASE64` (el almacén de claves en base64), `ANDROID_ALMACEN_CLAVE`, `ANDROID_ALIAS` y `ANDROID_ALIAS_CLAVE`. Sin ellos se publica lo de escritorio y la de Android no. El almacén se hace una vez (`keytool -genkeypair -keystore pantalla-master.jks -alias pantalla-master -keyalg RSA -keysize 4096 -validity 10000`) y **no se puede perder**: sin él, las versiones nuevas no se instalan encima de las viejas.
+- **Google Play:** la ficha usa `imagenes/icono-maskable-512.png` como icono; el `.aab` se sube a mano desde la consola de Play (con «Firma de apps de Google Play»: Google firma lo que se instala desde Play, así que esa app y la del APK de GitHub no se actualizan la una con la otra). Es gratis, sin anuncios y sin compras; no recoge datos.
+- **Compilar en local:** Android Studio (abre `android/`) o `gradle -p android assembleDebug` con el SDK de Android y Gradle 8.14.
+
 **Para probar en local:** `python3 -m http.server` en esta carpeta y abrir `http://localhost:8000` (el modo sin conexión necesita https o localhost; con `file://` no va).
 
-**Publicarla:** vale cualquier hosting estático. En GitHub Pages: Settings → Pages → «Deploy from a branch» → `main` / raíz. Las rutas son relativas, así que funciona también en `usuario.github.io/pantalla-master/`.
+**Publicarla:** vale cualquier hosting estático (sin `android/`, que no es parte de la web). En GitHub Pages: Settings → Pages → «Deploy from a branch» → `main` / raíz. Las rutas son relativas, así que funciona también en `usuario.github.io/pantalla-master/`.
 
 ## Licencia
 
@@ -77,7 +90,8 @@ Los ejecutables de Windows se firman con un certificado de [SignPath Foundation]
 - **Quién:** Richi ([@rperezbarreda](https://github.com/rperezbarreda)) es el autor y quien aprueba cada versión.
 - **Cómo:** los ejecutables se construyen sólo en GitHub Actions, a partir del código de este repositorio (`.github/workflows/ejecutables.yml`); nada se firma desde un ordenador.
 - **Qué:** sólo se firman las versiones publicadas desde `main`, después de aprobarlas a mano en SignPath.
-- **Privacidad:** el programa no envía datos a ningún sitio. Sólo se conecta a internet cuando tú pides importar un personaje de D&D Beyond o de Nivel20; todo lo demás se guarda en tu ordenador, en la carpeta `mis-datos`.
+- **Privacidad:** ni el programa ni la app de Android envían datos a ningún sitio. Sólo se conectan a internet cuando tú pides importar un personaje de D&D Beyond o de Nivel20 (o abres un enlace de fuera, en el navegador); todo lo demás se guarda en tu dispositivo (en el ordenador, en la carpeta `mis-datos`).
+- **Android:** el APK se firma también sólo en GitHub Actions, con la clave de los secretos del repositorio.
 
 ## Créditos
 

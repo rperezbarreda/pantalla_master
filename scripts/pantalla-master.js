@@ -1569,7 +1569,7 @@
             } catch (e) {
                 blob = null;
             }
-        } else if (/^https:\/\//.test(u) && EN_CARPETA) {
+        } else if (/^https:\/\//.test(u) && CON_RED) {
             blob = fetch("__imagen?url=" + encodeURIComponent(u), { cache: "no-store" }).then((r) => (r.ok ? r.blob() : null));
         }
         if (!/^https:\/\//.test(u)) {
@@ -3424,13 +3424,13 @@
             const canon = doc.querySelector("link[rel=canonical], meta[property='og:url']");
             const url = canon ? canon.getAttribute("href") || canon.getAttribute("content") : "";
             const r = deNivel20(doc, url);
-            r.avisos = r.avisos.map((a) => (/por partes/.test(a) ? a + " (con el programa, pegando el enlace, se traen todos)" : a));
+            r.avisos = r.avisos.map((a) => (/por partes/.test(a) ? a + " (con el programa o la app de Android, pegando el enlace, se traen todos)" : a));
             return Promise.resolve(Object.assign(r, { origen: "nivel20" }));
         }
         if (n20) {
-            if (!EN_CARPETA) {
+            if (!CON_RED) {
                 return Promise.reject(new Error("Desde el navegador no puedo preguntar a Nivel20: guarda su página (Ctrl+S) y elígela"
-                    + " con «📄 desde un archivo», o usa el programa."));
+                    + " con «📄 desde un archivo», o usa el programa o la app de Android."));
             }
             const ruta = n20[1].toLowerCase();
             return traerDeNivel20(ruta).then((html) => {
@@ -3440,7 +3440,7 @@
             });
         }
         if (ddbNum) {
-            if (!EN_CARPETA) {
+            if (!CON_RED) {
                 return Promise.reject(new Error("Desde el navegador no puedo preguntar a D&D Beyond: pega el JSON."));
             }
             return fetch("__ddb?id=" + (ddbNum[1] || ddbNum[2]), { cache: "no-store" }).then((r) => {
@@ -3459,9 +3459,9 @@
     function abrirImportarPj(vuelta, pj) {
         const cuerpo = crear("form", "master-pegar");
         const ayuda = crear("ul", "master-importar-de");
-        [["D&D Beyond", EN_CARPETA ? "el enlace de la ficha (tiene que ser pública) o su JSON"
+        [["D&D Beyond", CON_RED ? "el enlace de la ficha (tiene que ser pública) o su JSON"
             : "el JSON de character-service.dndbeyond.com/character/v5/character/ + su número (ficha pública)"],
-        ["Nivel20", EN_CARPETA ? "el enlace de la ficha (pública)" : "su página guardada (Ctrl+S → «sólo HTML») con «📄 desde un archivo»"],
+        ["Nivel20", CON_RED ? "el enlace de la ficha (pública)" : "su página guardada (Ctrl+S → «sólo HTML») con «📄 desde un archivo»"],
         ["Foundry VTT", "el JSON del personaje (clic derecho en el actor → «Exportar datos»), con «📄 desde un archivo»"]]
             .forEach(([de, como]) => {
                 const li = crear("li");
@@ -10166,6 +10166,11 @@
     // CON EL EJECUTABLE, en su carpeta «mis-datos/archivos» (como lo demás:
     // ver arranque.js y lanzador/almacen.go).
     const EN_CARPETA = !!(window.ocAlmacen && window.ocAlmacen.enCarpeta);
+    // Quién puede preguntar a otras webs (para importar un personaje por su
+    // enlace): el programa de escritorio y la app de Android; el navegador no.
+    const CON_RED = EN_CARPETA || !!window.ocAndroid;
+    // Dentro de la app de Android (android/: window.ocAndroid lo pone ella).
+    const EN_ANDROID = !!window.ocAndroid;
     const rutaArchivo = (id) => "__archivos/" + encodeURIComponent(id);
     const carpetaGuardar = (id, blob) => fetch(rutaArchivo(id), { method: "PUT", body: blob,
         headers: { "Content-Type": blob.type || "application/octet-stream" } }).then((r) => {
@@ -10668,7 +10673,9 @@
             const archivoBlob = URL.createObjectURL(blob);
             const esPdf = /pdf/.test(blob.type || n.mime || "");
             caja.replaceChildren();
-            if (esPdf) {
+            if (esPdf && EN_ANDROID) {
+                caja.appendChild(crear("p", "oc-hoja-nota", "En la tablet, el PDF se abre con su visor: «↗ abrir»."));
+            } else if (esPdf) {
                 const marco = crear("iframe", "master-doc-pdf");
                 marco.title = "PDF: " + n.titulo;
                 marco.src = archivoBlob;
@@ -10680,7 +10687,8 @@
                 caja.appendChild(img);
             }
             const ext = esPdf ? ".pdf" : "." + ((blob.type.split("/")[1] || "png").replace("jpeg", "jpg").replace("svg+xml", "svg"));
-            mandos.append(enlace("↗ abrir en otra pestaña", archivoBlob, "Abrir " + n.titulo + " en otra pestaña"),
+            mandos.append(EN_ANDROID ? enlace("↗ abrir", archivoBlob, "Abrir " + n.titulo + " con otra app")
+                : enlace("↗ abrir en otra pestaña", archivoBlob, "Abrir " + n.titulo + " en otra pestaña"),
                 enlace("⬇ descargar", archivoBlob, "Descargar " + n.titulo, (n.titulo || "archivo").replace(/[^\p{L}\p{N} _-]+/gu, "") + ext));
             caja.appendChild(mandos);
         }).catch(() => caja.replaceChildren(crear("p", "oc-vacio", "Este navegador no deja leer los archivos guardados.")));
@@ -17533,7 +17541,7 @@
     // a enseñar.
     const CLAVE_AVISO_WEB = "richi-master-aviso-web";
     function verAvisoWeb(entrada) {
-        if (location.hostname === "127.0.0.1" && location.port === "47321") {
+        if ((location.hostname === "127.0.0.1" && location.port === "47321") || EN_ANDROID) {
             return;
         }
         try {
@@ -17556,13 +17564,14 @@
         texto.id = "master-aviso-web-texto";
         texto.append(crear("p", "master-entrada-texto", "Recomiendo descargar la aplicación en vez de usar la versión web,"
             + " por el simple hecho de que la web está alojada en Cloudflare y los días de fútbol queda inutilizada."),
-        crear("p", "oc-hoja-nota", "Para Windows, macOS y Linux: descomprime el .zip y ábrela con doble clic. Si ya tienes"
-            + " algo guardado aquí, haz una copia de seguridad (⚙ opciones) e impórtala en la app."));
+        crear("p", "oc-hoja-nota", "Gratis y sin conexión. Para Windows, macOS y Linux: descomprime el .zip y ábrela con doble clic."
+            + " Para tablets Android: el .apk. Si ya tienes algo guardado aquí, haz una copia de seguridad (⚙ opciones)"
+            + " e impórtala en la app."));
         const bajar = crear("a", "oc-vida-accion", "⬇️ descargar la app");
         bajar.href = "https://github.com/rperezbarreda/pantalla_master/releases/latest";
         bajar.target = "_blank";
         bajar.rel = "noopener noreferrer";
-        bajar.setAttribute("aria-label", "Descargar la app para Windows, macOS o Linux (se abre aparte, en GitHub)");
+        bajar.setAttribute("aria-label", "Descargar la app para Windows, macOS, Linux o tablets Android (se abre aparte, en GitHub)");
         const seguir = botonDe("oc-vida-accion", "seguir en la web", () => cerrarAviso());
         const botones = crear("div", "master-anadir-otras");
         botones.append(bajar, seguir);
@@ -17861,20 +17870,30 @@
             avisar(v === "metrico" ? "Medidas en metros, kilos y kilómetros." : "Medidas en pies, libras y millas.");
         }), notaMedidas);
         fila("Copia de seguridad", copias(() => cerrar()));
-        // En la web (no en el ejecutable, que ya es la app en el
-        // ordenador): de dónde bajarla para usarla sin el navegador.
-        if (!(location.hostname === "127.0.0.1" && location.port === "47321")) {
+        // En la web (no en el ejecutable ni en la app de Android, que ya
+        // son la app): de dónde bajarla para usarla sin el navegador.
+        if (!(location.hostname === "127.0.0.1" && location.port === "47321") && !EN_ANDROID) {
             const bajar = crear("a", "oc-vida-accion", "⬇️ descargar la app");
             bajar.href = "https://github.com/rperezbarreda/pantalla_master/releases/latest";
             bajar.target = "_blank";
             bajar.rel = "noopener noreferrer";
-            bajar.setAttribute("aria-label", "Descargar la app para Windows, macOS o Linux (se abre aparte, en GitHub)");
+            bajar.setAttribute("aria-label", "Descargar la app para Windows, macOS, Linux o tablets Android (se abre aparte, en GitHub)");
             const otras = crear("div", "master-anadir-otras");
             otras.append(bajar);
-            fila("La app en tu ordenador", crear("p", "oc-hoja-nota", "Para Windows, macOS y Linux: descomprime el .zip y"
-                + " ábrela con doble clic. Lo guardado va en su carpeta, no en el navegador: para llevarte lo de aquí,"
-                + " haz antes una copia de seguridad e impórtala allí."), otras);
+            fila("La app, sin el navegador", crear("p", "oc-hoja-nota", "Gratis y sin conexión. Para Windows, macOS y Linux:"
+                + " descomprime el .zip y ábrela con doble clic. Para tablets Android: el .apk. Lo guardado va en la app,"
+                + " no en el navegador: para llevarte lo de aquí, haz antes una copia de seguridad e impórtala allí."), otras);
         }
+        // Más cosas de rol, en el blog (se abre aparte; en Android, en el
+        // navegador).
+        const blog = crear("a", "oc-vida-accion", "🎲 recursos de rol en richi.blog");
+        blog.href = "https://richi.blog/web/mis_movidas/rol/index_rol.html";
+        blog.target = "_blank";
+        blog.rel = "noopener noreferrer";
+        blog.setAttribute("aria-label", "Recursos de rol en richi.blog (se abre aparte, en el navegador)");
+        const masRol = crear("div", "master-anadir-otras");
+        masRol.append(blog);
+        fila("Más de rol", crear("p", "oc-hoja-nota", "Más cosas para tus partidas en El Blog de Richi."), masRol);
         const lic = crear("div", "master-anadir-otras");
         const web = crear("a", "oc-vida-accion", "🌐 el SRD en la web");
         web.href = "https://www.dndbeyond.com/srd";

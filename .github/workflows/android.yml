@@ -13,8 +13,8 @@ jobs:
   apk:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "17"
@@ -32,6 +32,14 @@ jobs:
             exit 1
           }
           cp android/app/build/outputs/apk/debug/app-debug.apk PantallaMaster-Android-prueba.apk
+      - name: Comprobar que la web va dentro
+        run: |
+          A=PantallaMaster-Android-prueba.apk
+          for f in assets/android.js assets/web/index.html assets/web/jugadores.html assets/web/reproductor.html assets/web/scripts/pantalla-master.js; do
+            unzip -l "$A" "$f" >/dev/null || { echo "::error::Falta $f en el APK"; exit 1; }
+          done
+          if unzip -l "$A" | grep -qE "assets/web/(sw\.js|android/|lanzador/|herramientas/)"; then echo "::error::Sobra algo en el APK"; exit 1; fi
+          echo "::notice::APK: $(unzip -l "$A" | grep -c ' assets/web/') archivos de la web, $(du -h "$A" | cut -f1)"
       - uses: actions/upload-artifact@v4
         with:
           name: PantallaMaster-Android-prueba
