@@ -45,7 +45,7 @@ datos/                  el SRD 5.2 en español (CC BY 4.0) y las tablas
 tipografias/            las letras (con sus licencias OFL)
 imagenes/               iconos y fondos
 sonidos/                las grabaciones (ver sonidos/LEEME.txt)
-herramientas/           precache.py, construir-ejecutables.py y la plantilla del sw
+herramientas/           precache.py, construir-ejecutables.py, iconos.py y la plantilla del sw
 lanzador/               el ejecutable (Go)
 android/                la app de Android (Java, sin librerías; ver abajo)
 ```
@@ -66,6 +66,8 @@ python3 herramientas/precache.py
 ```
 
 Rehace `sw.js` con la lista de archivos y una versión nueva (si no, los dispositivos se quedan con la vieja) y `sonidos/indice.json` con las grabaciones que haya.
+
+**Los iconos** (la cruz de azufre en píxeles del blog): `python3 herramientas/iconos.py` los hace todos a partir de `herramientas/iconos/cruz-azufre.png` (los de `imagenes/`, el maskable y los de Android); los de Windows y macOS salen de `icono-512.png` al construir los ejecutables.
 
 **Los ejecutables** (`lanzador/main.go`; lo guardado, a `mis-datos/` con `lanzador/almacen.go`, y en `scripts/arranque.js` el `localStorage` que escribe allí: un servidor pequeño en Go que sirve la carpeta «archivos» de su lado en `http://127.0.0.1:47321`, sólo para ese ordenador; el puerto es fijo para que no se pierda lo guardado): `python3 herramientas/construir-ejecutables.py` deja los .zip en `dist/` (necesita Go). Al subir a `main`, GitHub los construye solo y los publica en la release «ultima» (`.github/workflows/ejecutables.yml`).
 
