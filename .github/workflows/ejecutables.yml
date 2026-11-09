@@ -1,7 +1,10 @@
-# Cada vez que se sube algo a main, hace los .zip para descargar (el
-# programa y su carpeta «archivos», para Windows, macOS y Linux; ver herramientas/construir-ejecutables.py) y los deja en la
-# release «ultima» del repo: los usuarios los bajan de
-# https://github.com/rperezbarreda/pantalla_master/releases/latest
+# Cada vez que se sube algo a main, hace lo que se descarga y lo deja en la
+# release «ultima» del repo (https://github.com/rperezbarreda/pantalla_master/releases/latest):
+#   - los .zip de escritorio (el programa y su carpeta «archivos», para
+#     Windows, macOS y Linux; ver herramientas/construir-ejecutables.py);
+#   - la app de Android (PantallaMaster-Android.apk), firmada con la clave de
+#     los secretos (ver LEEME). El .aab para Google Play queda en
+#     «Artifacts» de la ejecución (PantallaMaster-Android-Play).
 name: ejecutables
 
 on:
@@ -13,7 +16,66 @@ permissions:
   contents: write
 
 jobs:
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: ¿Hay clave para firmar?
+        id: clave
+        env:
+          ALMACEN: ${{ secrets.ANDROID_ALMACEN_BASE64 }}
+        run: |
+          if [ -z "$ALMACEN" ]; then
+            echo "::warning::Sin los secretos ANDROID_* no se publica la app de Android (ver LEEME)."
+            echo "hay=no" >> "$GITHUB_OUTPUT"
+          else
+            echo "$ALMACEN" | base64 -d > "$RUNNER_TEMP/publicar.jks"
+            echo "hay=si" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/setup-java@v4
+        if: steps.clave.outputs.hay == 'si'
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+        if: steps.clave.outputs.hay == 'si'
+        with:
+          gradle-version: "8.14.3"
+      - name: Construir y firmar
+        if: steps.clave.outputs.hay == 'si'
+        env:
+          ANDROID_ALMACEN: ${{ runner.temp }}/publicar.jks
+          ANDROID_ALMACEN_CLAVE: ${{ secrets.ANDROID_ALMACEN_CLAVE }}
+          ANDROID_ALIAS: ${{ secrets.ANDROID_ALIAS }}
+          ANDROID_ALIAS_CLAVE: ${{ secrets.ANDROID_ALIAS_CLAVE }}
+        run: |
+          set -o pipefail
+          export VERSION_APP="$(date -u +%Y.%m.%d)"
+          gradle -p android assembleRelease bundleRelease --no-daemon --stacktrace 2>&1 | tee android-compilacion.log || {
+            grep -E "error:|e: |What went wrong|> .*(failed|Could not)|Caused by" -A2 android-compilacion.log | head -45 \
+              | sed 's/%/%25/g' | while IFS= read -r l; do echo "::error::$l"; done
+            exit 1
+          }
+          mkdir -p dist-android
+          cp android/app/build/outputs/apk/release/app-release.apk dist-android/PantallaMaster-Android.apk
+          cp android/app/build/outputs/bundle/release/app-release.aab PantallaMaster-Android-Play.aab
+          rm -f "$ANDROID_ALMACEN"
+      - uses: actions/upload-artifact@v4
+        if: steps.clave.outputs.hay == 'si'
+        with:
+          name: android
+          path: dist-android/
+      - uses: actions/upload-artifact@v4
+        if: steps.clave.outputs.hay == 'si'
+        with:
+          name: PantallaMaster-Android-Play
+          path: PantallaMaster-Android-Play.aab
+          retention-days: 90
+
   construir:
+    needs: android
+    # Aunque falle la de Android, los de escritorio se publican igual.
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -29,6 +91,12 @@ jobs:
           go install github.com/akavel/rsrc@v0.10.2
       - name: Construir
         run: python3 herramientas/construir-ejecutables.py
+      - uses: actions/download-artifact@v4
+        if: needs.android.result == 'success'
+        continue-on-error: true
+        with:
+          name: android
+          path: dist/
       - name: Publicar en la release «ultima»
         env:
           GH_TOKEN: ${{ github.token }}
@@ -36,4 +104,4 @@ jobs:
           gh release delete ultima --yes --cleanup-tag || true
           gh release create ultima dist/* --latest \
             --title "Pantalla de máster" \
-            --notes "Baja el .zip de tu sistema, descomprímelo y abre «Pantalla de máster» con doble clic (junto a él va la carpeta «archivos»: déjalos juntos). Windows: PantallaMaster-Windows.zip. Mac: el de tu procesador (Apple Silicon = M1, M2…; si no, Intel). Linux: PantallaMaster-Linux.zip. Todo lo que hagas se guarda en tu ordenador."
+            --notes "Baja el .zip de tu sistema, descomprímelo y abre «Pantalla de máster» con doble clic (junto a él va la carpeta «archivos»: déjalos juntos). Windows: PantallaMaster-Windows.zip. Mac: el de tu procesador (Apple Silicon = M1, M2…; si no, Intel). Linux: PantallaMaster-Linux.zip. Tablets Android: PantallaMaster-Android.apk (ábrelo en la tablet y permite instalar apps de esta fuente). Todo lo que hagas se guarda en tu dispositivo; funciona sin conexión."

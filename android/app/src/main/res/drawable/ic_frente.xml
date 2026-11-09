@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- El icono (imagenes/icono.svg) sin su fondo, en el centro del lienzo de
+     108 dp del icono adaptable, dentro de su círculo seguro. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="846"
+    android:viewportHeight="846">
+    <group
+        android:translateX="167"
+        android:translateY="157">
+        <path
+            android:pathData="M86,150 L196,122 L196,382 L86,410 Z M196,122 L316,122 L316,382 L196,382 Z M316,122 L426,150 L426,410 L316,382 Z"
+            android:strokeWidth="18"
+            android:strokeColor="#F5CE6C"
+            android:strokeLineJoin="round" />
+        <path
+            android:pathData="M256,186 L304,214 L304,290 L256,318 L208,290 L208,214 Z M256,186 L256,230 M208,214 L256,230 L304,214 M256,230 L230,278 L282,278 Z M208,290 L230,278 M304,290 L282,278 M256,318 L230,278 M256,318 L282,278"
+            android:strokeWidth="12"
+            android:strokeColor="#F5CE6C"
+            android:strokeLineJoin="round" />
+    </group>
+</vector>

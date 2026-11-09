@@ -1,0 +1,39 @@
+# La app de Android, de prueba: cada vez que se sube algo a «desarrollo»,
+# hace «Máster (prueba)» (otra app, que convive con la de verdad) y la deja
+# en esta ejecución de Actions, en «Artifacts» → PantallaMaster-Android-prueba.
+# La de verdad (firmada) la hace ejecutables.yml al subir a main.
+name: android-prueba
+
+on:
+  push:
+    branches: [desarrollo]
+  workflow_dispatch:
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.14.3"
+      - name: Construir
+        env:
+          VERSION_APP: ${{ github.sha }}
+        run: |
+          set -o pipefail
+          gradle -p android assembleDebug --no-daemon --stacktrace 2>&1 | tee android-compilacion.log || {
+            grep -E "error:|e: |What went wrong|> .*(failed|Could not)|Caused by" -A2 android-compilacion.log | head -45 \
+              | sed 's/%/%25/g' | while IFS= read -r l; do echo "::error::$l"; done
+            exit 1
+          }
+          cp android/app/build/outputs/apk/debug/app-debug.apk PantallaMaster-Android-prueba.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PantallaMaster-Android-prueba
+          path: PantallaMaster-Android-prueba.apk
+          retention-days: 30
