@@ -301,6 +301,8 @@
         contar();
     });
 
+    var recibidos = [];
+
     function visible(el) {
         return el.isConnected && el.getClientRects().length > 0;
     }
@@ -320,6 +322,33 @@
         },
         abrirFuera: function (url) {
             nativo.abrirFuera(String(url));
+        },
+        // La copia automática del día (en la carpeta).
+        copiaFalta: function () {
+            return nativo.copiaFalta();
+        },
+        guardarCopia: function (texto) {
+            return nativo.copiaGuardar(String(texto));
+        },
+        // Lo que llega con «Abrir con» o «Compartir»: la app lo deja en
+        // /__recibido/<id>; aquí se hace File y se pasa a window.ocRecibir
+        // (pantalla-master.js) cuando ya está (si no, espera en la cola).
+        hayRecibidos: function () {
+            var nuevos = JSON.parse(nativo.recibidos() || "[]");
+            Promise.all(nuevos.map(function (x) {
+                return fetch("/__recibido/" + encodeURIComponent(x.id), { cache: "no-store" }).then(function (r) {
+                    return r.ok ? r.blob() : null;
+                }).then(function (b) {
+                    return b ? new File([b], x.nombre, { type: x.tipo || b.type }) : null;
+                });
+            })).then(function (fs) {
+                recibidos = recibidos.concat(fs.filter(Boolean));
+                if (recibidos.length && window.ocRecibir) {
+                    var dar = recibidos;
+                    recibidos = [];
+                    window.ocRecibir(dar);
+                }
+            });
         },
         // Atrás: cierra la ventanita o el diálogo de encima (como Escape).
         // Si no hay ninguno, devuelve false y la app hace lo suyo.

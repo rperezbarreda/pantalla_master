@@ -12397,6 +12397,8 @@
         const cuantos = crear("p", "visually-hidden");
         cuantos.setAttribute("role", "status");
         buscar.addEventListener("input", () => pintarArbol());
+        // Canciones que llegan de fuera («Abrir con», en la app de Android).
+        mientrasEste(dentro, "master:musica", () => pintarArbol());
         buscar.addEventListener("keydown", (e) => {
             if (e.key === "Escape" && buscar.value) {
                 e.preventDefault();
@@ -16516,34 +16518,79 @@
     // perfiles con sus ventanas, la iniciativa, las marcas propias y las
     // tiradas guardadas) a un archivo .json, y de vuelta. Para guardarlo,
     // pasarlo a otro navegador o compartir un tablero montado. ----
-    const CLAVES = (k) => k === CLAVE || k === CLAVE_HOMEBREW || k === CLAVE_IMAGENES || k === CLAVE_PLANTILLAS || k === CLAVE_PROPIOS || k === CLAVE_ASPECTOS || k === CLAVE_TABLAS || k === CLAVE_NOMBRES || k === window.ocReglas.CLAVE || k === CLAVE_ENCENDIDA || /^richi-oc-(iniciativa|marcas|partida-pantalla-master)/.test(k);
+    const CLAVES = (k) => k === CLAVE || k === CLAVE_HOMEBREW || k === CLAVE_IMAGENES || k === CLAVE_PLANTILLAS || k === CLAVE_PROPIOS || k === CLAVE_ASPECTOS || k === CLAVE_TABLAS || k === CLAVE_NOMBRES || k === window.ocReglas.CLAVE || k === CLAVE_ENCENDIDA || k === CLAVE_COPIA || /^richi-oc-(iniciativa|marcas|partida-pantalla-master)/.test(k);
+
+    // UNA COPIA DE SEGURIDAD: lo guardado (las claves de CLAVES) y, si se
+    // pide, los archivos (imágenes, PDF, música) en «data:». La usan
+    // exportar, la copia automática de la app de Android (sin archivos: ya
+    // están en la carpeta) y «Abrir con» (importarla).
+    function datosDeCopia(conArchivos) {
+        guardar();
+        const claves = {};
+        try {
+            for (let i = 0; i < localStorage.length; i++) {
+                const k = localStorage.key(i);
+                if (CLAVES(k)) {
+                    claves[k] = localStorage.getItem(k);
+                }
+            }
+        } catch (e) {
+            return Promise.reject(new Error("sin almacenamiento"));
+        }
+        const datos = { pantallaDeMaster: 1, fecha: new Date().toISOString(), claves };
+        if (!conArchivos) {
+            return Promise.resolve(datos);
+        }
+        return todosLosArchivos().catch(() => []).then((lista) => Promise.all(lista.filter(([, b]) => b)
+            .map(([id, b]) => blobADatos(b).then((x) => [id, x])))).then((lista) => {
+            if (lista.length) {
+                datos.archivos = {};
+                lista.forEach(([id, x]) => {
+                    datos.archivos[id] = x;
+                });
+            }
+            return datos;
+        });
+    }
+    const esCopia = (datos) => !!datos && datos.pantallaDeMaster === 1 && !!datos.claves && typeof datos.claves === "object";
+    // Importarla: reemplaza lo de ahora y recarga.
+    function importarCopia(datos) {
+        Object.keys(datos.claves).filter(CLAVES).forEach((k) => {
+            localStorage.setItem(k, String(datos.claves[k]));
+        });
+        const archivos = datos.archivos && typeof datos.archivos === "object" ? Object.keys(datos.archivos) : [];
+        return Promise.all(archivos.map((id) => {
+            const blob = /^a[a-z0-9]+$/.test(id) ? datosABlob(datos.archivos[id]) : null;
+            return blob ? archivoGuardar(id, blob).catch(() => {}) : null;
+        })).then(() => (window.ocAlmacen ? window.ocAlmacen.guardarYa() : null)).then(() => {
+            location.reload();
+        });
+    }
+    // Cuándo se hizo la última copia (exportar, o la automática), para
+    // recordarlo en la app de Android cuando se guarda dentro de ella.
+    const CLAVE_COPIA = "richi-master-copia";
+    function marcarCopia() {
+        try {
+            const c = JSON.parse(localStorage.getItem(CLAVE_COPIA) || "{}");
+            c.ultima = Date.now();
+            localStorage.setItem(CLAVE_COPIA, JSON.stringify(c));
+        } catch (e) {
+            // Sin guardar: se recordará otra vez.
+        }
+    }
 
     function copias(alTerminar) {
         const caja = crear("div", "master-anadir-otras");
         const exportar = botonDe("oc-vida-accion", "⬇ exportar", () => {
-            guardar();
-            const claves = {};
-            try {
-                for (let i = 0; i < localStorage.length; i++) {
-                    const k = localStorage.key(i);
-                    if (CLAVES(k)) {
-                        claves[k] = localStorage.getItem(k);
-                    }
-                }
-            } catch (e) {
+            datosDeCopia(true).catch(() => {
                 avisar("Este navegador no deja leer lo guardado.");
-                return;
-            }
-            const datos = { pantallaDeMaster: 1, fecha: new Date().toISOString(), claves };
-            // Con los archivos de los documentos (imágenes y PDF), en «data:».
-            todosLosArchivos().catch(() => []).then((lista) => Promise.all(lista.filter(([, b]) => b)
-                .map(([id, b]) => blobADatos(b).then((x) => [id, x])))).then((lista) => {
-                if (lista.length) {
-                    datos.archivos = {};
-                    lista.forEach(([id, x]) => {
-                        datos.archivos[id] = x;
-                    });
+                return null;
+            }).then((datos) => {
+                if (!datos) {
+                    return;
                 }
+                const lista = Object.keys(datos.archivos || {});
+                marcarCopia();
                 const a = crear("a");
                 // Una dirección blob: que hace el propio navegador con el archivo.
                 const archivoBlob = URL.createObjectURL(new Blob([JSON.stringify(datos, null, 1)], { type: "application/json" }));
@@ -16578,20 +16625,11 @@
             }
             f.text().then((texto) => {
                 const datos = JSON.parse(texto);
-                if (!datos || datos.pantallaDeMaster !== 1 || typeof datos.claves !== "object") {
+                if (!esCopia(datos)) {
                     throw new Error("no es");
                 }
-                Object.keys(datos.claves).filter(CLAVES).forEach((k) => {
-                    localStorage.setItem(k, String(datos.claves[k]));
-                });
-                const archivos = datos.archivos && typeof datos.archivos === "object" ? Object.keys(datos.archivos) : [];
-                return Promise.all(archivos.map((id) => {
-                    const blob = /^a[a-z0-9]+$/.test(id) ? datosABlob(datos.archivos[id]) : null;
-                    return blob ? archivoGuardar(id, blob).catch(() => {}) : null;
-                })).then(() => (window.ocAlmacen ? window.ocAlmacen.guardarYa() : null)).then(() => {
-                    alTerminar();
-                    location.reload();
-                });
+                alTerminar();
+                return importarCopia(datos);
             }).catch(() => {
                 avisar("Ese archivo no es una exportación de la pantalla de máster.");
                 importar.textContent = "⬆ importar";
@@ -16600,6 +16638,108 @@
         });
         caja.append(exportar, importar, archivo);
         return caja;
+    }
+
+    // ABRIR CON LA APP (Android: «Compartir» o «Abrir con» desde otra app;
+    // los pasa android.js). Una copia de seguridad se importa (preguntando
+    // antes: lo reemplaza todo), las imágenes y los PDF van a los
+    // documentos (arriba del todo) y los audios a la música (a la carpeta
+    // «recibidas»).
+    function recibirArchivos(archivos) {
+        const lista = Array.from(archivos || []);
+        const json = lista.filter((f) => /json|text\/plain/.test(f.type) || /\.json$/i.test(f.name));
+        const docs = lista.filter((f) => /^image\/|^application\/pdf$/.test(f.type) && f.size <= MAX_ARCHIVO);
+        const audios = lista.filter((f) => /^audio\//.test(f.type) && f.size <= MAX_ARCHIVO);
+        const fuera = lista.length - json.length - docs.length - audios.length;
+        const hechos = { docs: [], audios: [] };
+        const docsListos = Promise.all(docs.map((f) => {
+            const id = idDoc("a");
+            return archivoGuardar(id, f).then(() => {
+                docsDe().notas.push({ id: idDoc("n"), tipo: "archivo", titulo: f.name.replace(/\.[^.]+$/, "") || f.name, carpeta: "",
+                    archivo: id, mime: f.type, tamano: f.size, cambiada: Date.now() });
+                hechos.docs.push(f.name);
+            }).catch(() => {});
+        }));
+        const audiosListos = Promise.all(audios.map((f) => {
+            const mu = musicaDe();
+            let carpeta = mu.carpetas.find((c) => c.nombre === "recibidas" && !c.padre);
+            if (!carpeta) {
+                carpeta = { id: idDoc("m"), nombre: "recibidas", padre: "" };
+                mu.carpetas.push(carpeta);
+            }
+            const id = idDoc("a");
+            return archivoGuardar(id, f).then(() => {
+                mu.canciones.push({ id, archivo: id, nombre: f.name.replace(/\.[^.]+$/, "").slice(0, 80) || "canción",
+                    carpeta: carpeta.id });
+                hechos.audios.push(f.name);
+            }).catch(() => {});
+        }));
+        Promise.all([docsListos, audiosListos]).then(() => {
+            if (docs.length || audios.length) {
+                guardar();
+                avisarDocs();
+                document.dispatchEvent(new CustomEvent("master:musica"));
+            }
+            const partes = [];
+            const donde = [];
+            if (hechos.docs.length) {
+                donde.push(hechos.docs.join(", ") + " en 📂 documentos");
+            }
+            if (hechos.audios.length) {
+                donde.push(hechos.audios.join(", ") + " en 🎵 música (carpeta «recibidas»)");
+            }
+            if (donde.length) {
+                partes.push("Recibido: " + donde.join("; ") + ".");
+            }
+            if (fuera > 0) {
+                partes.push("Sólo valen imágenes, PDF y audios de hasta 50 MB, y copias de seguridad.");
+            }
+            if (partes.length) {
+                avisar(partes.join(" "));
+            }
+        });
+        json.slice(0, 1).forEach((f) => f.text().then((texto) => {
+            const datos = JSON.parse(texto);
+            if (!esCopia(datos)) {
+                throw new Error("no es");
+            }
+            const cuerpo = crear("div", "master-anadir-otras");
+            const fecha = new Date(datos.fecha);
+            const texto2 = crear("p", "oc-hoja-nota", "«" + f.name + "» es una copia de seguridad"
+                + (isNaN(fecha) ? "" : " del " + fecha.toLocaleDateString("es-ES", { day: "numeric", month: "long", year: "numeric" }))
+                + ". Importarla reemplaza todo lo que hay ahora (haz antes una copia si no quieres perderlo).");
+            const vuelta = document.activeElement;
+            let cerrar = () => {};
+            const si = botonDe("oc-vida-accion", "⬆ importar (reemplaza todo)", () => {
+                si.disabled = true;
+                importarCopia(datos).catch(() => avisar("No se ha podido importar."));
+            });
+            const no = botonDe("oc-vida-accion", "cancelar", () => cerrar());
+            cuerpo.append(texto2, si, no);
+            // Con la entrada abierta (al abrir la app), la pregunta va dentro
+            // de ella, arriba; si no, en una ventanita.
+            // (al final, donde la entrada ya ofrece importar copias).
+            const entrada = document.querySelector(".master-entrada-caja");
+            if (entrada) {
+                const caja = crear("div", "master-entrada-traer");
+                caja.setAttribute("role", "group");
+                caja.setAttribute("aria-label", "Importar una copia de seguridad");
+                const botones = crear("div", "master-anadir-otras");
+                botones.append(si, no);
+                caja.append(texto2, botones);
+                entrada.insertBefore(caja, entrada.querySelector(".master-entrada-privado"));
+                cerrar = () => {
+                    caja.remove();
+                    if (vuelta && vuelta.isConnected) {
+                        vuelta.focus();
+                    }
+                };
+                si.focus();
+                return;
+            }
+            cerrar = window.ocVentana.abrir({ titulo: "importar una copia de seguridad", cuerpo, vuelta, foco: si });
+        }).catch(() => avisar("«" + f.name + "» no es una copia de seguridad de la pantalla de máster. Si es un personaje de"
+            + " D&D Beyond, tráelo desde la party con «📄 desde un archivo».")));
     }
 
     function anadir(tipo, extra) {
@@ -17682,6 +17822,33 @@
             });
             caja.appendChild(traer);
         }
+        // En la app de Android, guardando dentro de ella (se pierde al
+        // desinstalarla): si la última copia es de hace más de dos semanas
+        // (o no hay ninguna), se recuerda.
+        if (EN_ANDROID && !EN_CARPETA && !sinGuardarTodavia) {
+            let c = {};
+            try {
+                c = JSON.parse(localStorage.getItem(CLAVE_COPIA) || "{}") || {};
+                if (!c.desde) {
+                    c.desde = Date.now();
+                    localStorage.setItem(CLAVE_COPIA, JSON.stringify(c));
+                }
+            } catch (e) {
+                c = {};
+            }
+            const dias = Math.floor((Date.now() - (c.ultima || c.desde || Date.now())) / 86400000);
+            if (dias >= 14) {
+                const recuerdo = crear("div", "master-entrada-traer");
+                const otras = crear("div", "master-anadir-otras");
+                otras.append(copias(() => {}).querySelector("button"), botonDe("oc-vida-accion", "📁 guardar en una carpeta",
+                    () => window.ocAndroid.elegirCarpeta()));
+                recuerdo.append(crear("p", "oc-hoja-nota", (c.ultima ? "💾 Tu última copia de seguridad es de hace " + dias
+                    + " días." : "💾 Aún no has hecho ninguna copia de seguridad.") + " Lo guardas dentro de la app: si la"
+                    + " desinstalas, se pierde. Exporta una copia, o guárdalo en una carpeta (sigue ahí aunque desinstales)."),
+                otras);
+                caja.appendChild(recuerdo);
+            }
+        }
         caja.appendChild(crear("p", "oc-hoja-nota master-entrada-privado", EN_CARPETA && EN_ANDROID
             ? "🔒 Todo se guarda en tu carpeta «" + window.ocAlmacen.nombre + "», en este dispositivo."
             : EN_CARPETA ? "🔒 Todo se guarda en la carpeta «mis-datos», junto al programa." : "🔒 Todo se guarda sólo en este dispositivo."));
@@ -18293,5 +18460,20 @@
     }
     if (enMovil.addEventListener) {
         enMovil.addEventListener("change", pintarTodo);
+    }
+    // En la app de Android: lo que llegue con «Abrir con» (ahora o luego) y,
+    // guardando en una carpeta, una copia automática al día en su «copias/»
+    // (sin los archivos, que ya están en la carpeta; se quedan las cinco
+    // últimas). Se importan como cualquier copia (⚙ → importar).
+    if (EN_ANDROID) {
+        window.ocRecibir = recibirArchivos;
+        window.ocAndroid.hayRecibidos();
+        if (EN_CARPETA && window.ocAndroid.copiaFalta()) {
+            setTimeout(() => datosDeCopia(false).then((datos) => {
+                if (Object.keys(datos.claves).length && window.ocAndroid.guardarCopia(JSON.stringify(datos, null, 1))) {
+                    marcarCopia();
+                }
+            }).catch(() => {}), 3000);
+        }
     }
 })();

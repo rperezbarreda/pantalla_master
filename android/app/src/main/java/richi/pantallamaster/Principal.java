@@ -1,4 +1,4 @@
-package blog.richi.pantallamaster;
+package richi.pantallamaster;
 
 import android.app.Presentation;
 import android.content.Context;
@@ -28,6 +28,23 @@ public class Principal extends Base {
     protected void onCreate(Bundle guardado) {
         super.onCreate(guardado);
         limpiarCache();
+        recibir(getIntent());
+    }
+
+    // «Abrir con» o «Compartir» desde otra app con la app ya abierta.
+    @Override
+    protected void onNewIntent(Intent i) {
+        super.onNewIntent(i);
+        setIntent(i);
+        recibir(i);
+    }
+
+    private void recibir(Intent i) {
+        Recibidos.copiar(this, i, () -> {
+            if (web != null) {
+                web.evaluateJavascript("window.ocAndroid && window.ocAndroid.hayRecibidos()", null);
+            }
+        });
     }
 
     @Override

@@ -1,4 +1,4 @@
-package blog.richi.pantallamaster;
+package richi.pantallamaster;
 
 import android.net.Uri;
 import android.util.Base64;
@@ -150,6 +150,22 @@ final class Puente {
     @JavascriptInterface
     public void archivoBorrar(String id) {
         carpeta().borrarArchivo(id);
+    }
+
+    @JavascriptInterface
+    public boolean copiaFalta() {
+        return carpeta().copiaFalta();
+    }
+
+    @JavascriptInterface
+    public boolean copiaGuardar(String texto) {
+        return carpeta().guardarCopia(texto);
+    }
+
+    /** Lo que ha llegado con «Abrir con» o «Compartir», en JSON: [{id, nombre, tipo}]. */
+    @JavascriptInterface
+    public String recibidos() {
+        return deLaPantallaExterna ? "[]" : Recibidos.tomar();
     }
 
     // ---- LA MÚSICA Y LA PANTALLA ----

@@ -1,4 +1,4 @@
-package blog.richi.pantallamaster;
+package richi.pantallamaster;
 
 import android.net.Uri;
 import android.webkit.WebResourceResponse;

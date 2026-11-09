@@ -1,4 +1,4 @@
-package blog.richi.pantallamaster;
+package richi.pantallamaster;
 
 import android.Manifest;
 import android.app.Activity;
@@ -76,6 +76,8 @@ public abstract class Base extends Activity {
     @Override
     protected void onCreate(Bundle guardado) {
         super.onCreate(guardado);
+        // Los botones de volumen, siempre para la música (también entre canción y canción).
+        setVolumeControlStream(android.media.AudioManager.STREAM_MUSIC);
         raiz = new FrameLayout(this);
         raiz.setBackgroundColor(getColor(R.color.fondo));
         setContentView(raiz);
@@ -544,7 +546,7 @@ public abstract class Base extends Activity {
     protected void limpiarCache() {
         new Thread(() -> {
             long antes = System.currentTimeMillis() - 24L * 60 * 60 * 1000;
-            for (String c : new String[] { "descargas", "ver" }) {
+            for (String c : new String[] { "descargas", "ver", "recibidos" }) {
                 File[] fs = new File(getCacheDir(), c).listFiles();
                 if (fs == null) {
                     continue;

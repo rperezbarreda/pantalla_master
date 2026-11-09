@@ -1,4 +1,4 @@
-package blog.richi.pantallamaster;
+package richi.pantallamaster;
 
 import android.content.ContentResolver;
 import android.content.Context;
@@ -411,6 +411,46 @@ final class Carpeta {
             escribir(a, id, "application/octet-stream", in);
             escribir(a, id + ".tipo", "application/octet-stream",
                     new java.io.ByteArrayInputStream(t.getBytes(StandardCharsets.UTF_8)));
+            return true;
+        } catch (IOException | RuntimeException e) {
+            return false;
+        }
+    }
+
+    // ---- LA COPIA AUTOMÁTICA (copias/): una al día, las cinco últimas ----
+
+    private static String hoy() {
+        return new java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.ROOT).format(new java.util.Date());
+    }
+
+    synchronized boolean copiaFalta() {
+        if (!hay()) {
+            return false;
+        }
+        String c = hijo(raiz, "copias");
+        return c == null || hijo(c, "pantalla-de-master-" + hoy() + ".json") == null;
+    }
+
+    boolean guardarCopia(String texto) {
+        if (!hay()) {
+            return false;
+        }
+        try {
+            String c = crear(raiz, "copias", Document.MIME_TYPE_DIR);
+            escribir(c, "pantalla-de-master-" + hoy() + ".json", "application/json",
+                    new java.io.ByteArrayInputStream(texto.getBytes(StandardCharsets.UTF_8)));
+            List<String> viejas = new ArrayList<>();
+            synchronized (this) {
+                for (String n : hijosDe(c).keySet()) {
+                    if (n.matches("pantalla-de-master-\\d{4}-\\d{2}-\\d{2}\\.json")) {
+                        viejas.add(n);
+                    }
+                }
+            }
+            java.util.Collections.sort(viejas);
+            for (int i = 0; i < viejas.size() - 5; i++) {
+                borrar(c, viejas.get(i));
+            }
             return true;
         } catch (IOException | RuntimeException e) {
             return false;

@@ -68,11 +68,11 @@ val nombreVersion = System.getenv("VERSION_APP") ?: "dev"
 val almacen: String? = System.getenv("ANDROID_ALMACEN")
 
 android {
-    namespace = "blog.richi.pantallamaster"
+    namespace = "richi.pantallamaster"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "blog.richi.pantallamaster"
+        applicationId = "richi.pantallamaster"
         minSdk = 24
         targetSdk = 36
         versionCode = numero

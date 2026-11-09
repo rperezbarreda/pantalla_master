@@ -1,4 +1,4 @@
-package blog.richi.pantallamaster;
+package richi.pantallamaster;
 
 import android.content.ActivityNotFoundException;
 import android.content.Context;
@@ -139,6 +139,15 @@ final class Web {
                     // Sin service worker: los archivos ya están en la app.
                     return noEsta();
                 default:
+                    if (ruta.startsWith("/__recibido/")) {
+                        java.io.File f = Recibidos.archivo(ctx, ruta.substring("/__recibido/".length()));
+                        try {
+                            return f == null ? noEsta() : new WebResourceResponse("application/octet-stream", null, 200, "OK",
+                                    cabecerasBase(), new java.io.FileInputStream(f));
+                        } catch (IOException e) {
+                            return noEsta();
+                        }
+                    }
                     if (ruta.startsWith("/__archivos/")) {
                         return deLaCarpeta(ctx, ruta.substring("/__archivos/".length()), r.getRequestHeaders());
                     }
