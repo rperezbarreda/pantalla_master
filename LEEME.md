@@ -17,7 +17,8 @@ Es gratis, sin anuncios y sin nada de pago. Sale de la pantalla de máster de [E
   - La pantalla de jugadores sale en la pantalla externa si hay una conectada (una tele o un monitor por HDMI o USB-C); si no, en otra ventana de la app, al lado si cabe (pantalla partida). El reproductor de música, en su ventana.
   - Atrás cierra lo que haya abierto (como Escape); sin nada abierto, la app se queda en segundo plano tal cual estaba.
   - Exportar y descargar abren el selector de Android para elegir dónde guardar; los PDF e imágenes de documentos se abren con su app.
-  - Usa el tamaño de letra del sistema, se puede ampliar con dos dedos y funciona con TalkBack y con teclado.
+  - Con el dedo: deslizar mueve el tablero y la fila de pestañas; dos dedos amplían el tablero y los dibujos (y se mueven por ellos); mantener pulsada la barra de una ventana o una pestaña la coge para moverla. Con lápiz, la palma no pinta.
+  - Usa el tamaño de letra del sistema, se puede ampliar la página con dos dedos fuera del tablero y funciona con TalkBack y con teclado.
 - **En el ordenador:** abre la web y, si quieres, instálala desde el navegador (Chrome/Edge: el icono de instalar de la barra de direcciones).
 - **En una tablet:** ábrela en el navegador y «Añadir a pantalla de inicio» (iPad: Safari → Compartir; Android: Chrome → menú).
 - La primera vez se guarda entera en el dispositivo; desde entonces funciona **sin internet**. Cuando hay una versión nueva, avisa con «↻ actualizar» (no se recarga sola en mitad de una partida).
