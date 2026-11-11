@@ -30,6 +30,15 @@ Es gratis, sin anuncios y sin nada de pago. Sale de la pantalla de máster de [E
 - **En una tablet:** ábrela en el navegador y «Añadir a pantalla de inicio» (iPad: Safari → Compartir; Android: Chrome → menú).
 - La primera vez se guarda entera en el dispositivo; desde entonces funciona **sin internet**. Cuando hay una versión nueva, avisa con «↻ actualizar» (no se recarga sola en mitad de una partida).
 
+## Los modos
+
+Además de los tableros (las pestañas, donde las ventanas van donde las dejas), están los **modos**: pantallas fijas que se llenan solas, sin arrastrar nada (pensadas para la tablet). Se cambia de modo con el menú de abajo a la derecha (que se pliega con −):
+
+- **⚔️ combate:** ⏩ *turnos* (a quién le toca, en grande; quién va después; anterior y siguiente turno), 🐲 *criatura del turno* (su bloque del bestiario o, si es de la party, su ficha resumida), condiciones y reglas en pestañas, y la ⏱️ iniciativa para editarla. Las dos primeras están en 🧰, en «▶️ turno a turno».
+- **📝 notas:** los documentos y seis post-its.
+- **🛡️ party:** 🧝 *fichas de la party*: eliges un personaje y ves su ficha como el visor de fichas del blog (tarjeta con PG, CA, retrato y características; historia, ficha, criaturas, PNJ, imágenes, extra y lo del máster).
+- En un hueco vacío, «＋ elegir ventana»; en el ✎ de una ventana, la pestaña «🧩 hueco» la cambia por otra o le pone otra en pestaña. «＋» crea un modo (vacío, con una rejilla, o como uno de serie); el ✎ de junto a las pestañas cambia el de ahora (nombre, dibujo, rejilla) o lo borra; «▦ tableros» vuelve a las pestañas.
+
 ## Dónde se guarda lo tuyo
 
 Todo lo que haces (campañas, tableros, notas, documentos, imágenes, música, tus creaciones…) se queda **sólo en el dispositivo**: en el navegador, en la carpeta «mis-datos» (el programa de escritorio) o en la app de Android (dentro de ella, y se borra si se desinstala, o en la carpeta que elijas). No se sube a ningún sitio. Para no perderlo o pasarlo a otro dispositivo: ⚙ → exportar (y luego importar).
@@ -56,6 +65,8 @@ herramientas/           precache.py, construir-ejecutables.py, iconos.py y la pl
 lanzador/               el ejecutable (Go)
 android/                la app de Android (Java, sin librerías; ver abajo)
 ```
+
+**Los modos** (`pantalla-master.js`): son como los perfiles, con `rejilla` (una de `REJILLAS`: huecos `[columna, fila, ancho, alto]` en 12 × 6) y sus ventanas con `hueco`; van en la campaña (`modos`, `modoActivo`). Los de serie, en `MODOS_DE_SERIE`. Pasar de turno lo hacen igual la iniciativa y la ventana de turnos con `window.ocTurnos` (`personajes.js`).
 
 **Las reglas y los nombres se cambian en sus JSON** (`datos/personajes/compendio/`):
 

@@ -3556,6 +3556,125 @@ window.ocMontar.notas = function (sitio, opciones) {
 // window.ocMontar.iniciativa(sitio): la monta en un sitio (en la ficha, la
 // pestaña; en la pantalla de máster, su módulo).
 
+// LOS TURNOS, sin pantalla: leer y guardar la iniciativa, quién tiene el
+// turno (él solo o su grupo) y pasar de turno. Los usa la iniciativa y,
+// en la pantalla de máster, la ventana de «turnos» y la de la criatura
+// del turno (así pasan de turno igual). Guardar avisa con
+// «oc-iniciativa:guardada» y «oc-iniciativa:cambio» (la iniciativa se
+// vuelve a leer con este).
+window.ocTurnos = (function () {
+    const CLAVE = "richi-oc-iniciativa";
+    const grupoDe = (c) => (c && c.grupo) || "";
+    const marcasDe = (c) => (Array.isArray(c.marcas) ? c.marcas : (c.marcas = []));
+    function leer() {
+        let d = { lista: [], turno: -1, ronda: 1 };
+        try {
+            d = Object.assign(d, JSON.parse(localStorage.getItem(CLAVE) || "{}"));
+        } catch (e) {
+            // Sin almacenamiento: vacía.
+        }
+        d.lista = Array.isArray(d.lista) ? d.lista : [];
+        return d;
+    }
+    function guardar(d, avisarIniciativa) {
+        try {
+            localStorage.setItem(CLAVE, JSON.stringify(d));
+        } catch (e) {
+            // Sin almacenamiento: da igual.
+        }
+        document.dispatchEvent(new CustomEvent("oc-iniciativa:guardada", { detail: { ronda: d.ronda, modo: d.modo } }));
+        if (avisarIniciativa) {
+            document.dispatchEvent(new CustomEvent("oc-iniciativa:cambio"));
+        }
+    }
+    function inicioDe(d, i) {
+        const g = grupoDe(d.lista[i]);
+        while (g && i > 0 && grupoDe(d.lista[i - 1]) === g) {
+            i -= 1;
+        }
+        return i;
+    }
+    function finDe(d, i) {
+        const g = grupoDe(d.lista[i]);
+        while (g && i < d.lista.length - 1 && grupoDe(d.lista[i + 1]) === g) {
+            i += 1;
+        }
+        return i;
+    }
+    // Los del turno de «i» (él solo, o todo su grupo).
+    const delTurno = (d, i) => (i < 0 || i >= d.lista.length ? [] : d.lista.slice(inicioDe(d, i), finDe(d, i) + 1));
+    const nombresDe = (cs) => (cs.length < 2 ? (cs[0] ? cs[0].nombre : "") : cs.slice(0, -1).map((c) => c.nombre).join(", ")
+        + " y " + cs[cs.length - 1].nombre);
+    // Al acabar una ronda, las marcas con rondas pierden una (y las que
+    // llegan a cero se van).
+    function gastarRonda(d) {
+        const acabadas = [];
+        d.lista.forEach((c) => {
+            c.marcas = marcasDe(c).filter((mk) => {
+                if (!mk.r) {
+                    return true;
+                }
+                mk.r -= 1;
+                if (mk.r <= 0) {
+                    acabadas.push(mk.t + " en " + c.nombre);
+                    return false;
+                }
+                return true;
+            });
+        });
+        return acabadas;
+    }
+    // Pasar de turno (paso 1) o volver al anterior (paso −1). Un grupo es
+    // un solo turno: se salta de grupo en grupo. Devuelve los del turno
+    // nuevo y las marcas que se han acabado.
+    function pasar(d, paso) {
+        let acabadas = [];
+        if (!d.lista.length) {
+            return { turno: [], acabadas };
+        }
+        const ahora = Math.max(0, Math.min(d.turno, d.lista.length - 1));
+        if (paso > 0) {
+            d.turno = d.turno < 0 ? 0 : finDe(d, ahora) + 1;
+            if (d.turno >= d.lista.length) {
+                d.turno = 0;
+                d.ronda += 1;
+                acabadas = gastarRonda(d);
+            }
+        } else {
+            d.turno = inicioDe(d, ahora) - 1;
+            if (d.turno < 0) {
+                if (d.ronda > 1) {
+                    d.turno = d.lista.length - 1;
+                    d.ronda -= 1;
+                } else {
+                    d.turno = 0;
+                }
+            }
+            d.turno = inicioDe(d, d.turno);
+        }
+        const turno = delTurno(d, d.turno);
+        if (paso > 0) {
+            turno.forEach((c) => {
+                c.usado = {};
+                c.legUsadas = 0;
+            });
+        }
+        return { turno, acabadas };
+    }
+    // Empezar el combate: ronda 1, le toca al primero.
+    function empezar(d) {
+        d.modo = "combate";
+        d.turno = 0;
+        d.ronda = 1;
+        d.lista.forEach((c) => {
+            c.usado = {};
+            c.legUsadas = 0;
+            delete c.concCD;
+        });
+    }
+    return { CLAVE, leer, guardar, grupoDe, marcasDe, inicioDe, finDe, delTurno, nombresDe, gastarRonda, pasar, empezar };
+})();
+
 window.ocMontar.iniciativa = function (sitio, opciones) {
     // Suelta (en un módulo de la pantalla de máster, que ya es su
     // ventanita): sin sus dos ventanitas de dentro.
@@ -4075,46 +4194,17 @@ window.ocMontar.iniciativa = function (sitio, opciones) {
     }
 
     // Al empezar una ronda, a cada marca con rondas se le quita una.
-    function gastarRonda() {
-        const acabadas = [];
-        datos.lista.forEach((c) => {
-            c.marcas = marcasDe(c).filter((mk) => {
-                if (!mk.r) {
-                    return true;
-                }
-                mk.r -= 1;
-                if (mk.r <= 0) {
-                    acabadas.push(mk.t + " en " + c.nombre);
-                    return false;
-                }
-                return true;
-            });
-        });
-        return acabadas;
-    }
 
     // ---- LOS GRUPOS: varios (los cuatro goblins) con la misma iniciativa,
     // que van juntos y actúan en el mismo turno. Cada uno lleva «grupo» (el
     // mismo texto en todos); en la lista van seguidos. ----
-    const grupoDe = (c) => (c && c.grupo) || "";
-    function inicioDe(i) {
-        const g = grupoDe(datos.lista[i]);
-        while (g && i > 0 && grupoDe(datos.lista[i - 1]) === g) {
-            i -= 1;
-        }
-        return i;
-    }
-    function finDe(i) {
-        const g = grupoDe(datos.lista[i]);
-        while (g && i < datos.lista.length - 1 && grupoDe(datos.lista[i + 1]) === g) {
-            i += 1;
-        }
-        return i;
-    }
-    // Los del turno de «i» (él solo, o todo su grupo).
-    const delTurno = (i) => (i < 0 || i >= datos.lista.length ? [] : datos.lista.slice(inicioDe(i), finDe(i) + 1));
-    const nombresDe = (cs) => (cs.length < 2 ? (cs[0] ? cs[0].nombre : "") : cs.slice(0, -1).map((c) => c.nombre).join(", ")
-        + " y " + cs[cs.length - 1].nombre);
+    // (Las cuentas, en window.ocTurnos: las mismas para la ventana de
+    // turnos de la pantalla de máster.)
+    const grupoDe = window.ocTurnos.grupoDe;
+    const inicioDe = (i) => window.ocTurnos.inicioDe(datos, i);
+    const finDe = (i) => window.ocTurnos.finDe(datos, i);
+    const delTurno = (i) => window.ocTurnos.delTurno(datos, i);
+    const nombresDe = window.ocTurnos.nombresDe;
     // Que cada grupo vaya seguido y tenga al menos dos; y todos con la
     // iniciativa del primero.
     function arreglarGrupos() {
@@ -4192,35 +4282,7 @@ window.ocMontar.iniciativa = function (sitio, opciones) {
         if (!datos.lista.length) {
             return;
         }
-        let acabadas = [];
-        // Un grupo es un solo turno: se salta de grupo en grupo.
-        const ahora = Math.max(0, Math.min(datos.turno, datos.lista.length - 1));
-        if (paso > 0) {
-            datos.turno = datos.turno < 0 ? 0 : finDe(ahora) + 1;
-            if (datos.turno >= datos.lista.length) {
-                datos.turno = 0;
-                datos.ronda += 1;
-                acabadas = gastarRonda();
-            }
-        } else {
-            datos.turno = inicioDe(ahora) - 1;
-            if (datos.turno < 0) {
-                if (datos.ronda > 1) {
-                    datos.turno = datos.lista.length - 1;
-                    datos.ronda -= 1;
-                } else {
-                    datos.turno = 0;
-                }
-            }
-            datos.turno = inicioDe(datos.turno);
-        }
-        const turno = delTurno(datos.turno);
-        if (paso > 0) {
-            turno.forEach((c) => {
-                c.usado = {};
-                c.legUsadas = 0;
-            });
-        }
+        const { turno, acabadas } = window.ocTurnos.pasar(datos, paso);
         guardar();
         pintar();
         avisar("Ronda " + datos.ronda + ": le toca a " + nombresDe(turno) + "."
@@ -4235,14 +4297,7 @@ window.ocMontar.iniciativa = function (sitio, opciones) {
             avisar("Primero añade a alguien.");
             return;
         }
-        datos.modo = "combate";
-        datos.turno = 0;
-        datos.ronda = 1;
-        datos.lista.forEach((c) => {
-            c.usado = {};
-            c.legUsadas = 0;
-            delete c.concCD;
-        });
+        window.ocTurnos.empezar(datos);
         guardar();
         pintar();
         avisar("¡Combate! Ronda 1: le toca a " + nombresDe(delTurno(0)) + ".");
