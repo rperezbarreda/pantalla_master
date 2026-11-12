@@ -19725,6 +19725,8 @@
         // Por qué es gratis: lo último, como una carta.
         const manifiesto = crear("div", "master-manifiesto");
         [ocT("Esta aplicación es y será siempre **totalmente gratuita**, sin anuncios ni compras, y de **código libre** (licencia MIT). La he programado con ayuda de la inteligencia artificial y no me parece lícito lucrarme con ello."),
+            ocT("**No recoge ningún dato**: todo lo que haces se queda en tu dispositivo, sin cuentas, sin rastreadores y sin nada que se suba a ningún sitio."),
+            ocT("Está pensada para que la pueda usar **todo el mundo**: con teclado, con lector de pantalla, con el texto más grande y con temas de alto contraste. Si algo no te funciona, dímelo."),
             ocT("Te agradezco mucho que la compartas. Y si quieres aportar algo, lo mejor es que ese dinero vaya a algún **refugio de animales de tu zona**: seguro que le dan mucho mejor uso que yo."),
             ocT("Cualquiera es libre de clonar la aplicación y su código y cambiarlos a su gusto."),
             ocT("Eso sí: aunque la app permite crear y ampliar los compendios, te recomiendo **no publicar contenido de terceros** (manuales, aventuras, suplementos…). La app usa el SRD y las reglas básicas porque son de libre uso.")]
@@ -19733,6 +19735,13 @@
                 parrafo.append(...enLinea(t));
                 manifiesto.appendChild(parrafo);
             });
+        // El correo, con su enlace.
+        const correo = crear("a", "", "contacto@richi.blog");
+        correo.href = "mailto:contacto@richi.blog";
+        const partes = ocT("Ideas, fallos o ganas de colaborar: {correo}.").split("{correo}");
+        const contacto = crear("p", "", partes[0]);
+        contacto.append(correo, partes.slice(1).join(""));
+        manifiesto.appendChild(contacto);
         const firma = crear("p", "master-manifiesto-firma", ocT("— Richi"));
         const codigo = crear("a", "oc-vida-accion", ocT("📂 el código, en GitHub"));
         codigo.href = "https://github.com/rperezbarreda/pantalla_master";

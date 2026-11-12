@@ -907,6 +907,16 @@
     margin: 0 0 10px;
 }
 
+.master-manifiesto a:not(.oc-vida-accion) {
+    color: var(--yellow);
+    text-underline-offset: 3px;
+}
+
+.master-manifiesto a:not(.oc-vida-accion):focus-visible {
+    outline: 3px solid var(--yellow);
+    outline-offset: 2px;
+}
+
 .master-manifiesto-firma {
     font-style: italic;
     text-align: right;
