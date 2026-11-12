@@ -1226,3 +1226,11 @@
         animation: none;
     }
 }
+
+/* La bandera de un idioma (Aa y la entrada de la pantalla de máster). */
+.oc-bandera {
+    flex: none;
+    width: 1.5em;
+    height: 1em;
+    vertical-align: -0.12em;
+}

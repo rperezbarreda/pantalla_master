@@ -209,14 +209,17 @@
         if (!k) {
             return pedidos[real];
         }
-        // Con lo tuyo (si hay) al final.
+        // Con lo tuyo (si hay) al final; sin los del SRD que has cambiado
+        // (va tu versión) o borrado («ocultos»).
         return pedidos[real].then((d) => {
-            const tuyos = leerPropios()[k];
-            if (!tuyos.length) {
+            const p = leerPropios();
+            const tuyos = p[k];
+            const fuera = new Set(((p.ocultos || {})[k] || []).concat(tuyos.filter((y) => y.cambia).map((y) => y.cambia)));
+            if (!tuyos.length && !fuera.size) {
                 return d;
             }
             const x = Object.assign({}, d);
-            x[k] = (d[k] || []).concat(tuyos);
+            x[k] = (d[k] || []).filter((y) => !fuera.has(claveSrd(k, y))).concat(tuyos);
             return x;
         });
     }
@@ -229,6 +232,9 @@
     // bestiario, los encuentros, la tienda, el botín, los conjuros y el
     // buscador sin tocar nada más. Cada uno lleva «propio: true». ----
     const CLAVE_PROPIOS = "richi-master-propios";
+    // Cómo se reconoce uno del SRD (para cambiarlo o borrarlo): su nombre
+    // original; los rasgos, además, de quién son.
+    const claveSrd = (k, x) => (k === "rasgos" ? x.en + "|" + x.de : x.en);
     const PROPIOS_EN = { "datos/personajes/compendio/bestiario.json": "monstruos",
         "datos/personajes/compendio/conjuros-srd.json": "conjuros", "datos/personajes/compendio/tienda.json": "objetos",
         "datos/personajes/compendio/rasgos-srd.json": "rasgos" };
@@ -257,7 +263,8 @@
     }
 
     // De dónde sale (en vez del crédito del SRD).
-    const fuenteDe = (x, f) => (x && x.propio ? ocT("🛠️ Creado por ti{n}. Se guarda sólo en este navegador.", { n: x.libro ? " · " + x.libro : "" }) : f);
+    const fuenteDe = (x, f) => (x && x.propio ? (x.cambia ? ocT("✎ Cambiado por ti (del SRD){n}. Se guarda sólo en este navegador.", { n: x.libro ? " · " + x.libro : "" })
+        : ocT("🛠️ Creado por ti{n}. Se guarda sólo en este navegador.", { n: x.libro ? " · " + x.libro : "" })) : f);
     Object.assign(PM, { fuenteDe });
 
     // EL TRADUCTOR DE TÉRMINOS: pasa al español (el del SRD 5.2 en
@@ -4575,6 +4582,10 @@
         }
         const o = { id: /^p[a-z0-9]{4,20}$/.test(x.id || "") ? x.id : idDoc("p"), propio: true, nombre,
             en: txt(x.en, 120) || nombre, libro: txt(x.libro, 160) };
+        // Tu versión de uno del SRD: el que sustituye.
+        if (typeof x.cambia === "string" && x.cambia.trim()) {
+            o.cambia = x.cambia.slice(0, 300);
+        }
         const entradas = (v) => (Array.isArray(v) ? v : []).slice(0, 60).map((r) => ({ n: txt(r && r.n, 160), t: txt(r && r.t, 6000) }))
             .filter((r) => r.n || r.t);
         if (tipo === "monstruos") {
@@ -5094,7 +5105,9 @@
         const uid = "master-creador-" + m.id;
         // Lo del SRD de cada tipo (para copiar uno y para que no se repitan).
         const srd = { monstruos: [], objetos: [], conjuros: [], rasgos: [], otros: [] };
-        const cargado = Promise.all(Object.keys(RUTA_DE).map((k) => pedidos[RUTA_DE[k]] || pedir(RUTA_DE[k]))).then((xs) => {
+        // (Los originales, sin tus cambios ni tus borrados.)
+        const crudo = (ruta) => pedir(ruta).then(() => pedidos[(edicionAhora === "2014" && DE_2014[ruta]) || ruta]);
+        const cargado = Promise.all(Object.keys(RUTA_DE).map((k) => crudo(RUTA_DE[k]))).then((xs) => {
             Object.keys(RUTA_DE).forEach((k, i) => {
                 srd[k] = (xs[i][k] || []).filter((x) => !x.propio);
             });
@@ -5362,8 +5375,14 @@
             }
             return [titulo, panel];
         });
-        // La primera pestaña: cómo añadir cosas (el tutorial).
-        paneles.unshift([ocT("❓ cómo añadir"), panelTutorial()]);
+        // La primera pestaña: cómo añadir cosas (el tutorial). Para editar
+        // o borrar, en cada pestaña un buscador con todo (del SRD y tuyo).
+        const repintar = [];
+        if (d.accion === "editar" || d.accion === "borrar") {
+            paneles.splice(0, paneles.length, ...TIPOS.map(([k, titulo]) => [titulo, panelBuscar(k)]));
+        } else {
+            paneles.unshift([ocT("❓ cómo añadir"), panelTutorial()]);
+        }
         const elegido = Math.min(d.pestana || 0, paneles.length - 1);
         const { lista: pestanas, elegir } = pestanasDe(paneles, ocT("Qué crear"), uid, (i) => {
             d.pestana = i;
@@ -5486,7 +5505,138 @@
             }
         }
         function pintarListas() {
-            TIPOS.forEach(([k]) => pintarLista(k));
+            TIPOS.forEach(([k]) => {
+                if (listas[k].isConnected) {
+                    pintarLista(k);
+                }
+            });
+            repintar.forEach((f) => f());
+        }
+
+        // EDITAR O BORRAR LO QUE YA HAY: un buscador con todo lo de su tipo
+        // (del SRD y tuyo). Cambiar uno del SRD guarda tu versión («cambia»:
+        // cuál sustituye), que sale en su lugar en toda la app; ↺ lo deja
+        // como era. Borrar uno del SRD no lo borra del archivo: deja de
+        // salir («ocultos») y se puede recuperar.
+        function panelBuscar(k) {
+            const borrar = d.accion === "borrar";
+            const panel = crear("div", "master-creador-panel");
+            panel.appendChild(crear("p", "oc-hoja-nota", borrar
+                ? ocT("Busca lo que quieras quitar (del SRD o tuyo) y pulsa ✕ dos veces. Lo del SRD no se borra de verdad: deja de salir en la app, y lo recuperas abajo.")
+                : ocT("Busca lo que quieras cambiar (del SRD o tuyo) y pulsa ✎. Si es del SRD, se guarda tu versión, que sale en su lugar en toda la app; ↺ lo deja como era.")));
+            const etB = crear("label", "oc-dados-etiqueta", ocT("buscar"));
+            const busca = crear("input", "oc-dados-texto");
+            busca.type = "search";
+            busca.id = uid + "-" + d.accion + "-" + k;
+            busca.autocomplete = "off";
+            etB.htmlFor = busca.id;
+            const ul = crear("ul", "master-creador-lista");
+            ul.setAttribute("aria-label", ocT("Resultados"));
+            const borrados = crear("details", "master-creador-srd");
+            panel.append(etB, busca, ul);
+            if (borrar && k !== "otros") {
+                panel.appendChild(borrados);
+            }
+            const dosVeces = (b, nombre, alSeguro) => {
+                let seguro = false;
+                b.addEventListener("click", () => {
+                    if (!seguro) {
+                        seguro = true;
+                        b.classList.add("es-seguro");
+                        avisar(ocT("Pulsa otra vez para seguir: {nombre}.", { nombre }));
+                        return;
+                    }
+                    alSeguro();
+                });
+            };
+            function guardarYPintar(p, aviso) {
+                if (!guardarPropios(p)) {
+                    avisar(ocT("No se ha podido guardar: ¿no queda sitio en el navegador?"));
+                    return;
+                }
+                pintar();
+                avisar(aviso);
+                busca.focus();
+            }
+            function fila(y) {
+                const li = crear("li", "master-creador-fila");
+                const ver = botonDe("master-creador-ver", "", () => abrirUno(k, y, ver));
+                ver.setAttribute("aria-haspopup", "dialog");
+                if (y.id) {
+                    ver.dataset.id = y.id;
+                }
+                const de = y.cambia ? ocT("✎ cambiado") : y.propio ? ocT("🛠️ tuyo") : "SRD";
+                ver.append(crear("span", "master-creador-nombre", y.nombre), crear("span", "master-creador-detalle",
+                    detalleDe(k, y) + " · " + de));
+                li.appendChild(ver);
+                if (!borrar) {
+                    li.appendChild(botonDe("master-docs-mando", "✎", () => editar(k, y.propio ? y
+                        : Object.assign(JSON.parse(JSON.stringify(y)), { cambia: claveSrd(k, y) })), ocT("Cambiar {nombre}", { nombre: y.nombre })));
+                    if (y.cambia) {
+                        const original = botonDe("master-docs-mando", "↺", null, ocT("Dejar {nombre} como era en el SRD", { nombre: y.nombre }));
+                        dosVeces(original, ocT("dejarlo como era"), () => {
+                            const p = leerPropios();
+                            p[k] = p[k].filter((z) => z.id !== y.id);
+                            guardarYPintar(p, ocT("{nombre}, como era en el SRD.", { nombre: y.nombre }));
+                        });
+                        li.appendChild(original);
+                    }
+                    return li;
+                }
+                const quitar = botonDe("master-docs-mando", "✕", null, ocT("Borrar {nombre}", { nombre: y.nombre }));
+                dosVeces(quitar, ocT("borrar {nombre}", { nombre: y.nombre }), () => {
+                    const p = leerPropios();
+                    p.ocultos = p.ocultos || {};
+                    const ocultos = p.ocultos[k] = Array.isArray(p.ocultos[k]) ? p.ocultos[k] : [];
+                    if (y.propio) {
+                        p[k] = p[k].filter((z) => z.id !== y.id);
+                    }
+                    const clave = y.cambia || (!y.propio && claveSrd(k, y));
+                    if (clave && !ocultos.includes(clave)) {
+                        ocultos.push(clave);
+                    }
+                    guardarYPintar(p, ocT("Borrado: {nombre}.", { nombre: y.nombre }));
+                });
+                li.appendChild(quitar);
+                return li;
+            }
+            function pintar() {
+                const p = leerPropios();
+                const ocultos = new Set((p.ocultos && p.ocultos[k]) || []);
+                const cambios = new Map(p[k].filter((y) => y.cambia).map((y) => [y.cambia, y]));
+                const todos = srd[k].filter((y) => !ocultos.has(claveSrd(k, y))).map((y) => cambios.get(claveSrd(k, y)) || y)
+                    .concat(p[k].filter((y) => !y.cambia));
+                const q = llano(busca.value.trim());
+                const salen = todos.filter((y) => !q || llano(y.nombre + " " + (y.en || "") + " " + (y.libro || "")).includes(q))
+                    .sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
+                ul.replaceChildren(...salen.slice(0, 100).map(fila));
+                if (salen.length > 100) {
+                    ul.appendChild(crear("li", "oc-vacio", ocT("…y {n} más: escribe para encontrarlo.", { n: salen.length - 100 })));
+                }
+                if (!salen.length) {
+                    ul.appendChild(crear("li", "oc-vacio", ocT("Nada con eso.")));
+                }
+                // Lo borrado del SRD, para recuperarlo.
+                const quitados = srd[k].filter((y) => ocultos.has(claveSrd(k, y)));
+                const lista = crear("ul", "master-creador-lista");
+                lista.append(...quitados.map((y) => {
+                    const li = crear("li", "master-creador-fila");
+                    li.append(crear("span", "master-creador-nombre", y.nombre), botonDe("master-docs-mando", "↺", () => {
+                        const p2 = leerPropios();
+                        p2.ocultos[k] = (p2.ocultos[k] || []).filter((c) => c !== claveSrd(k, y));
+                        guardarYPintar(p2, ocT("Recuperado: {nombre}.", { nombre: y.nombre }));
+                    }, ocT("Recuperar {nombre}", { nombre: y.nombre })));
+                    return li;
+                }));
+                if (!quitados.length) {
+                    lista.appendChild(crear("li", "oc-vacio", ocT("Ninguno.")));
+                }
+                borrados.replaceChildren(crear("summary", "", ocT("🗑️ borrados del SRD ({n})", { n: quitados.length })), lista);
+            }
+            busca.addEventListener("input", pintar);
+            cargado.then(pintar);
+            repintar.push(pintar);
+            return panel;
         }
 
         // EL FORMULARIO (crear o cambiar).
@@ -5811,9 +5961,10 @@
                 const datos = Object.assign(leer.comun(), leer.resto());
                 if (actual) {
                     datos.id = actual.id;
+                    datos.cambia = actual.cambia;
                 }
                 const o = limpiarPropio(k, datos);
-                if (k !== "otros") {
+                if (k !== "otros" && !o.cambia) {
                     enUnico(k, o, srd[k]);
                 }
                 const p = leerPropios();
@@ -5884,13 +6035,40 @@
         fondo.setAttribute("aria-modal", "true");
         fondo.setAttribute("aria-labelledby", "master-compendio-titulo");
         const cabeza = crear("div", "master-compendio-cabeza");
-        const titulo = crear("h2", "master-compendio-titulo", ocT("＋ añadir al compendio"));
+        const titulo = crear("h2", "master-compendio-titulo");
         titulo.id = "master-compendio-titulo";
         const volver = botonDe("oc-vida-accion", ocT("✕ volver al tablero"), cerrar, ocT("Cerrar el compendio y volver al tablero"));
         volver.title = ocT("Volver al tablero (Esc)");
-        cabeza.append(titulo, volver);
+        // Arriba a la derecha, qué hacer: añadir, editar lo que hay o borrar.
+        const ACCIONES = [["anadir", ocT("＋ añadir"), ocT("＋ añadir al compendio")], ["editar", ocT("✎ editar"), ocT("✎ editar el compendio")],
+            ["borrar", ocT("🗑️ borrar"), ocT("🗑️ borrar del compendio")]];
+        const acciones = crear("div", "master-compendio-acciones");
+        acciones.setAttribute("role", "group");
+        acciones.setAttribute("aria-label", ocT("Qué hacer con el compendio"));
+        const botonesAccion = ACCIONES.map(([clave, corto, largo]) => {
+            const b = botonDe("master-compendio-accion", corto, () => {
+                if (datos.accion !== clave) {
+                    ponerAccion(clave);
+                    avisar(largo + ".");
+                }
+            }, largo);
+            b.dataset.accion = clave;
+            return b;
+        });
+        acciones.append(...botonesAccion);
+        cabeza.append(titulo, acciones, volver);
         const cuerpo = crear("div", "master-compendio-cuerpo");
         fondo.append(cabeza, cuerpo);
+        function ponerAccion(clave) {
+            datos.accion = ACCIONES.some((a) => a[0] === clave) ? clave : "anadir";
+            titulo.textContent = ACCIONES.find((a) => a[0] === datos.accion)[2];
+            botonesAccion.forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.accion === datos.accion)));
+            // Cada vez, uno nuevo (el de antes se va con sus escuchas).
+            const dentro = crear("div");
+            cuerpo.replaceChildren(dentro);
+            montarCreador(dentro, m);
+            recordar();
+        }
         const principal = document.querySelector(".app-principal") || lienzo.closest("main");
         if (principal) {
             principal.inert = true;
@@ -5901,10 +6079,11 @@
             cambiado = true;
         };
         document.addEventListener("master:propios", alCambiar);
-        montarCreador(cuerpo, m);
+        ponerAccion(datos.accion);
         function recordar() {
             try {
-                localStorage.setItem(CLAVE_COMPENDIO, JSON.stringify({ pestana: m.datos.pestana || 0, traducir: m.datos.traducir }));
+                localStorage.setItem(CLAVE_COMPENDIO, JSON.stringify({ pestana: m.datos.pestana || 0, traducir: m.datos.traducir,
+                    accion: m.datos.accion }));
             } catch (e) {
                 // Sin almacenamiento: no se recuerda.
             }
@@ -7680,7 +7859,7 @@
     // perfiles con sus ventanas, la iniciativa, las marcas propias y las
     // tiradas guardadas) a un archivo .json, y de vuelta. Para guardarlo,
     // pasarlo a otro navegador o compartir un tablero montado. ----
-    const CLAVES = (k) => k === CLAVE || k === CLAVE_HOMEBREW || k === CLAVE_IMAGENES || k === CLAVE_PLANTILLAS || k === CLAVE_PROPIOS || k === CLAVE_ASPECTOS || k === CLAVE_TABLAS || k === CLAVE_NOMBRES || k === window.ocReglas.CLAVE || k === CLAVE_ENCENDIDA || k === CLAVE_COPIA || k === "richi-master-modos-plegado" || k === "richi-idioma" || k === "richi-idioma-prueba" || /^richi-oc-(iniciativa|marcas|partida-pantalla-master)/.test(k);
+    const CLAVES = (k) => k === CLAVE || k === CLAVE_HOMEBREW || k === CLAVE_IMAGENES || k === CLAVE_PLANTILLAS || k === CLAVE_PROPIOS || k === CLAVE_ASPECTOS || k === CLAVE_TABLAS || k === CLAVE_NOMBRES || k === window.ocReglas.CLAVE || k === CLAVE_ENCENDIDA || k === CLAVE_COPIA || k === "richi-master-modos-sitio" || k === "richi-idioma" || k === "richi-idioma-prueba" || /^richi-oc-(iniciativa|marcas|partida-pantalla-master)/.test(k);
 
     // UNA COPIA DE SEGURIDAD: lo guardado (las claves de CLAVES) y, si se
     // pide, los archivos (imágenes, PDF, música) en «data:». La usan
@@ -8168,6 +8347,7 @@
     }
 
     function pintarPestanas(foco) {
+        pintarElegirTablero();
         tablist.replaceChildren(...todo.perfiles.map((pf, i) => {
             const b = botonDe("master-pestana", pf.nombre, () => {
                 if (pestanaMovida) {
@@ -8601,50 +8781,226 @@
     }
     const marco = crear("div", "master-pestanas-marco");
     marco.append(flechaIzq, tablist, flechaDer);
+    // En vertical (estrecho), en vez de las pestañas, un desplegable con los
+    // tableros: así la barra cabe en una línea. (El CSS enseña uno u otro.)
+    const elegirTablero = crear("select", "master-tableros-elegir");
+    elegirTablero.setAttribute("aria-label", ocT("Tablero"));
+    elegirTablero.addEventListener("change", () => {
+        const pf = todo.perfiles.find((x) => x.id === elegirTablero.value);
+        if (pf && pf !== estado) {
+            activar(pf, false);
+            avisar(ocT("Perfil: {nombre}.", { nombre: pf.nombre }));
+        }
+    });
+    function pintarElegirTablero() {
+        const opciones = todo.perfiles.map((pf) => {
+            const o = crear("option", "", pf.nombre);
+            o.value = pf.id;
+            return o;
+        });
+        if (esModo(estado)) {
+            const o = crear("option", "", estado.emoji + " " + estado.nombre);
+            o.value = "";
+            o.disabled = true;
+            opciones.unshift(o);
+        }
+        elegirTablero.replaceChildren(...opciones);
+        elegirTablero.value = esModo(estado) ? "" : estado.id;
+    }
 
-    // ---- EL MENÚ DE LOS MODOS: abajo a la derecha (encima de los dados).
-    // Un botón por modo, «▦ tableros» para volver a las pestañas, ＋ para
-    // uno nuevo y ✎ para el de ahora. Se puede plegar (se recuerda). ----
-    const CLAVE_MODOS_PLEGADO = "richi-master-modos-plegado";
+    // ---- EL MENÚ DE LOS MODOS: un botón (abajo a la izquierda, o donde se
+    // haya dejado) con el modo de ahora; al pulsarlo, la lista con todos los
+    // modos de la campaña, «▦ tableros» para volver a las pestañas, «＋» para
+    // uno nuevo y «✥ mover» para llevarlo a otro sitio con el teclado.
+    // Manteniéndolo pulsado (ESPERA_COGER) se coge y se arrastra donde se
+    // quiera; se recuerda («richi-master-modos-sitio»). ----
+    const CLAVE_MODOS_SITIO = "richi-master-modos-sitio";
     const menuModos = crear("nav", "master-modos");
     menuModos.setAttribute("aria-label", ocT("Modos"));
-    const cabezaModos = crear("div", "master-modos-cabeza");
-    const tituloModos = crear("span", "master-modos-titulo", ocT("modos"));
-    tituloModos.setAttribute("aria-hidden", "true");
     const listaModos = crear("ul", "master-modos-lista");
     listaModos.id = "master-modos-lista";
-    const plegarModos = botonDe("master-pestana-mando", "−", () => {
-        const plegado = !listaModos.hidden;
-        try {
-            localStorage.setItem(CLAVE_MODOS_PLEGADO, plegado ? "si" : "no");
-        } catch (e) {
-            // Sin guardar: vale para esta vez.
+    listaModos.hidden = true;
+    const abrirModos = botonDe("master-modos-abrir", "", () => {
+        if (menuModos.dataset.cogido) {
+            return;
         }
-        pintarModos();
-        plegarModos.focus();
-    }, ocT("Plegar o desplegar el menú de los modos"));
-    plegarModos.setAttribute("aria-controls", listaModos.id);
-    cabezaModos.append(tituloModos, plegarModos);
-    menuModos.append(cabezaModos, listaModos);
+        verListaModos(listaModos.hidden);
+    });
+    abrirModos.setAttribute("aria-controls", listaModos.id);
+    abrirModos.setAttribute("aria-expanded", "false");
+    abrirModos.title = ocT("Los modos (mantén pulsado para moverlo)");
+    menuModos.append(listaModos, abrirModos);
+    function verListaModos(ver, sinFoco) {
+        listaModos.hidden = !ver;
+        abrirModos.setAttribute("aria-expanded", String(ver));
+        menuModos.classList.toggle("es-abierto", ver);
+        if (ver) {
+            // Hacia arriba o hacia abajo, según dónde quepa.
+            const r = menuModos.getBoundingClientRect();
+            menuModos.classList.toggle("es-hacia-abajo", r.top < window.innerHeight / 2);
+            const actual = listaModos.querySelector("[aria-current=true]") || listaModos.querySelector("button");
+            if (actual && !sinFoco) {
+                actual.focus();
+            }
+        }
+    }
+    menuModos.addEventListener("keydown", (e) => {
+        if (e.key === "Escape" && !listaModos.hidden) {
+            e.stopPropagation();
+            verListaModos(false);
+            abrirModos.focus();
+        }
+    });
+    document.addEventListener("pointerdown", (e) => {
+        if (!listaModos.hidden && !menuModos.contains(e.target)) {
+            verListaModos(false);
+        }
+    });
+
+    // Dónde está: guardado como su esquina de arriba a la izquierda (sin
+    // salirse de la pantalla). Sin guardar, abajo a la izquierda (el CSS).
+    function sitioModos() {
+        try {
+            const x = JSON.parse(localStorage.getItem(CLAVE_MODOS_SITIO) || "null");
+            return x && isFinite(x.x) && isFinite(x.y) ? x : null;
+        } catch (e) {
+            return null;
+        }
+    }
+    function ponerSitioModos(sitio, guardarlo) {
+        if (!sitio) {
+            menuModos.style.left = "";
+            menuModos.style.top = "";
+            menuModos.classList.remove("es-movido");
+            if (guardarlo) {
+                try {
+                    localStorage.removeItem(CLAVE_MODOS_SITIO);
+                } catch (e) {
+                    // Sin guardar: vale para esta vez.
+                }
+            }
+            return;
+        }
+        const w = menuModos.offsetWidth || 120;
+        const h = abrirModos.offsetHeight || 44;
+        const x = Math.max(4, Math.min(window.innerWidth - w - 4, Math.round(sitio.x)));
+        const y = Math.max(4, Math.min(window.innerHeight - h - 4, Math.round(sitio.y)));
+        menuModos.classList.add("es-movido");
+        menuModos.style.left = x + "px";
+        menuModos.style.top = y + "px";
+        if (guardarlo) {
+            try {
+                localStorage.setItem(CLAVE_MODOS_SITIO, JSON.stringify({ x, y }));
+            } catch (e) {
+                // Sin guardar: vale para esta vez.
+            }
+        }
+    }
+    window.addEventListener("resize", () => ponerSitioModos(sitioModos(), false));
+    // Cogerlo: mantener pulsado el botón (sin moverse) y arrastrar.
+    abrirModos.addEventListener("pointerdown", (e) => {
+        if (e.button !== 0) {
+            return;
+        }
+        const x0 = e.clientX;
+        const y0 = e.clientY;
+        const r = menuModos.getBoundingClientRect();
+        let cogido = false;
+        const quieto = (ev) => {
+            if (Math.abs(ev.clientX - x0) + Math.abs(ev.clientY - y0) > 8) {
+                soltar();
+            }
+        };
+        const mover = (ev) => {
+            ev.preventDefault();
+            ponerSitioModos({ x: r.left + ev.clientX - x0, y: r.top + ev.clientY - y0 }, false);
+        };
+        const soltar = () => {
+            clearTimeout(espera);
+            document.removeEventListener("pointermove", quieto);
+            document.removeEventListener("pointermove", mover);
+            document.removeEventListener("pointerup", soltar);
+            document.removeEventListener("pointercancel", soltar);
+            if (cogido) {
+                menuModos.classList.remove("es-cogido");
+                const ahora = menuModos.getBoundingClientRect();
+                ponerSitioModos({ x: ahora.left, y: ahora.top }, true);
+                avisar(ocT("Menú de los modos movido."));
+                // El «click» de después de soltar no abre la lista.
+                setTimeout(() => {
+                    delete menuModos.dataset.cogido;
+                }, 0);
+            }
+        };
+        const espera = setTimeout(() => {
+            cogido = true;
+            menuModos.dataset.cogido = "1";
+            verListaModos(false);
+            menuModos.classList.add("es-cogido");
+            if (navigator.vibrate) {
+                navigator.vibrate(15);
+            }
+            document.removeEventListener("pointermove", quieto);
+            document.addEventListener("pointermove", mover);
+            try {
+                abrirModos.setPointerCapture(e.pointerId);
+            } catch (err) {
+                // Sin captura: sigue funcionando con el documento.
+            }
+        }, ESPERA_COGER);
+        document.addEventListener("pointermove", quieto);
+        document.addEventListener("pointerup", soltar);
+        document.addEventListener("pointercancel", soltar);
+    });
+    // Con el teclado: «✥ mover» y las flechas (Mayús: más deprisa); Intro o
+    // Escape lo dejan ahí.
+    function moverModosConTeclado() {
+        verListaModos(false);
+        menuModos.classList.add("es-cogido");
+        abrirModos.focus();
+        avisar(ocT("Mueve el menú de los modos con las flechas; Intro o Escape para dejarlo."));
+        const tecla = (e) => {
+            const paso = e.shiftKey ? 60 : 15;
+            const d = { ArrowLeft: [-paso, 0], ArrowRight: [paso, 0], ArrowUp: [0, -paso], ArrowDown: [0, paso] }[e.key];
+            if (d) {
+                e.preventDefault();
+                const r = menuModos.getBoundingClientRect();
+                ponerSitioModos({ x: r.left + d[0], y: r.top + d[1] }, true);
+                return;
+            }
+            if (e.key === "Enter" || e.key === "Escape" || e.key === "Tab") {
+                if (e.key !== "Tab") {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
+                acabar();
+            }
+        };
+        const acabar = () => {
+            menuModos.classList.remove("es-cogido");
+            abrirModos.removeEventListener("keydown", tecla, true);
+            abrirModos.removeEventListener("blur", acabar);
+            avisar(ocT("Menú de los modos colocado."));
+        };
+        abrirModos.addEventListener("keydown", tecla, true);
+        abrirModos.addEventListener("blur", acabar);
+    }
+
     function pintarModos() {
-        let plegado = false;
-        try {
-            plegado = localStorage.getItem(CLAVE_MODOS_PLEGADO) === "si";
-        } catch (e) {
-            plegado = false;
-        }
-        listaModos.hidden = plegado;
-        plegarModos.textContent = plegado ? "+" : "−";
-        plegarModos.setAttribute("aria-expanded", String(!plegado));
-        menuModos.classList.toggle("es-plegado", plegado);
         const ahora = esModo(estado);
-        tituloModos.textContent = plegado ? (ahora ? estado.emoji + " " + estado.nombre : ocT("▦ tableros")) : "modos";
         const foco = listaModos.contains(document.activeElement) ? document.activeElement.dataset.modo : null;
-        const boton = (texto, alPulsar, etiqueta, apretado, clave) => {
+        abrirModos.replaceChildren(crear("span", "master-modos-que", ahora ? estado.emoji + " " + estado.nombre : ocT("▦ tableros")),
+            crear("span", "master-modos-flecha", "▾"));
+        abrirModos.lastChild.setAttribute("aria-hidden", "true");
+        abrirModos.setAttribute("aria-label", ocT("Modos ({que}): elegir otro", { que: ahora ? estado.nombre : ocT("tableros") }));
+        const boton = (texto, alPulsar, etiqueta, actual, clave) => {
             const li = crear("li");
-            const b = botonDe("master-modos-boton", texto, alPulsar, etiqueta);
-            if (apretado !== null) {
-                b.setAttribute("aria-pressed", String(apretado));
+            const b = botonDe("master-modos-boton", texto, () => {
+                verListaModos(false);
+                alPulsar();
+            }, etiqueta);
+            if (actual) {
+                b.setAttribute("aria-current", "true");
             }
             b.dataset.modo = clave;
             li.appendChild(b);
@@ -8655,8 +9011,16 @@
             li.firstChild.id = "master-modo-b-" + mo.id;
             return li;
         }), boton(ocT("▦ tableros"), volverATableros, ocT("Volver a los tableros (las pestañas de arriba)"), !ahora, "tableros"),
-        boton("＋", () => editarModo(null, menuModos.querySelector("[data-modo=nuevo]")), ocT("Crear un modo nuevo"), null, "nuevo"));
-        listaModos.lastChild.firstChild.setAttribute("aria-haspopup", "dialog");
+        boton(ocT("＋ modo nuevo"), () => editarModo(null, abrirModos), ocT("Crear un modo nuevo"), false, "nuevo"),
+        boton(ocT("✥ mover este menú"), moverModosConTeclado, ocT("Mover este menú con las flechas"), false, "mover"));
+        listaModos.querySelector("[data-modo=nuevo]").setAttribute("aria-haspopup", "dialog");
+        if (sitioModos()) {
+            listaModos.appendChild(boton(ocT("↺ a su sitio"), () => {
+                ponerSitioModos(null, true);
+                abrirModos.focus();
+                avisar(ocT("Menú de los modos en su sitio: abajo a la izquierda."));
+            }, ocT("Volver a poner el menú abajo a la izquierda"), false, "sitio"));
+        }
         if (foco) {
             const b = listaModos.querySelector("[data-modo='" + foco + "']");
             if (b) {
@@ -8667,7 +9031,10 @@
         // tablero, el panel de su pestaña.
         lienzo.setAttribute("role", ahora ? "region" : "tabpanel");
         if (ahora) {
-            lienzo.setAttribute("aria-labelledby", "master-modo-b-" + estado.id);
+            lienzo.setAttribute("aria-label", ocT("Modo {nombre}", { nombre: estado.nombre }));
+            lienzo.removeAttribute("aria-labelledby");
+        } else {
+            lienzo.removeAttribute("aria-label");
         }
         botonRenombrar.setAttribute("aria-label", ahora ? ocT("Nombre, dibujo y huecos de este modo") : ocT("Nombre y colores de esta pestaña"));
         botonRenombrar.title = ahora ? ocT("Este modo: nombre, dibujo y huecos") : ocT("Esta pestaña: nombre y colores");
@@ -8781,7 +9148,7 @@
                 }
                 guardar();
                 pintarModos();
-                menuModos.querySelector("[data-modo=tableros]").focus();
+                abrirModos.focus();
                 avisar(ocT("Modo borrado: {nombre}.", { nombre: mo.nombre }));
             });
             botones.appendChild(borrar);
@@ -8867,18 +9234,20 @@
     // el dedo, sin teclado), con las tarjetas en el mismo orden.
     // Las de los modos, iguales en los dos.
     const TARJETAS_MODOS = [
-        [ocT("🧩 Los modos"), "lima", ocT("<p>Además de los tableros, están los <strong>modos</strong>: pantallas fijas que se llenan solas, sin arrastrar ni colocar nada (pensadas para la tablet).</p><ul><li>El menú de los modos está <strong>abajo a la derecha</strong>: toca uno para entrar; <strong>−</strong> lo pliega.</li><li><strong>▦ tableros</strong> vuelve a las pestañas de siempre.</li><li>En un hueco vacío, <strong>＋ elegir ventana</strong>. En el <strong>✎</strong> de una ventana, la pestaña <strong>🧩 hueco</strong> la cambia por otra o le pone otra al lado, en pestañas.</li><li><strong>＋</strong> crea un modo tuyo: vacío con la rejilla que elijas o copiando uno de serie. El <strong>✎</strong> de junto a las pestañas le cambia el nombre, el dibujo o la rejilla, o lo borra.</li></ul>")],
-        [ocT("⚔️ Modo combate"), "rojo", ocT("<ul><li><strong>⏩ turnos</strong>: a quién le toca, en grande, y quién va después. <strong>◀ anterior</strong> y <strong>siguiente ▶</strong> pasan el turno (van a la par con la iniciativa).</li><li><strong>🐲 criatura del turno</strong>: el bloque del bestiario de quien le toca, o su ficha resumida si es de la party.</li><li>Las <strong>condiciones</strong> y las <strong>reglas</strong>, juntas en pestañas, y la <strong>⏱️ iniciativa</strong> para añadir o quitar a alguien.</li><li>Las dos primeras también se pueden poner en cualquier tablero: <strong>🧰 → ▶️ turno a turno</strong>.</li></ul>")],
+        [ocT("🧩 Los modos"), "lima", ocT("<p>Además de los tableros, están los <strong>modos</strong>: pantallas fijas que se llenan solas, sin arrastrar ni colocar nada (pensadas para la tablet).</p><ul><li>El menú de los modos está <strong>abajo a la izquierda</strong>: tócalo y elige un modo de la lista. <strong>Mantenlo pulsado</strong> para llevarlo a otro sitio (o «✥ mover este menú»).</li><li><strong>▦ tableros</strong> vuelve a las pestañas de siempre.</li><li>En un hueco vacío, <strong>＋ elegir ventana</strong>. En el <strong>✎</strong> de una ventana, la pestaña <strong>🧩 hueco</strong> la cambia por otra o le pone otra al lado, en pestañas.</li><li><strong>＋</strong> crea un modo tuyo: vacío con la rejilla que elijas o copiando uno de serie. El <strong>✎</strong> de junto a las pestañas le cambia el nombre, el dibujo o la rejilla, o lo borra.</li></ul>")],
+        [ocT("⚔️ Modo combate"), "rojo", ocT("<ul><li><strong>⏩ turnos</strong>: a quién le toca, en grande, y quién va después. <strong>◀ anterior</strong> y <strong>siguiente ▶</strong> pasan el turno (van a la par con la iniciativa).</li><li><strong>🐲 criatura del turno</strong>: el bloque del bestiario de quien le toca, o su ficha resumida si es de la party.</li><li>Las <strong>condiciones</strong> y las <strong>reglas</strong>, juntas en pestañas, y la <strong>⏱️ iniciativa</strong> para añadir o quitar a alguien.</li><li><strong>✎</strong> en cada uno (en los turnos, la criatura del turno y la iniciativa) cambia sus PG, su iniciativa, su nombre y sus <strong>estados</strong>: cada criatura es única.</li><li>Las dos primeras también se pueden poner en cualquier tablero: <strong>🧰 → ▶️ turno a turno</strong>.</li></ul>")],
         [ocT("🛡️ Modo party"), "verde", ocT("<p><strong>🧝 Fichas de la party</strong>: elige un personaje arriba y su ficha se abre como un libro.</p><ul><li>La tarjeta: retrato, <strong>PG</strong> (se cambian ahí mismo), CA y características.</li><li>Las secciones: historia, la ficha (combate, habilidades, acciones, conjuros, inventario, rasgos), sus <strong>criaturas</strong> (compañeros y monturas, con su perfil del bestiario), PNJ y notas, <strong>imágenes</strong>, extra y lo del máster.</li><li>También está en <strong>🧰 → mesa</strong>, para ponerla en un tablero.</li></ul><p>Y el modo <strong>📝 notas</strong>: tus documentos y seis post-its.</p>")]
     ];
     // Las de los modos son más largas: van en la última fila, más altas.
-    const ALTO_MODOS = 880;
+    const ALTO_MODOS = 940;
     // Lo que decían antes algunas tarjetas: si siguen así (nadie las ha
     // tocado), se cambian por lo de ahora.
     const TUTORIAL_VIEJO = {
-        "🧩 Los modos": ["<p>Abajo a la derecha está el menú de los <strong>modos</strong>: pantallas que se llenan solas, sin mover ventanas.</p><ul><li><strong>⚔️ combate</strong>: a quién le toca y quién va después, el perfil de la criatura del turno, condiciones y reglas, y la iniciativa.</li><li><strong>📝 notas</strong>: tus documentos y seis post-its.</li><li><strong>🛡️ party</strong>: la ficha de cada personaje, como un libro.</li><li>En un hueco vacío, <strong>＋ elegir ventana</strong>; en el ✎ de una ventana, «🧩 hueco» la cambia por otra o le pone otra en pestaña.</li><li><strong>＋</strong> crea un modo tuyo, <strong>✎</strong> (junto a las pestañas) cambia el de ahora y <strong>▦ tableros</strong> vuelve a las pestañas.</li></ul>"],
+        "🧩 Los modos": ["<p>Abajo a la derecha está el menú de los <strong>modos</strong>: pantallas que se llenan solas, sin mover ventanas.</p><ul><li><strong>⚔️ combate</strong>: a quién le toca y quién va después, el perfil de la criatura del turno, condiciones y reglas, y la iniciativa.</li><li><strong>📝 notas</strong>: tus documentos y seis post-its.</li><li><strong>🛡️ party</strong>: la ficha de cada personaje, como un libro.</li><li>En un hueco vacío, <strong>＋ elegir ventana</strong>; en el ✎ de una ventana, «🧩 hueco» la cambia por otra o le pone otra en pestaña.</li><li><strong>＋</strong> crea un modo tuyo, <strong>✎</strong> (junto a las pestañas) cambia el de ahora y <strong>▦ tableros</strong> vuelve a las pestañas.</li></ul>", "<p>Además de los tableros, están los <strong>modos</strong>: pantallas fijas que se llenan solas, sin arrastrar ni colocar nada (pensadas para la tablet).</p><ul><li>El menú de los modos está <strong>abajo a la derecha</strong>: toca uno para entrar; <strong>−</strong> lo pliega.</li><li><strong>▦ tableros</strong> vuelve a las pestañas de siempre.</li><li>En un hueco vacío, <strong>＋ elegir ventana</strong>. En el <strong>✎</strong> de una ventana, la pestaña <strong>🧩 hueco</strong> la cambia por otra o le pone otra al lado, en pestañas.</li><li><strong>＋</strong> crea un modo tuyo: vacío con la rejilla que elijas o copiando uno de serie. El <strong>✎</strong> de junto a las pestañas le cambia el nombre, el dibujo o la rejilla, o lo borra.</li></ul>"],
         "🧰 Añadir herramientas": ["<p>El botón <strong>🧰</strong> (arriba a la izquierda) abre todas las ventanas que puedes poner, por grupos:</p><ul><li><strong>combate</strong>: iniciativa, condiciones, encuentros…</li><li><strong>consulta</strong>: reglas, conjuros, bestiario, tienda…</li><li><strong>mesa</strong>: la party, sonido ambiente, efectos de sonido, música…</li><li><strong>mundo</strong>: generadores de nombres, PNJ, dungeons, negocios, botín…</li><li><strong>apuntes</strong>: post-its, dibujo, documentos…</li></ul>"],
-        "🔍 Buscar, crear y ajustes": ["<ul><li>El <strong>buscador</strong> de arriba encuentra conjuros, monstruos, reglas, objetos, rasgos, dotes y habilidades a la vez (también lo que añadas tú).</li><li><strong>⚙</strong>: zoom, ordenar o quitar ventanas, atajos y las <strong>copias de seguridad</strong> (exportar e importar).</li><li><strong>Aa</strong>: tamaño del texto, letra más legible y los temas de color.</li></ul>", "<ul><li>El <strong>buscador</strong> de arriba encuentra conjuros, monstruos, reglas, objetos, rasgos, dotes y habilidades a la vez (también lo que añadas tú).</li><li><strong>⚙</strong>: zoom, ordenar o quitar ventanas, las <strong>copias de seguridad</strong>, dónde se guarda, que la pantalla no se apague y buscar actualizaciones.</li><li><strong>Aa</strong>: tamaño del texto, letra más legible y los temas de color.</li></ul>"]
+        "🔍 Buscar, crear y ajustes": ["<ul><li>El <strong>buscador</strong> de arriba encuentra conjuros, monstruos, reglas, objetos, rasgos, dotes y habilidades a la vez (también lo que añadas tú).</li><li><strong>⚙</strong>: zoom, ordenar o quitar ventanas, atajos y las <strong>copias de seguridad</strong> (exportar e importar).</li><li><strong>Aa</strong>: tamaño del texto, letra más legible y los temas de color.</li></ul>", "<ul><li>El <strong>buscador</strong> de arriba encuentra conjuros, monstruos, reglas, objetos, rasgos, dotes y habilidades a la vez (también lo que añadas tú).</li><li><strong>⚙</strong>: zoom, ordenar o quitar ventanas, las <strong>copias de seguridad</strong>, dónde se guarda, que la pantalla no se apague y buscar actualizaciones.</li><li><strong>Aa</strong>: tamaño del texto, letra más legible y los temas de color.</li></ul>"],
+        "⚔️ Modo combate": ["<ul><li><strong>⏩ turnos</strong>: a quién le toca, en grande, y quién va después. <strong>◀ anterior</strong> y <strong>siguiente ▶</strong> pasan el turno (van a la par con la iniciativa).</li><li><strong>🐲 criatura del turno</strong>: el bloque del bestiario de quien le toca, o su ficha resumida si es de la party.</li><li>Las <strong>condiciones</strong> y las <strong>reglas</strong>, juntas en pestañas, y la <strong>⏱️ iniciativa</strong> para añadir o quitar a alguien.</li><li>Las dos primeras también se pueden poner en cualquier tablero: <strong>🧰 → ▶️ turno a turno</strong>.</li></ul>"],
+        "🛠️ Crear contenido nuevo": ["<p>El botón <strong>🛠️</strong> (arriba a la izquierda, junto a 📚) abre el <strong>compendio</strong>: ahí añades monstruos, objetos, conjuros y más cosas (especies, dotes…).</p><ul><li><strong>＋ nuevo</strong>: rellenas un formulario.</li><li><strong>⧉ copiar</strong> uno del SRD y cambiarlo, para tu versión.</li><li><strong>📋 pegar un bloque</strong> copiado de D&amp;D Beyond o de un PDF: el formulario se rellena solo.</li><li><strong>⬆ importar</strong> muchos a la vez con la plantilla.</li></ul><p>Luego salen en el bestiario, los encuentros, la tienda, los conjuros y el buscador, con «🛠️ tuyo». Su primera pestaña, <strong>❓ cómo añadir</strong>, lo explica paso a paso.</p>"]
     };
     const TUTORIAL_ORDENADOR = [
         [ocT("👋 Bienvenida"), "amarillo", ocT("<p>Esto es tu <strong>pantalla de máster</strong>: un tablero con ventanas que pones, mueves y quitas a tu gusto.</p><ul><li>Las <strong>pestañas de arriba</strong> son tus tableros (por ejemplo, uno para combate y otro para la ciudad).</li><li>Cada ventana es una herramienta: la iniciativa, el bestiario, las reglas, notas…</li><li>Este tablero es el tutorial: cuando ya no lo necesites, quítalo con <strong>✎</strong> (arriba, junto a las pestañas).</li></ul>")],
@@ -8886,7 +9255,7 @@
         [ocT("🗂️ Tableros y campañas"), "verde", ocT("<ul><li><strong>＋</strong> (junto a las pestañas) crea un tablero nuevo, vacío o desde una plantilla; <strong>✎</strong> cambia el de ahora: nombre, colores o quitarlo.</li><li>Mantén pulsada una pestaña para <strong>cambiarla de sitio</strong>.</li><li><strong>📚</strong> son tus campañas: cada una con sus tableros, su party y sus documentos, sin mezclarse.</li></ul>")],
         [ocT("🧰 Añadir herramientas"), "naranja", ocT("<p>El botón <strong>🧰</strong> (arriba a la izquierda) abre todas las ventanas que puedes poner, por grupos:</p><ul><li><strong>combate</strong>: iniciativa, condiciones, encuentros…</li><li><strong>▶️ turno a turno</strong>: los turnos y la criatura del turno.</li><li><strong>consulta</strong>: reglas, conjuros, bestiario, tienda…</li><li><strong>mesa</strong>: la party, las fichas de la party, sonido ambiente, efectos de sonido, música…</li><li><strong>mundo</strong>: generadores de nombres, PNJ, dungeons, negocios, botín…</li><li><strong>apuntes</strong>: post-its, dibujo, documentos…</li></ul>")],
         [ocT("🔍 Buscar, crear y ajustes"), "morado", ocT("<ul><li>El <strong>buscador</strong> de arriba encuentra conjuros, monstruos, reglas, objetos, rasgos, dotes y habilidades a la vez (también lo que añadas tú).</li><li><strong>⚙</strong>: zoom, ordenar o quitar ventanas, atajos y las <strong>copias de seguridad</strong> (exportar e importar).</li><li><strong>Aa</strong>: tamaño del texto, letra más legible, los temas de color y el <strong>🌐 idioma</strong>.</li></ul>")],
-        [ocT("🛠️ Crear contenido nuevo"), "turquesa", ocT("<p>El botón <strong>🛠️</strong> (arriba a la izquierda, junto a 📚) abre el <strong>compendio</strong>: ahí añades monstruos, objetos, conjuros y más cosas (especies, dotes…).</p><ul><li><strong>＋ nuevo</strong>: rellenas un formulario.</li><li><strong>⧉ copiar</strong> uno del SRD y cambiarlo, para tu versión.</li><li><strong>📋 pegar un bloque</strong> copiado de D&amp;D Beyond o de un PDF: el formulario se rellena solo.</li><li><strong>⬆ importar</strong> muchos a la vez con la plantilla.</li></ul><p>Luego salen en el bestiario, los encuentros, la tienda, los conjuros y el buscador, con «🛠️ tuyo». Su primera pestaña, <strong>❓ cómo añadir</strong>, lo explica paso a paso.</p>")],
+        [ocT("🛠️ Crear contenido nuevo"), "turquesa", ocT("<p>El botón <strong>🛠️</strong> (arriba a la izquierda, junto a 📚) abre el <strong>compendio</strong>: ahí añades monstruos, objetos, conjuros y más cosas (especies, dotes…).</p><ul><li><strong>＋ nuevo</strong>: rellenas un formulario.</li><li><strong>⧉ copiar</strong> uno del SRD y cambiarlo, para tu versión.</li><li><strong>📋 pegar un bloque</strong> copiado de D&amp;D Beyond o de un PDF: el formulario se rellena solo.</li><li><strong>⬆ importar</strong> muchos a la vez con la plantilla.</li></ul><p>Arriba a la derecha eliges qué hacer: <strong>＋ añadir</strong>, <strong>✎ editar</strong> lo que ya hay (también lo del SRD: se guarda tu versión) o <strong>🗑️ borrar</strong> (lo del SRD se puede recuperar).</p><p>Luego salen en el bestiario, los encuentros, la tienda, los conjuros y el buscador, con «🛠️ tuyo». Su primera pestaña, <strong>❓ cómo añadir</strong>, lo explica paso a paso.</p>")],
         [ocT("🎲 Los dados"), "rosa", ocT("<ul><li>El <strong>botón redondo</strong> de abajo a la derecha (o la tecla <strong>D</strong>) abre los dados; pulsándolo otra vez se pliegan.</li><li>Toca los dados que quieras, pon el modificador y <strong>tirar</strong>. Con ventaja o desventaja, el d20 se tira dos veces.</li><li>Las últimas tiradas quedan debajo, para repetirlas.</li><li>En las fichas, los números con dados también se tiran tocándolos: prueba aquí con 1d20+5.</li></ul>")],
         [ocT("💾 Tus datos"), "gris", ocT("<ul><li>Todo lo que haces se guarda <strong>sólo en este dispositivo</strong>: no se sube a ningún sitio.</li><li>Si borras los datos del navegador, se pierde: haz de vez en cuando una copia con <strong>⚙ → exportar</strong>.</li><li>Para llevarlo a otro dispositivo: exportar aquí e <strong>importar</strong> allí.</li></ul>")],
         [ocT("⌨️ Atajos"), "azul", ocT("<p>Con teclado va todo más rápido (pulsa <strong>?</strong> para verlos todos):</p><ul><li><strong>/</strong> buscar · <strong>A</strong> añadir una ventana · <strong>N</strong> post-it nuevo</li><li><strong>D</strong> dados · <strong>I</strong> iniciativa · <strong>C</strong> campañas</li><li><strong>[</strong> y <strong>]</strong> tablero anterior y siguiente</li><li><strong>+</strong> y <strong>−</strong> zoom del tablero</li></ul>")],
@@ -9183,26 +9552,11 @@
     // LOS IDIOMAS EN LA ENTRADA: una banderita por idioma (los de
     // idiomas/lista.json). El que aún no tiene nada traducido no cambia:
     // avisa de que falta la traducción y de cómo ayudar con ella.
-    const BANDERAS = {
-        es: '<rect width="30" height="20" fill="#c60b1e"/><rect y="5" width="30" height="10" fill="#ffc400"/>',
-        ca: '<rect width="30" height="20" fill="#fcdd09"/><g fill="#da121a"><rect y="2.22" width="30" height="2.22"/>'
-            + '<rect y="6.67" width="30" height="2.22"/><rect y="11.11" width="30" height="2.22"/><rect y="15.56" width="30" height="2.22"/></g>',
-        eu: '<rect width="30" height="20" fill="#d52b1e"/><path d="M0 0L30 20M30 0L0 20" stroke="#009b48" stroke-width="3"/>'
-            + '<path d="M15 0V20M0 10H30" stroke="#fff" stroke-width="3"/>',
-        gl: '<rect width="30" height="20" fill="#fff"/><path d="M0 0L30 20" stroke="#0099cc" stroke-width="4"/>'
-    };
     const IDIOMA_EN_CASTELLANO = { es: "castellano", ca: "catalán", eu: "euskera", gl: "gallego" };
     const TRADUCCIONES_URL = "https://github.com/rperezbarreda/pantalla_master/tree/main/traducciones";
-    function banderaDe(codigo) {
-        const svg = document.createElementNS(SVG, "svg");
-        svg.setAttribute("class", "master-bandera");
-        svg.setAttribute("viewBox", "0 0 30 20");
-        svg.setAttribute("aria-hidden", "true");
-        svg.setAttribute("focusable", "false");
-        svg.innerHTML = (BANDERAS[codigo] || '<rect width="30" height="20" fill="#888"/>')
-            + '<rect x=".5" y=".5" width="29" height="19" fill="none" stroke="#000" stroke-opacity=".4"/>';
-        return svg;
-    }
+    // La bandera de un idioma (el dibujo está en ajustes.js: también la
+    // usa Aa).
+    const banderaDe = (codigo) => window.ocBandera(codigo);
     function idiomasDeEntrada(entrada) {
         const caja = crear("div", "master-entrada-idiomas");
         caja.setAttribute("role", "group");
@@ -9765,7 +10119,7 @@
         ocT("Añadir al compendio: monstruos, objetos, conjuros…"));
     botonCompendio.title = ocT("Añadir al compendio: monstruos, objetos, conjuros y más (con tutorial)");
     botonCompendio.setAttribute("aria-haspopup", "dialog");
-    pestanas.append(botonAnadir, botonCampana, botonCompendio, marco, mandosPestanas);
+    pestanas.append(botonAnadir, botonCampana, botonCompendio, marco, elegirTablero, mandosPestanas);
 
     const mandos = crear("div", "master-barra-mandos");
     const zoomCaja = crear("div", "master-zoom");
@@ -10093,6 +10447,7 @@
     // modo llena la pantalla: al cambiar su tamaño, su alto también.
     document.body.appendChild(menuModos);
     pintarModos();
+    ponerSitioModos(sitioModos(), false);
     window.addEventListener("resize", () => {
         if (esModo(estado)) {
             crecerLienzo();

@@ -419,6 +419,27 @@ function armarAjustesMovimiento() {
 // que esté en la app; se guarda en «richi-idioma-prueba» hasta quitarla.
 const AJUSTES_TRADUCIR = "https://github.com/rperezbarreda/pantalla_master/tree/main/traducciones";
 
+// La bandera de cada idioma, dibujada (las de catalán, euskera y gallego
+// no existen como emoji). La usan Aa y la entrada de la pantalla de máster.
+const AJUSTES_BANDERAS = {
+    es: '<rect width="30" height="20" fill="#c60b1e"/><rect y="5" width="30" height="10" fill="#ffc400"/>',
+    ca: '<rect width="30" height="20" fill="#fcdd09"/><g fill="#da121a"><rect y="2.22" width="30" height="2.22"/>'
+        + '<rect y="6.67" width="30" height="2.22"/><rect y="11.11" width="30" height="2.22"/><rect y="15.56" width="30" height="2.22"/></g>',
+    eu: '<rect width="30" height="20" fill="#d52b1e"/><path d="M0 0L30 20M30 0L0 20" stroke="#009b48" stroke-width="3"/>'
+        + '<path d="M15 0V20M0 10H30" stroke="#fff" stroke-width="3"/>',
+    gl: '<rect width="30" height="20" fill="#fff"/><path d="M0 0L30 20" stroke="#0099cc" stroke-width="4"/>'
+};
+window.ocBandera = function (codigo) {
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("class", "oc-bandera");
+    svg.setAttribute("viewBox", "0 0 30 20");
+    svg.setAttribute("aria-hidden", "true");
+    svg.setAttribute("focusable", "false");
+    svg.innerHTML = (AJUSTES_BANDERAS[codigo] || '<rect width="30" height="20" fill="#888"/>')
+        + '<rect x=".5" y=".5" width="29" height="19" fill="none" stroke="#000" stroke-opacity=".4"/>';
+    return svg;
+};
+
 function ajustesRecargar() {
     // Que vuelva a la campaña de antes, sin pasar por la entrada.
     try {
@@ -469,7 +490,7 @@ function armarAjustesIdioma() {
             boton.className = "ajustes-opcion";
             boton.lang = x.codigo;
             boton.setAttribute("aria-pressed", x.codigo === ahora ? "true" : "false");
-            boton.textContent = x.nombre;
+            boton.append(window.ocBandera(x.codigo), document.createTextNode(" " + x.nombre));
             if (x.codigo !== "es") {
                 const cuanto = document.createElement("span");
                 cuanto.lang = document.documentElement.lang;

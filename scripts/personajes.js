@@ -3558,6 +3558,19 @@ window.ocMontar.notas = function (sitio, opciones) {
 // vuelve a leer con este).
 window.ocTurnos = (function () {
     const CLAVE = "richi-oc-iniciativa";
+    // Las iniciativas montadas (cada una sabe editar a los suyos). Si no
+    // hay ninguna a la vista, se monta una escondida para editar.
+    const editores = [];
+    let escondida = null;
+    function editar(id, vuelta) {
+        let ed = editores.find((x) => x.caja.isConnected) || escondida;
+        if (!ed && window.ocMontar && window.ocMontar.iniciativa) {
+            const antes = editores.length;
+            window.ocMontar.iniciativa(document.createElement("div"), { suelta: true });
+            ed = escondida = editores[antes] || null;
+        }
+        return ed ? ed.editar(id, vuelta) : false;
+    }
     const grupoDe = (c) => (c && c.grupo) || "";
     const marcasDe = (c) => (Array.isArray(c.marcas) ? c.marcas : (c.marcas = []));
     function leer() {
@@ -3665,7 +3678,7 @@ window.ocTurnos = (function () {
             delete c.concCD;
         });
     }
-    return { CLAVE, leer, guardar, grupoDe, marcasDe, inicioDe, finDe, delTurno, nombresDe, gastarRonda, pasar, empezar };
+    return { CLAVE, editores, editar, leer, guardar, grupoDe, marcasDe, inicioDe, finDe, delTurno, nombresDe, gastarRonda, pasar, empezar };
 })();
 
 window.ocMontar.iniciativa = function (sitio, opciones) {
@@ -3696,7 +3709,11 @@ window.ocMontar.iniciativa = function (sitio, opciones) {
         // Para quien quiera enterarse (los efectos con duración de la
         // pantalla de máster cuentan las rondas con esto).
         document.dispatchEvent(new CustomEvent("oc-iniciativa:guardada", { detail: { ronda: datos.ronda, modo: datos.modo } }));
+        // Y las otras iniciativas abiertas (en otra ventana, o la que edita
+        // desde ⏩ turnos), que se vuelvan a leer; ésta no («desde: esta»).
+        document.dispatchEvent(new CustomEvent("oc-iniciativa:cambio", { detail: { desde: esta } }));
     };
+    const esta = {};
     const crear = (tag, clase, texto) => {
         const x = document.createElement(tag);
         if (clase) {
@@ -4024,7 +4041,9 @@ window.ocMontar.iniciativa = function (sitio, opciones) {
         const cerrar = window.ocVentana.abrir({ titulo: textoMarca(mk), cuerpo, vuelta, clase: "es-regla" });
     }
 
-    function editarMarcas(c, vuelta) {
+    // «dentroDe»: en vez de en su ventana, dentro de otra cosa (el editor de
+    // una criatura, que ya es una ventana).
+    function editarMarcas(c, vuelta, dentroDe) {
         const cuerpo = crear("div", "oc-ini-marcas-ventana");
         const actuales = crear("ul", "oc-ini-marcas-actuales");
         const rehacer = () => {
@@ -4183,6 +4202,10 @@ window.ocMontar.iniciativa = function (sitio, opciones) {
         cuerpo.append(crear("p", "oc-hoja-nota", ocT("Las rondas son opcionales y valen también para las de un toque.")),
             buscarCaja, rapidasCaja, form, crear("h3", "oc-ini-marcas-titulo", ocT("Lleva ahora")), actuales);
         rehacer();
+        if (dentroDe) {
+            dentroDe.appendChild(cuerpo);
+            return;
+        }
         window.ocVentana.abrir({ titulo: ocT("marcas de {nombre}", { nombre: c.nombre }), cuerpo, vuelta, foco: buscar });
     }
 
@@ -4390,6 +4413,78 @@ window.ocMontar.iniciativa = function (sitio, opciones) {
         });
         caja.appendChild(input);
         return caja;
+    }
+
+    // ---- EDITAR A UNO: su nombre, iniciativa, PG y CA, y sus estados y
+    // marcas, en una ventana. Cada criatura de la iniciativa es única: lo
+    // que se cambia aquí es sólo suyo (no del bestiario ni de las demás del
+    // mismo tipo). Se abre con ✎ en el combate, y desde ⏩ turnos y 🐲 la
+    // criatura del turno de la pantalla de máster. ----
+    function editarCriatura(id, vuelta) {
+        const de = () => datos.lista.find((x) => x.id === id);
+        const c = de();
+        if (!c) {
+            return false;
+        }
+        const cuerpo = crear("div", "oc-ini-editar");
+        cuerpo.appendChild(crear("p", "oc-hoja-nota", ocT("Cada criatura de la iniciativa es única: lo que cambies aquí sólo le afecta a ella, no al bestiario ni a las demás del mismo tipo.")));
+        const campos = crear("div", "oc-ini-editar-campos");
+        const campoE = (clave, texto, numero) => {
+            const caja = crear("div", "oc-ini-campo");
+            const input = crear("input", "oc-dados-texto");
+            input.id = "oc-ini-editar-" + clave;
+            input.value = c[clave] === undefined || c[clave] === null ? "" : String(c[clave]);
+            input.autocomplete = "off";
+            if (numero) {
+                input.type = "number";
+                input.inputMode = "numeric";
+            }
+            const l = crear("label", "oc-dados-etiqueta", texto);
+            l.htmlFor = input.id;
+            input.addEventListener("change", () => {
+                const x = de();
+                if (!x) {
+                    return;
+                }
+                if (clave === "nombre") {
+                    const nuevo = input.value.trim();
+                    if (!nuevo) {
+                        input.value = x.nombre;
+                        return;
+                    }
+                    x.nombre = nuevo;
+                } else if (clave === "pg") {
+                    ponerPg(x, numeroDe(input.value));
+                    avisar(ocT("{nombre}: {pg} PG.", { nombre: x.nombre, pg: x.pg === "" ? "—" : x.pg }));
+                    return;
+                } else {
+                    x[clave] = numeroDe(input.value);
+                    // En un grupo, la iniciativa es de todos.
+                    if (clave === "ini" && grupoDe(x)) {
+                        datos.lista.filter((y) => grupoDe(y) === grupoDe(x)).forEach((y) => {
+                            y.ini = x.ini;
+                        });
+                    }
+                }
+                guardar();
+                pintar();
+                avisar(ocT("Cambiado: {texto} de {nombre}.", { texto, nombre: x.nombre }));
+            });
+            caja.append(l, input);
+            return caja;
+        };
+        campos.append(campoE("nombre", ocT("nombre")), campoE("ini", ocT("iniciativa"), true), campoE("pg", ocT("PG"), true),
+            campoE("ca", ocT("CA"), true));
+        cuerpo.appendChild(campos);
+        // Sus estados y marcas: los de siempre a un toque, uno a mano y los
+        // que lleva (lo mismo que ⭐, aquí dentro).
+        const estados = crear("div", "oc-ini-editar-estados");
+        estados.appendChild(crear("h3", "oc-ini-marcas-titulo", ocT("Estados y marcas")));
+        editarMarcas(c, null, estados);
+        cuerpo.appendChild(estados);
+        window.ocVentana.abrir({ titulo: ocT("✎ {nombre}", { nombre: c.nombre }), cuerpo, vuelta,
+            foco: cuerpo.querySelector("#oc-ini-editar-pg") });
+        return true;
     }
 
     // ---- LOS PG: al bajar, si se concentra, toca su salvación (CD 10 o la
@@ -4639,8 +4734,10 @@ window.ocMontar.iniciativa = function (sitio, opciones) {
                 ocT("Curar a {nombre} (lo escrito, o 1)", { nombre: c.nombre })));
             const bMarcas = botonDe("oc-ini-mando es-marcas", "⭐", () => editarMarcas(c, bMarcas), ocT("Marcas de {nombre}", { nombre: c.nombre }));
             bMarcas.setAttribute("aria-haspopup", "dialog");
+            const bEditar = botonDe("oc-ini-mando", "✎", () => editarCriatura(c.id, bEditar), ocT("Editar a {nombre}", { nombre: c.nombre }));
+            bEditar.setAttribute("aria-haspopup", "dialog");
             const mandos = crear("div", "oc-ini-mandos");
-            mandos.appendChild(bMarcas);
+            mandos.append(bEditar, bMarcas);
             li.append(quien, datosC, mandos, usosDe(c));
             if (c.concCD) {
                 li.appendChild(avisoConcentracion(c));
@@ -4767,7 +4864,7 @@ window.ocMontar.iniciativa = function (sitio, opciones) {
     document.addEventListener("oc:reglas", cargarReglas);
     // Si otro (el bestiario de la pantalla de máster) mete a alguien en
     // «richi-oc-iniciativa», avisa con este evento y se vuelve a leer.
-    document.addEventListener("oc-iniciativa:cambio", () => {
+    function releer() {
         try {
             datos = Object.assign({ lista: [], turno: -1, ronda: 1 }, JSON.parse(localStorage.getItem(CLAVE) || "{}"));
         } catch (e) {
@@ -4775,7 +4872,18 @@ window.ocMontar.iniciativa = function (sitio, opciones) {
         }
         arreglarGrupos();
         pintar();
+    }
+    document.addEventListener("oc-iniciativa:cambio", (e) => {
+        if (!(e.detail && e.detail.desde === esta)) {
+            releer();
+        }
     });
+    // Para editar a alguien desde fuera (⏩ turnos, 🐲 criatura del turno):
+    // ver window.ocTurnos.editar.
+    window.ocTurnos.editores.push({ caja, editar: (id, vuelta) => {
+        releer();
+        return editarCriatura(id, vuelta);
+    } });
 };
 
 (function () {

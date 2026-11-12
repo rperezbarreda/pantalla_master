@@ -76,6 +76,74 @@
     }
 }
 
+/* EN VERTICAL (estrecho): en vez de las pestañas, el desplegable con los
+   tableros, y todo en una sola línea (el buscador se encoge). En el
+   móvil, si aun así no cabe, vuelve a partirse. */
+.master-tableros-elegir {
+    display: none;
+}
+
+@media (max-width: 900px) {
+    .master-barra {
+        flex-wrap: nowrap;
+    }
+
+    .master-barra .master-pestanas {
+        flex: 1 1 auto;
+        flex-wrap: nowrap;
+        align-items: center;
+        padding: 4px 6px;
+        border-radius: 10px 10px 0 0;
+        clip-path: none;
+    }
+
+    .master-barra .master-pestanas-marco {
+        display: none;
+    }
+
+    .master-tableros-elegir {
+        display: block;
+        flex: 1 1 7rem;
+        min-width: 5rem;
+        max-width: 16rem;
+        height: 36px;
+        padding: 0 6px;
+        border: 2px solid var(--yellow);
+        background: var(--purple-lighter);
+        color: var(--white);
+        font: inherit;
+        cursor: pointer;
+    }
+
+    .master-tableros-elegir:focus-visible {
+        outline: 3px solid var(--yellow);
+        outline-offset: 2px;
+    }
+
+    .master-barra-mandos {
+        flex: 0 1 auto;
+        flex-wrap: nowrap;
+        align-self: stretch;
+        min-width: 0;
+    }
+
+    .master-buscador {
+        flex: 1 1 7rem;
+        width: auto;
+        min-width: 4rem;
+    }
+}
+
+@media (max-width: 640px) {
+    .master-barra {
+        flex-wrap: wrap;
+    }
+
+    .master-barra-mandos {
+        flex: 1 1 100%;
+    }
+}
+
 .master-buscador-texto {
     width: 100%;
     min-height: 40px;
@@ -4772,12 +4840,6 @@
     outline-offset: 2px;
 }
 
-.master-bandera {
-    flex: none;
-    width: 1.5em;
-    height: 1em;
-    vertical-align: -0.1em;
-}
 
 .master-entrada-texto {
     margin: 0 0 12px;
@@ -4876,6 +4938,41 @@
     padding: calc(10px + env(safe-area-inset-top, 0px)) 16px 10px;
     border-bottom: 3px solid var(--yellow);
     background: var(--purple-lighter);
+}
+
+/* Qué hacer (añadir, editar, borrar): tres botones juntos, arriba a la
+   derecha, antes de «volver»; el elegido, relleno. */
+.master-compendio-acciones {
+    display: flex;
+    flex-wrap: wrap;
+    margin-left: auto;
+}
+
+.master-compendio-accion {
+    min-height: 40px;
+    padding: 4px 12px;
+    border: 2px solid var(--yellow);
+    background: transparent;
+    color: var(--white);
+    font: inherit;
+    cursor: pointer;
+}
+
+.master-compendio-accion + .master-compendio-accion {
+    margin-left: -2px;
+}
+
+.master-compendio-accion[aria-pressed="true"] {
+    background: var(--yellow);
+    color: var(--yellow-contrast);
+    font-weight: 700;
+}
+
+.master-compendio-accion:hover,
+.master-compendio-accion:focus-visible {
+    position: relative;
+    outline: 3px solid var(--white);
+    outline-offset: 2px;
 }
 
 .master-compendio-titulo {
@@ -5739,65 +5836,88 @@
     }
 }
 
-/* EL MENÚ DE LOS MODOS: abajo a la derecha, encima del botón de los
-   dados; con los dados abiertos (en ancho), a su izquierda. */
+/* EL MENÚ DE LOS MODOS: un botón abajo a la izquierda (o donde se haya
+   dejado: left y top en línea, con .es-movido) que despliega la lista de
+   los modos encima (o debajo, si está arriba: .es-hacia-abajo). */
 .master-modos {
     position: fixed;
-    right: calc(18px + env(safe-area-inset-right, 0px));
-    bottom: calc(18px + 3.6rem + 12px + env(safe-area-inset-bottom, 0px));
+    left: calc(18px + env(safe-area-inset-left, 0px));
+    bottom: calc(18px + env(safe-area-inset-bottom, 0px));
     z-index: 940;
+    max-width: min(14rem, calc(100vw - 36px));
+    color: var(--white);
+}
+
+/* Con el compendio o la entrada encima, el menú no hace falta (y taparía
+   sus botones). */
+body:has(.master-compendio, .master-entrada) .master-modos {
+    display: none;
+}
+
+.master-modos.es-movido {
+    bottom: auto;
+}
+
+.master-modos-abrir {
     display: flex;
-    flex-direction: column;
-    gap: 4px;
-    max-width: min(11rem, calc(100vw - 36px));
-    max-height: calc(100vh - 9rem);
-    padding: 6px;
-    overflow: auto;
+    align-items: center;
+    gap: 8px;
+    max-width: 100%;
+    min-height: 44px;
+    padding: 4px 12px;
     border: 2px solid var(--yellow);
     background: var(--purple-lighter);
     color: var(--white);
     box-shadow: 4px 4px 0 var(--yellow);
+    font: inherit;
+    cursor: pointer;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
 }
 
-@media (min-width: 900px) {
-    .app.con-dados .master-modos {
-        right: calc(var(--app-dados-ancho) + 18px);
-    }
+.master-modos-que {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
-.master-modos-cabeza {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
+.master-modos-abrir:hover,
+.master-modos-abrir:focus-visible {
+    outline: 3px solid var(--yellow);
+    outline-offset: 2px;
 }
 
-.master-modos-titulo {
-    font-family: var(--fuente-mono);
-    font-size: 0.8125rem;
-    text-transform: uppercase;
+/* Cogido (para moverlo): a rayas, como las ventanas. */
+.master-modos.es-cogido .master-modos-abrir {
+    border-style: dashed;
+    cursor: grabbing;
+    box-shadow: 6px 6px 0 var(--yellow);
 }
 
-.master-modos.es-plegado .master-modos-titulo {
-    text-transform: none;
-}
-
-/* Los modos, uno debajo de otro; «▦ tableros» y «＋», juntos abajo. */
 .master-modos-lista {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
+    position: absolute;
+    left: 0;
+    bottom: calc(100% + 8px);
+    display: flex;
+    flex-direction: column;
     gap: 3px;
+    width: max-content;
+    min-width: 100%;
+    max-width: min(16rem, calc(100vw - 36px));
+    max-height: calc(100vh - 7rem);
     margin: 0;
-    padding: 0;
+    padding: 6px;
+    overflow: auto;
     list-style: none;
+    border: 2px solid var(--yellow);
+    background: var(--purple-lighter);
+    box-shadow: 4px 4px 0 var(--yellow);
 }
 
-.master-modos-lista > li {
-    grid-column: 1 / -1;
-}
-
-.master-modos-lista > li:nth-last-child(-n + 2) {
-    grid-column: auto;
+.master-modos.es-hacia-abajo .master-modos-lista {
+    top: calc(100% + 8px);
+    bottom: auto;
 }
 
 .master-modos-lista[hidden] {
@@ -5806,8 +5926,8 @@
 
 .master-modos-boton {
     width: 100%;
-    min-height: 36px;
-    padding: 2px 8px;
+    min-height: 40px;
+    padding: 2px 10px;
     border: 2px solid var(--yellow);
     background: transparent;
     color: var(--white);
@@ -5816,7 +5936,7 @@
     cursor: pointer;
 }
 
-.master-modos-boton[aria-pressed="true"] {
+.master-modos-boton[aria-current="true"] {
     background: var(--yellow);
     color: var(--yellow-contrast);
     font-weight: 700;
@@ -5901,22 +6021,59 @@
 }
 
 .master-turnos-fila {
+    position: relative;
     display: flex;
     flex-direction: column;
     gap: 4px;
-    padding: 8px 10px;
+    padding: 8px 54px 8px 10px;
     border: 2px solid var(--border);
     border-left: 8px solid var(--turno-color, var(--yellow));
 }
 
 .master-turnos-fila.es-ahora {
-    padding: 12px;
+    padding: 12px 58px 12px 12px;
     border-color: var(--yellow);
     border-left-color: var(--turno-color, var(--yellow));
 }
 
 .master-turnos-nombre {
     overflow-wrap: anywhere;
+}
+
+/* ✎ editar a uno: arriba a la derecha de su fila (en un grupo, uno con el
+   nombre de cada uno, debajo). */
+.master-turnos-editar {
+    min-width: 40px;
+    min-height: 40px;
+    padding: 4px 8px;
+    border: 2px solid var(--yellow);
+    background: transparent;
+    color: var(--white);
+    font: inherit;
+    cursor: pointer;
+}
+
+.master-turnos-fila > .master-turnos-editar {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+}
+
+.master-turnos-editar:hover,
+.master-turnos-editar:focus-visible {
+    background: var(--yellow);
+    color: var(--yellow-contrast);
+}
+
+.master-turnos-editar:focus-visible {
+    outline: 3px solid var(--white);
+    outline-offset: 2px;
+}
+
+.master-turnos-cada {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
 }
 
 .master-turnos-fila.es-ahora .master-turnos-nombre {

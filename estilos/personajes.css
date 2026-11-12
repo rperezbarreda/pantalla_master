@@ -4846,6 +4846,28 @@ button.oc-casilla[data-estado="libre"]:hover {
     padding: 4px 6px;
 }
 
+/* Editar a uno (✎): sus datos en una rejilla y sus estados debajo. */
+.oc-ini-editar {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.oc-ini-editar-campos {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr));
+    gap: 10px;
+}
+
+.oc-ini-editar-campos .oc-ini-campo:first-child {
+    grid-column: 1 / -1;
+}
+
+.oc-ini-editar-estados {
+    padding-top: 10px;
+    border-top: 2px solid var(--border);
+}
+
 .oc-ini-pie {
     grid-column: 1 / -1;
     display: flex;

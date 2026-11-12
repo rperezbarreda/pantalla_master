@@ -32,16 +32,24 @@ Es gratis, sin anuncios y sin nada de pago. Sale de la pantalla de máster de [E
 
 ## Los modos
 
-Además de los tableros (las pestañas, donde las ventanas van donde las dejas), están los **modos**: pantallas fijas que se llenan solas, sin arrastrar nada (pensadas para la tablet). Se cambia de modo con el menú de abajo a la derecha (que se pliega con −):
+Además de los tableros (las pestañas, donde las ventanas van donde las dejas), están los **modos**: pantallas fijas que se llenan solas, sin arrastrar nada (pensadas para la tablet). Se cambia de modo con el botón de abajo a la izquierda, que despliega la lista de los modos de la campaña; manteniéndolo pulsado se lleva a otro sitio (o con «✥ mover este menú» y las flechas), y «↺ a su sitio» lo devuelve:
 
-- **⚔️ combate:** ⏩ *turnos* (a quién le toca, en grande; quién va después; anterior y siguiente turno), 🐲 *criatura del turno* (su bloque del bestiario o, si es de la party, su ficha resumida), condiciones y reglas en pestañas, y la ⏱️ iniciativa para editarla. Las dos primeras están en 🧰, en «▶️ turno a turno».
+- **⚔️ combate:** ⏩ *turnos* (a quién le toca, en grande; quién va después; anterior y siguiente turno), 🐲 *criatura del turno* (su bloque del bestiario o, si es de la party, su ficha resumida), condiciones y reglas en pestañas, y la ⏱️ iniciativa para editarla. Las dos primeras están en 🧰, en «▶️ turno a turno». Con **✎** en cada criatura (en los turnos, la criatura del turno o la iniciativa) se cambian sus PG, su iniciativa, su nombre, su CA y sus estados: cada criatura de la iniciativa es única.
 - **📝 notas:** los documentos y seis post-its.
 - **🛡️ party:** 🧝 *fichas de la party*: eliges un personaje y ves su ficha como el visor de fichas del blog (tarjeta con PG, CA, retrato y características; historia, ficha, criaturas, PNJ, imágenes, extra y lo del máster).
 - En un hueco vacío, «＋ elegir ventana»; en el ✎ de una ventana, la pestaña «🧩 hueco» la cambia por otra o le pone otra en pestaña. «＋» crea un modo (vacío, con una rejilla, o como uno de serie); el ✎ de junto a las pestañas cambia el de ahora (nombre, dibujo, rejilla) o lo borra; «▦ tableros» vuelve a las pestañas.
 
+## El compendio
+
+El botón 🛠️ (arriba a la izquierda) abre el compendio. Arriba a la derecha se elige qué hacer:
+
+- **＋ añadir:** monstruos, objetos, conjuros, rasgos y más cosas, nuevos, copiados de uno del SRD, pegando un bloque o importando un `.json`.
+- **✎ editar:** busca cualquiera, del SRD o tuyo, y cámbialo. Si es del SRD, se guarda tu versión, que sale en su lugar en toda la app; «↺» lo deja como era.
+- **🗑️ borrar:** lo tuyo se borra; lo del SRD deja de salir en la app y se puede recuperar en «borrados del SRD».
+
 ## Idiomas
 
-La app está en castellano y la traduce la comunidad (de momento, al catalán, gallego y euskera): cada idioma es un archivo de la carpeta [`traducciones/`](traducciones/), y allí mismo está [cómo ayudar](traducciones/LEEME.md). Se elige el idioma en **Aa → 🌐 idioma**, que dice cuánto lleva traducido cada uno; lo que aún no está traducido sale en castellano.
+La app está en castellano y la traduce la comunidad (de momento, al catalán, gallego y euskera): cada idioma es un archivo de la carpeta [`traducciones/`](traducciones/), y allí mismo está [cómo ayudar](traducciones/LEEME.md). Se elige el idioma en **Aa → 🌐 idioma** (con su bandera), que dice cuánto lleva traducido cada uno; lo que aún no está traducido sale en castellano.
 
 Para ver una traducción antes de que llegue a la app: en Aa, elige el idioma y pulsa «🧪 probar un archivo de traducción…» con el archivo (por ejemplo, `ca.json`). Se queda puesta en ese dispositivo hasta «✕ quitar la traducción de prueba».
 
@@ -76,6 +84,12 @@ android/                la app de Android (Java, sin librerías; ver abajo)
 ```
 
 **Las ventanas** (`scripts/ventanas/<clave>.js`, una por cada entrada de `MODULOS`): cada archivo lleva su `montarX` y lo que sólo usa esa ventana; lo que comparten varias (crear, botonDe, avisar, guardar, pedir, el estado…) está en el núcleo, `pantalla-master.js`. Se hablan por `window.ocPM` (en el código, `PM.algo`): el núcleo pone ahí lo que usan las ventanas y cada ventana pone lo que usa el núcleo (su `montarX`). Las ventanas se cargan antes que el núcleo (en `index.html`, todas con `defer`) y al cargar no hacen nada más que declarar; una ventana nueva es un archivo nuevo aquí, su `<script>` en `index.html` y su entrada en `MODULOS`.
+
+**Lo tuyo del compendio** («richi-master-propios»): las listas `monstruos`, `objetos`, `conjuros`, `rasgos` y `otros` (cada uno con `propio: true`) y `ocultos` (por tipo, los del SRD borrados, por su nombre original; los rasgos, «nombre|de quién»). Uno con `cambia` es tu versión de uno del SRD: `pedir` quita el original y pone el tuyo (y también quita los `ocultos`).
+
+**Editar a uno de la iniciativa desde fuera:** `window.ocTurnos.editar(id, vuelta)` usa una iniciativa montada (o monta una escondida); cada iniciativa, al guardar, avisa a las demás con «oc-iniciativa:cambio» (`detail.desde`, para no leerse a sí misma).
+
+**La barra en vertical** (hasta 900 px de ancho): las pestañas se cambian por un desplegable de tableros (`.master-tableros-elegir`) y todo va en una línea; por debajo de 640 px, el buscador baja a otra.
 
 **La fluidez:** mover una ventana va con `transform` (sin recolocar la página) y el ancho se mide una vez al cogerla; el lienzo crece a saltos mientras se arrastra; el zoom con la rueda o el pellizco se enseña con `transform` y sólo al acabar se pone de verdad (`verZoom` y `ponerZoom`); el `touchmove` del pellizco sólo escucha mientras hay dos dedos (si no, el desplazamiento con un dedo esperaría al JavaScript); y las ventanas que no están a la vista no se pintan (`content-visibility: auto`).
 
