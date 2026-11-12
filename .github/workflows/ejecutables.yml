@@ -1,5 +1,6 @@
 # Cada vez que se sube algo a main, hace lo que se descarga y lo deja en la
-# release «ultima» del repo (https://github.com/rperezbarreda/pantalla_master/releases/latest):
+# release «ultima» del repo (https://github.com/rperezbarreda/pantalla_master/releases/latest)
+# y en la de su versión («v1.0», la del archivo VERSION), que se queda:
 #   - los .zip de escritorio (el programa y su carpeta «archivos», para
 #     Windows, macOS y Linux; ver herramientas/construir-ejecutables.py);
 #   - la app de Android (PantallaMaster-Android.apk), firmada con la clave de
@@ -23,7 +24,7 @@ jobs:
   android:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: ¿Hay clave para firmar?
         id: clave
         env:
@@ -41,7 +42,7 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v5
         if: steps.clave.outputs.hay == 'si'
         with:
           gradle-version: "8.14.3"
@@ -73,12 +74,12 @@ jobs:
           done
           if unzip -l "$A" | grep -qE "assets/web/(sw\.js|android/|lanzador/|herramientas/)"; then echo "::error::Sobra algo en el APK"; exit 1; fi
           echo "::notice::APK: $(unzip -l "$A" | grep -c ' assets/web/') archivos de la web, $(du -h "$A" | cut -f1)"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         if: steps.clave.outputs.hay == 'si'
         with:
           name: android
           path: dist-android/
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         if: steps.clave.outputs.hay == 'si'
         with:
           name: PantallaMaster-Android-Play
@@ -91,11 +92,11 @@ jobs:
     if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: "1.22"
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
       - name: Pillow y el icono de Windows
@@ -104,7 +105,7 @@ jobs:
           go install github.com/akavel/rsrc@v0.10.2
       - name: Construir
         run: python3 herramientas/construir-ejecutables.py
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v7
         if: needs.android.result == 'success'
         continue-on-error: true
         with:
@@ -119,3 +120,19 @@ jobs:
           gh release create ultima dist/* --latest \
             --title "Pantalla de máster $V (versión ${{ github.run_number }})" \
             --notes "Baja el .zip de tu sistema, descomprímelo y abre «Pantalla de máster» con doble clic (junto a él va la carpeta «archivos»: déjalos juntos). Windows: PantallaMaster-Windows.zip. Mac: el de tu procesador (Apple Silicon = M1, M2…; si no, Intel). Linux: PantallaMaster-Linux.zip. Tablets Android: PantallaMaster-Android.apk (ábrelo en la tablet y permite instalar apps de esta fuente). Todo lo que hagas se guarda en tu dispositivo; funciona sin conexión."
+      # Y la de su versión («v1.0»…), que se queda: si una versión nueva sale
+      # mal, la anterior sigue ahí. Mientras VERSION no cambie, se pone al día
+      # con la última compilación; no es la «latest» (la app de Android mira
+      # «ultima» para las actualizaciones).
+      - name: Publicar en la release de su versión
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          V="$(cat VERSION)"
+          if gh release view "v$V" >/dev/null 2>&1; then
+            gh release upload "v$V" dist/* --clobber
+          else
+            gh release create "v$V" dist/* --latest=false --target "${{ github.sha }}" \
+              --title "Pantalla de máster $V" \
+              --notes "Baja el .zip de tu sistema, descomprímelo y abre «Pantalla de máster» con doble clic (junto a él va la carpeta «archivos»: déjalos juntos). Windows: PantallaMaster-Windows.zip. Mac: el de tu procesador (Apple Silicon = M1, M2…; si no, Intel). Linux: PantallaMaster-Linux.zip. Tablets Android: PantallaMaster-Android.apk (ábrelo en la tablet y permite instalar apps de esta fuente). Todo lo que hagas se guarda en tu dispositivo; funciona sin conexión."
+          fi
