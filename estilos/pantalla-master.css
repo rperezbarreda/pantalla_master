@@ -896,6 +896,22 @@
     margin-bottom: 14px;
 }
 
+/* El manifiesto del final: por qué es gratis. */
+.master-manifiesto {
+    padding: 4px 0 4px 14px;
+    border-left: 3px solid var(--yellow);
+    line-height: 1.6;
+}
+
+.master-manifiesto p {
+    margin: 0 0 10px;
+}
+
+.master-manifiesto-firma {
+    font-style: italic;
+    text-align: right;
+}
+
 .master-opciones-titulo {
     margin: 0 0 6px;
     color: var(--yellow);

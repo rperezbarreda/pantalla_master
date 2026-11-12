@@ -19722,6 +19722,25 @@
         web.setAttribute("aria-label", ocT("Ver el SRD 5.2 en la web (se abre aparte)"));
         lic.append(accion(ocT("📜 licencias y créditos"), () => verCreditos(botonOpciones)), web);
         fila(ocT("Licencias y créditos"), crear("p", "oc-hoja-nota", ocT("SRD 5.2 de Wizards of the Coast (CC BY 4.0), sonidos de la Google Sound Library (CC BY 4.0), tipografías OFL y la app con licencia MIT.")), lic);
+        // Por qué es gratis: lo último, como una carta.
+        const manifiesto = crear("div", "master-manifiesto");
+        [ocT("Esta aplicación es y será siempre **totalmente gratuita**, sin anuncios ni compras, y de **código libre** (licencia MIT). La he programado con ayuda de la inteligencia artificial y no me parece lícito lucrarme con ello."),
+            ocT("Te agradezco mucho que la compartas. Y si quieres aportar algo, lo mejor es que ese dinero vaya a algún **refugio de animales de tu zona**: seguro que le dan mucho mejor uso que yo."),
+            ocT("Cualquiera es libre de clonar la aplicación y su código y cambiarlos a su gusto."),
+            ocT("Eso sí: aunque la app permite crear y ampliar los compendios, te recomiendo **no publicar contenido de terceros** (manuales, aventuras, suplementos…). La app usa el SRD y las reglas básicas porque son de libre uso.")]
+            .forEach((t) => {
+                const parrafo = crear("p");
+                parrafo.append(...enLinea(t));
+                manifiesto.appendChild(parrafo);
+            });
+        const firma = crear("p", "master-manifiesto-firma", ocT("— Richi"));
+        const codigo = crear("a", "oc-vida-accion", ocT("📂 el código, en GitHub"));
+        codigo.href = "https://github.com/rperezbarreda/pantalla_master";
+        codigo.target = "_blank";
+        codigo.rel = "noopener noreferrer";
+        codigo.setAttribute("aria-label", ocT("El código de la app, en GitHub (se abre aparte)"));
+        manifiesto.append(firma, codigo);
+        fila(ocT("💛 Gratis y libre"), manifiesto);
         const cerrar = window.ocVentana.abrir({ titulo: ocT("opciones"), cuerpo, vuelta: botonOpciones });
     }
 
