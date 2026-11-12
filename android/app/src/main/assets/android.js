@@ -78,6 +78,22 @@
                 borrarArchivo: function (id) {
                     nativo.archivoBorrar(String(id));
                     return Promise.resolve();
+                },
+                // «ordenado/»: lo mismo con sus nombres, para mirarlo (la
+                // app lo escribe en su hilo, sin esperar).
+                ordenado: {
+                    escribir: function (ruta, texto) {
+                        nativo.ordenadoEscribir(String(ruta), String(texto));
+                        return Promise.resolve();
+                    },
+                    copiar: function (ruta, id) {
+                        nativo.ordenadoCopiar(String(ruta), String(id));
+                        return Promise.resolve();
+                    },
+                    borrar: function (ruta) {
+                        nativo.ordenadoBorrar(String(ruta));
+                        return Promise.resolve();
+                    }
                 }
             };
         }

@@ -4463,10 +4463,48 @@
 }
 
 .master-creador-cat {
-    margin: 0 0 6px;
+    display: inline;
+    margin: 0;
+    font-size: 0.95rem;
+}
+
+/* Cada grupo, plegable por su título. */
+.master-creador-cat-grupo > summary {
+    margin-bottom: 6px;
     padding-bottom: 2px;
     border-bottom: 2px solid var(--yellow);
-    font-size: 0.95rem;
+    cursor: pointer;
+}
+
+.master-creador-cat-grupo > summary:focus-visible {
+    outline: 3px solid var(--yellow);
+    outline-offset: 2px;
+}
+
+/* Buscar y «de dónde», en una fila (si caben). */
+.master-creador-buscador {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.master-creador-buscador > .master-creador-campo {
+    flex: 1 1 12rem;
+}
+
+/* La ventana de la categoría al guardar: una opción por línea. */
+.master-creador-cats {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin: 0 0 12px;
+    padding: 8px 12px;
+    border: 2px dashed var(--border);
+}
+
+.master-creador-cats legend {
+    padding: 0 6px;
 }
 
 .master-creador-lista {
@@ -6180,6 +6218,7 @@ body:has(.master-compendio, .master-entrada) .master-modos {
     position: sticky;
     bottom: -4px;
     display: flex;
+    flex-wrap: wrap;
     gap: 8px;
     margin-top: auto;
     padding: 8px 0 4px;
@@ -6187,10 +6226,11 @@ body:has(.master-compendio, .master-entrada) .master-modos {
 }
 
 .master-turnos-mandos > button {
-    flex: 1 1 0;
+    flex: 1 1 7rem;
 }
 
-/* 🔔 (con o sin sonido): pequeño, al final. */
+/* 🔔 (con o sin sonido) y ⏭️ (saltar a los caídos): pequeños, al final
+   (si no caben, debajo). */
 .master-turnos-mandos > .master-turnos-sonido {
     flex: 0 0 auto;
     padding-inline: 10px;
@@ -6238,14 +6278,9 @@ body:has(.master-compendio, .master-entrada) .master-modos {
     outline-offset: 2px;
 }
 
-/* Cada personaje con su ✎ y su 🗑 pegados; ＋ y 📥 al final. */
-.master-visor-uno {
-    display: inline-flex;
-}
-
-.master-visor-mando,
+/* Tras los personajes: ＋, ✎ y 🗑 (los del elegido) y 📥. */
 .master-visor-mas {
-    min-width: 40px;
+    min-width: 44px;
     min-height: 44px;
     padding: 0 8px;
     border: 2px solid var(--yellow);
@@ -6255,17 +6290,11 @@ body:has(.master-compendio, .master-entrada) .master-modos {
     cursor: pointer;
 }
 
-.master-visor-mando {
-    margin-left: -2px;
-}
-
-.master-visor-mando.es-seguro {
+.master-visor-mas.es-seguro {
     background: var(--red, #b3261e);
     color: #fff;
 }
 
-.master-visor-mando:hover,
-.master-visor-mando:focus-visible,
 .master-visor-mas:hover,
 .master-visor-mas:focus-visible {
     position: relative;
@@ -6634,4 +6663,17 @@ body:has(.master-compendio, .master-entrada) .master-modos {
     .master-cargando-rueda {
         animation-duration: 3s;
     }
+}
+
+/* 💀 En la ficha de un PJ a 0 PG (en el visor, como la caja de los PG). */
+.master-pj-muerte {
+    margin: 8px 0;
+}
+
+.master-visor-tarjeta > .master-pj-muerte {
+    margin: 0;
+    padding: 4px 8px 8px;
+    border: 2px solid var(--yellow-contrast);
+    background: var(--purple-lighter);
+    color: var(--white);
 }

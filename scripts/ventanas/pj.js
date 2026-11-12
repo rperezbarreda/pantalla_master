@@ -41,6 +41,10 @@
         });
     }
     const NIVELES_COMP = ["", "competente", "pericia"];
+    // Los tipos de acción (lo de antes de «:» en pj.acciones, en llano) y
+    // su título.
+    const TIPOS_ACCION = [[/^accion$|^action$/, ocT("🌀 Acciones")], [/adicional|bonus/, ocT("⚡ Acciones adicionales")],
+        [/^reacci|^reaction/, ocT("↩️ Reacciones")], [/^(especial|minutos|horas|otras)$/, ocT("✳️ Otras acciones")]];
 
     // «op.visor»: como el visor de fichas del blog (para el visor de la
     // party): a la izquierda, la tarjeta (nombre, PG, CA, retrato, nivel,
@@ -63,6 +67,57 @@
                 actual.appendChild(h);
             }
         });
+    }
+
+    // Los rasgos de un PJ (una línea cada uno, «- **Nombre** (de dónde)»),
+    // por de dónde vienen: especie, clase (cada una), trasfondo, dotes…
+    // Lo de entre paréntesis que ya dice el título se quita.
+    function rasgosPorOrigen(pj) {
+        const grupos = new Map();
+        const igual = (a, b) => a && b && PM.llano(a).trim() === PM.llano(b).trim();
+        // Lo que no es un rasgo (un párrafo, una aclaración) va con el de
+        // antes; si está al principio, en «Otros rasgos».
+        let ultimo = null;
+        String(pj.rasgos || "").split("\n").forEach((l) => {
+            const mt = /^\s*[-*•]\s*\*\*(.+?)\*\*\s*(?:\((.*)\))?\s*$/.exec(l);
+            if (!mt) {
+                if (l.trim()) {
+                    if (!ultimo) {
+                        ultimo = [];
+                        grupos.set(ocT("⭐ Otros rasgos"), ultimo);
+                    }
+                    ultimo.push(l);
+                }
+                return;
+            }
+            const de = (mt[2] || "").trim();
+            const nivel = /^(.*?),\s*(nivel \d+)$/i.exec(de);
+            const llano = PM.llano(de);
+            let g = ocT("⭐ Otros rasgos");
+            let resto = "";
+            if (nivel) {
+                g = ocT("⚔️ Clase: {clase}", { clase: nivel[1] });
+                resto = nivel[2];
+            } else if (/^(especie|raza|race)$/.test(llano) || igual(de, pj.raza)) {
+                g = ocT("🧬 Especie");
+            } else if (/^(clase|class)$/.test(llano) || igual(de, pj.clase)) {
+                g = ocT("⚔️ Clase");
+            } else if (/^(trasfondo|background)$/.test(llano) || igual(de, pj.trasfondoNombre)) {
+                g = ocT("📜 Trasfondo");
+            } else if (/^(dote|dotes|feat)$/.test(llano)) {
+                g = ocT("🎖️ Dotes");
+            } else if (llano.length > 3 && PM.llano(pj.clase || "").includes(llano)) {
+                g = ocT("⚔️ Clase: {clase}", { clase: de });
+            } else if (de && llano !== "rasgo") {
+                g = "✨ " + de;
+            }
+            if (!grupos.has(g)) {
+                grupos.set(g, []);
+            }
+            ultimo = grupos.get(g);
+            ultimo.push("- **" + mt[1] + "**" + (resto ? " (" + resto + ")" : ""));
+        });
+        return grupos;
     }
 
     function montarPj(dentro, m, op) {
@@ -203,6 +258,34 @@
             };
             pintarRecordar();
             cabeza.appendChild(recordar);
+            // A 0 PG: sus salvaciones de muerte (las mismas que en la
+            // iniciativa: van y vienen con pj.muerte).
+            const muerteSitio = PM.crear("div", "master-pj-muerte");
+            const pintarMuerte = () => {
+                if (PM.numPj(pj.pg) !== 0) {
+                    delete pj.muerte;
+                    muerteSitio.replaceChildren();
+                    muerteSitio.hidden = true;
+                    return;
+                }
+                muerteSitio.hidden = false;
+                const estado = Object.assign({ exitos: 0, fallos: 0 }, pj.muerte || {});
+                muerteSitio.replaceChildren(window.ocTurnos.cajaMuerte(estado, quien, (e, revive) => {
+                    if (revive) {
+                        pj.pg = 1;
+                        delete pj.muerte;
+                        cambiado();
+                        repintar();
+                        return;
+                    }
+                    pj.muerte = { exitos: e.exitos || 0, fallos: e.fallos || 0 };
+                    cambiado();
+                }, "pj-" + m.id));
+            };
+            pintarMuerte();
+            if (!visor) {
+                cabeza.appendChild(muerteSitio);
+            }
 
             // 1. FICHA: lo de combate, las características (con su
             // salvación), las habilidades y las pasivas.
@@ -215,6 +298,7 @@
             pgInput.setAttribute("aria-label", ocT("Puntos de golpe actuales de {quien}", { quien: quien }));
             pgInput.addEventListener("change", () => {
                 pj.pg = PM.numPj(pgInput.value);
+                pintarMuerte();
                 cambiado();
             });
             pgCaja.append(pgInput, document.createTextNode(PM.numPj(pj.pgmax) !== null ? " / " + PM.numPj(pj.pgmax) : ""));
@@ -249,7 +333,7 @@
             panelHab.appendChild(listaDe(PM.HABILIDADES_PJ.filter(([, k]) => car(k) !== null).map(([nombre, k]) => {
                 const nv = pj.habilidades[nombre] || 0;
                 return [PM.crear("span", "master-pj-marca-comp", nv === 2 ? "◆" : nv === 1 ? "●" : "○"),
-                    PM.crear("span", "", nombre + " (" + k.toUpperCase() + ")" + (nv ? " · " + NIVELES_COMP[nv] : "")),
+                    PM.crear("span", "", nombre + " (" + PM.CAR_ABR[k] + ")" + (nv ? " · " + NIVELES_COMP[nv] : "")),
                     PM.dadoPj(PM.bonoHabPj(pj, nombre), ocT("{nombre} de {quien}", { nombre: nombre, quien: quien }))];
             }), ocT("Habilidades de {quien}", { quien: quien })));
             panelHab.appendChild(datosDe([[ocT("👁️ Percepción pasiva"), PM.pasivaPj(pj, "per")], [ocT("🔍 Investigación pasiva"),
@@ -263,7 +347,7 @@
                 const tabla = PM.crear("table", "master-informe-tabla master-pj-ataques");
                 tabla.appendChild(PM.crear("caption", "visually-hidden", ocT("Ataques de {quien}", { quien: quien })));
                 const cab = PM.crear("tr");
-                ["Ataque", "Bono", "Daño"].forEach((t) => {
+                [ocT("Ataque"), ocT("Bono"), ocT("Daño")].forEach((t) => {
                     const th = PM.crear("th", "", t);
                     th.scope = "col";
                     cab.appendChild(th);
@@ -294,9 +378,54 @@
             } else {
                 panelCombate.appendChild(PM.crear("p", "oc-vacio", ocT("Sin ataques apuntados (se ponen en «✎ editar ficha»).")));
             }
+            // Las acciones, por su tipo («Acción adicional: Nombre (usos)»):
+            // cada una se abre (el rasgo del SRD o del compendio con ese
+            // nombre, o lo que se trajo al importar).
             if (pj.acciones.length) {
-                titulo(panelCombate, ocT("🌀 Acciones"));
-                panelCombate.appendChild(listaDe(pj.acciones.map((a) => a), ocT("Acciones de {quien}", { quien: quien })));
+                const grupos = new Map(TIPOS_ACCION.map(([, t]) => [t, []]));
+                pj.acciones.forEach((a) => {
+                    const mt = /^([^:]{1,30}):\s*(.+)$/.exec(a);
+                    const tipo = mt && TIPOS_ACCION.find(([re]) => re.test(PM.llano(mt[1])));
+                    const g = tipo ? tipo[1] : ocT("✳️ Otras acciones");
+                    if (!grupos.has(g)) {
+                        grupos.set(g, []);
+                    }
+                    grupos.get(g).push({ linea: a, nombre: tipo ? mt[2] : a });
+                });
+                grupos.forEach((lista, g) => {
+                    if (!lista.length) {
+                        return;
+                    }
+                    titulo(panelCombate, g);
+                    panelCombate.appendChild(listaDe(lista.map((x) => {
+                        const b = PM.botonDe("master-conjuro-enlace master-rasgo-enlace", x.nombre, () => abrirAccion(x, b));
+                        b.setAttribute("aria-haspopup", "dialog");
+                        return b;
+                    }), ocT("{tipo} de {quien}", { tipo: g.replace(/^\S+\s/, ""), quien: quien })));
+                });
+            }
+            function abrirAccion(x, vuelta) {
+                const nombre = x.nombre.replace(/\s*\([^)]*\)\s*$/, "");
+                const usos = (/\(([^)]*)\)\s*$/.exec(x.nombre) || [])[1] || "";
+                PM.pedir(PM.RASGOS_SRD).catch(() => ({ rasgos: [] })).then((datos) => {
+                    const r = rasgoDe(datos.rasgos || [], nombre, (pj.clase || "") + " " + (pj.raza || ""));
+                    const suyo = (pj.accionesDe || {})[x.linea];
+                    if (r && !suyo) {
+                        PM.abrirRasgo(r, vuelta, datos.fuente);
+                        return;
+                    }
+                    const cuerpo = PM.crear("div", "master-pj-accion");
+                    cuerpo.appendChild(datosDe([[ocT("Tipo"), x.linea === x.nombre ? "" : x.linea.slice(0, x.linea.indexOf(":"))],
+                        [ocT("Usos"), usos]]));
+                    if (suyo) {
+                        cuerpo.appendChild(texto(suyo));
+                    } else if (r) {
+                        cuerpo.appendChild(texto(r.texto || ""));
+                    } else {
+                        cuerpo.appendChild(PM.crear("p", "oc-vacio", ocT("No hay más detalle: se trajo sólo el nombre. Puedes apuntarlo en «✎ editar ficha» o crear el rasgo en el compendio.")));
+                    }
+                    window.ocVentana.abrir({ titulo: nombre, cuerpo, vuelta });
+                });
             }
             if ((pj.armasTxt || "").trim()) {
                 panelCombate.appendChild(area(pj, "armasTxt", ocT("apuntes de armas (de antes)"), 3));
@@ -359,7 +488,7 @@
                 }
                 const nvs = Array.from(new Set(todos.map((c) => c.nivel))).sort((a, b) => (a === null) - (b === null) || a - b);
                 nvs.forEach((n) => {
-                    titulo(listaConj, n === null ? "Otros" : n === 0 ? "Trucos" : ocT("Nivel {n}", { n: n }));
+                    titulo(listaConj, n === null ? ocT("Otros") : n === 0 ? ocT("Trucos") : ocT("Nivel {n}", { n: n })).dataset.nivel = String(n);
                     listaConj.appendChild(listaDe(todos.filter((c) => c.nivel === n).map((c) => [PM.conjuroPj(c.nombre, srd, conj.fuente),
                         PM.botonDe("master-party-quitar", "✕", () => {
                             pj.conjuros = pj.conjuros.filter((x) => x !== c.nombre);
@@ -367,9 +496,20 @@
                             pintarConj();
                             PM.avisar(ocT("Quitado: {nombre}.", { nombre: c.nombre }));
                             nuevoConj.focus();
-                        }, ocT("Quitar {nombre}", { nombre: c.nombre }))]), ocT("{n} de {quien}", { n: n === null ? ocT("Otros conjuros") : n === 0 ? "Trucos" : ocT("Conjuros de nivel {n}", { n: n }), quien: quien })));
+                        }, ocT("Quitar {nombre}", { nombre: c.nombre }))]), ocT("{n} de {quien}", { n: n === null ? ocT("Otros conjuros") : n === 0 ? ocT("Trucos") : ocT("Conjuros de nivel {n}", { n: n }), quien: quien })));
+                });
+                // Cada nivel, plegable; el que se cierra sigue cerrado al
+                // añadir o quitar conjuros.
+                plegables(listaConj);
+                listaConj.querySelectorAll(".master-pj-plegable").forEach((d) => {
+                    const n = d.querySelector(".master-pj-titulo").dataset.nivel;
+                    d.open = !conjCerrados.has(n);
+                    d.addEventListener("toggle", () => {
+                        conjCerrados[d.open ? "delete" : "add"](n);
+                    });
                 });
             };
+            const conjCerrados = new Set();
             const form = PM.crear("form", "master-pj-anadir");
             const et = PM.crear("label", "oc-dados-etiqueta", ocT("añadir un conjuro (los del SRD y los tuyos salen solos)"));
             nuevoConj.id = uid + "-conj";
@@ -465,11 +605,19 @@
             const barraR = PM.crear("div", "master-creador-barra");
             barraR.appendChild(exportarR);
             if ((pj.rasgos || "").trim()) {
-                const tr = texto(pj.rasgos);
-                enlazarRasgos(tr, (pj.clase || "") + " " + (pj.raza || ""));
-                panelRasgos.append(PM.crear("p", "oc-hoja-nota", ocT("Pulsa un rasgo para leerlo (los del SRD y los tuyos).")), tr, barraR);
+                panelRasgos.appendChild(PM.crear("p", "oc-hoja-nota", ocT("Pulsa un rasgo para leerlo (los del SRD y los tuyos).")));
+                rasgosPorOrigen(pj).forEach((lineas, g) => {
+                    titulo(panelRasgos, g);
+                    const tr = texto(lineas.join("\n"));
+                    enlazarRasgos(tr, (pj.clase || "") + " " + (pj.raza || ""));
+                    panelRasgos.appendChild(tr);
+                });
+                panelRasgos.appendChild(barraR);
             } else {
                 panelRasgos.appendChild(PM.crear("p", "oc-vacio", ocT("Sin rasgos apuntados.")));
+            }
+            if (pj.competencias || pj.idiomas) {
+                titulo(panelRasgos, ocT("🛠️ Competencias e idiomas"));
             }
             panelRasgos.appendChild(datosDe([[ocT("Competencias"), pj.competencias], [ocT("Idiomas"), pj.idiomas]]));
 
@@ -718,7 +866,7 @@
             pintarImg();
 
             // Cada apartado (con su título), plegable: se pulsa el título.
-            [panelFicha, panelHab, panelCombate, panelConj, panelInv, panelRasgos, panelHist, panelPnj].forEach(plegables);
+            [panelFicha, panelCombate, panelConj, panelInv, panelRasgos, panelHist, panelPnj].forEach(plegables);
 
             if (!visor) {
                 const paneles = [[ocT("📋 ficha"), panelFicha], [ocT("⚔️ combate"), panelCombate], [ocT("✨ conjuros"), panelConj],
@@ -752,6 +900,7 @@
                 const max = PM.numPj(pj.pgmax);
                 pgInput.value = Math.max(0, max === null ? ahora + n : Math.min(max, ahora + n));
                 pj.pg = PM.numPj(pgInput.value);
+                pintarMuerte();
                 cambiado();
                 PM.avisar(ocT("{quien}: {pg} PG.", { quien: quien, pg: pj.pg }));
             };
@@ -795,12 +944,12 @@
                     return;
                 }
                 const li = PM.crear("li");
-                const abr = PM.crear("abbr", "master-visor-et", k.toUpperCase());
+                const abr = PM.crear("abbr", "master-visor-et", PM.CAR_ABR[k]);
                 abr.title = PM.CAR_VER[k];
                 li.append(abr, PM.dadoPj(PM.modDe(n), ocT("{n} de {quien}", { n: PM.CAR_VER[k], quien: quien })), PM.crear("span", "master-visor-max", String(n)));
                 carsV.appendChild(li);
             });
-            tarjeta.append(nombreV, pgV, caV, retrato);
+            tarjeta.append(nombreV, pgV, muerteSitio, caV, retrato);
             if (especie) {
                 tarjeta.appendChild(PM.crear("p", "master-visor-especie", especie));
             }
@@ -1110,7 +1259,7 @@
         pF.appendChild(fsS);
         const hs = grupo(ocT("Habilidades"));
         destino = pC;
-        const habs = PM.HABILIDADES_PJ.map(([nom, k]) => [nom, campo(hs, nom + " (" + k.toUpperCase() + ")", pj.habilidades[nom] || 0,
+        const habs = PM.HABILIDADES_PJ.map(([nom, k]) => [nom, campo(hs, nom + " (" + PM.CAR_ABR[k] + ")", pj.habilidades[nom] || 0,
             { opciones: [["0", "—"], ["1", "competente"], ["2", "pericia"]] })]);
         const leerAtaques = filasDe(ocT("Ataques"), pj.ataques, [["nombre", ocT("arma o ataque")], ["bono", "bono", { ayuda: "+5" }],
             ["dano", "daño", { ayuda: ocT("1d8+3 cortante") }]], () => ({ nombre: "", bono: "", dano: "" }));

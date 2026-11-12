@@ -11,7 +11,7 @@ plugins {
 val laWeb = listOf(
     "index.html", "reproductor.html", "jugadores.html", "manifest.webmanifest",
     "estilos/**", "scripts/**", "datos/**", "tipografias/**", "imagenes/**", "sonidos/**",
-    "idiomas/**",
+    "idiomas/**", "traducciones/**",
 )
 val fuera = listOf("**/*.txt", "**/*.md", "**/*.py")
 val raizDelRepo: File = rootDir.parentFile

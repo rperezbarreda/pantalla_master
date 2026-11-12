@@ -3687,7 +3687,17 @@ window.ocTurnos = (function () {
             }
         }
     }
+    // Con «d.saltarCaidos», se salta a los que no son de la party y están a
+    // 0 PG (un grupo, si lo están todos).
     function pasarSin(d, paso) {
+        let r = pasarUno(d, paso);
+        for (let n = 0; d.saltarCaidos && n < d.lista.length && r.turno.length && r.turno.every((c) => !c.pj && caido(c)); n++) {
+            const otro = pasarUno(d, paso);
+            r = { turno: otro.turno, acabadas: r.acabadas.concat(otro.acabadas) };
+        }
+        return r;
+    }
+    function pasarUno(d, paso) {
         let acabadas = [];
         if (!d.lista.length) {
             return { turno: [], acabadas };
@@ -3721,6 +3731,134 @@ window.ocTurnos = (function () {
         }
         return { turno, acabadas };
     }
+    // LAS SALVACIONES DE MUERTE de un PJ a 0 PG: tres éxitos y tres fallos
+    // (casillas que se pulsan) y 🎲 tirar (10 o más, éxito; 1, dos fallos;
+    // 20, recupera 1 PG). «estado»: {exitos, fallos}; «alCambiar(estado,
+    // revive)» lo guarda (revive: el 20, vuelve a 1 PG). «clave»: para
+    // devolver el foco a la misma casilla si se repinta todo.
+    function cajaMuerte(estado, nombre, alCambiar, clave) {
+        const el = (tag, clase, texto) => {
+            const x = document.createElement(tag);
+            x.className = clase || "";
+            if (texto !== undefined) {
+                x.textContent = texto;
+            }
+            return x;
+        };
+        const caja = el("fieldset", "oc-vida-muerte oc-muerte");
+        caja.appendChild(el("legend", "", ocT("💀 salvaciones de muerte de {nombre}", { nombre: nombre })));
+        const estadoP = el("p", "oc-muerte-estado");
+        estadoP.setAttribute("role", "status");
+        const enfocar = (raiz, foco) => {
+            const x = raiz.querySelector('[data-muerte="' + CSS.escape(clave + ":" + foco) + '"]');
+            if (x) {
+                x.focus();
+            }
+            return !!x;
+        };
+        const cambiar = (revive, texto, foco) => {
+            alCambiar(estado, revive);
+            pintarCasillas();
+            estadoP.textContent = texto || "";
+            enfocar(caja, foco);
+            // Si quien la tiene ha repintado todo, a la misma casilla.
+            setTimeout(() => {
+                const a = document.activeElement;
+                if (!a || a === document.body || !a.isConnected) {
+                    enfocar(document, foco);
+                }
+            }, 80);
+        };
+        const filas = el("div", "");
+        const pintarCasillas = () => {
+            filas.replaceChildren(...[["exitos", ocT("éxitos")], ["fallos", ocT("fallos")]].map(([campo, que]) => {
+                const fila = el("div", "oc-vida-muerte-fila");
+                fila.appendChild(el("span", "oc-vida-muerte-nombre", que));
+                for (let i = 1; i <= 3; i++) {
+                    const b = el("button", "oc-casilla");
+                    b.type = "button";
+                    b.dataset.muerte = clave + ":" + campo + i;
+                    b.setAttribute("aria-pressed", (estado[campo] || 0) >= i ? "true" : "false");
+                    b.setAttribute("aria-label", ocT("{que}: {i} de 3", { que: que, i: i }));
+                    b.addEventListener("click", () => {
+                        estado[campo] = (estado[campo] || 0) >= i ? i - 1 : i;
+                        cambiar(false, estado.exitos >= 3 ? ocT("{nombre} está estable.", { nombre: nombre })
+                            : estado.fallos >= 3 ? ocT("{nombre} muere.", { nombre: nombre }) : "", campo + i);
+                    });
+                    fila.appendChild(b);
+                }
+                return fila;
+            }));
+            if (estado.exitos >= 3) {
+                estadoP.textContent = ocT("{nombre} está estable.", { nombre: nombre });
+            } else if (estado.fallos >= 3) {
+                estadoP.textContent = ocT("{nombre} muere.", { nombre: nombre });
+            }
+        };
+        pintarCasillas();
+        caja.append(filas);
+        if (window.ocDados) {
+            const tirar = el("button", "oc-vida-accion", ocT("🎲 tirar la salvación"));
+            tirar.type = "button";
+            tirar.dataset.muerte = clave + ":tirar";
+            tirar.setAttribute("aria-label", ocT("Tirar la salvación de muerte de {nombre}", { nombre: nombre }));
+            tirar.addEventListener("click", () => {
+                const r = window.ocDados.tirar("1d20", ocT("salvación de muerte de {nombre}", { nombre: nombre }));
+                const d = r && r.d20 ? r.d20.queda : r ? r.total : 0;
+                if (!d) {
+                    return;
+                }
+                let texto;
+                if (d === 20) {
+                    estado.exitos = 0;
+                    estado.fallos = 0;
+                    cambiar(true, ocT("¡20 natural! {nombre} recupera 1 PG.", { nombre: nombre }), "tirar");
+                    return;
+                }
+                if (d === 1) {
+                    estado.fallos = Math.min(3, (estado.fallos || 0) + 2);
+                    texto = ocT("1 natural: dos fallos.");
+                } else if (d >= 10) {
+                    estado.exitos = Math.min(3, (estado.exitos || 0) + 1);
+                    texto = d + ocT(": éxito.") + (estado.exitos === 3 ? ocT(" Estable.") : "");
+                } else {
+                    estado.fallos = Math.min(3, (estado.fallos || 0) + 1);
+                    texto = d + ocT(": fallo.") + (estado.fallos === 3 ? ocT(" Muere.") : "");
+                }
+                cambiar(false, texto, "tirar");
+            });
+            caja.appendChild(tirar);
+        }
+        caja.appendChild(estadoP);
+        return caja;
+    }
+    // ¿Está a 0 PG (con PG apuntados)?
+    const caido = (c) => c && c.pg !== "" && c.pg !== null && c.pg !== undefined && !isNaN(parseInt(c.pg, 10)) && parseInt(c.pg, 10) <= 0;
+    // Las de un PJ de la iniciativa (las de la party van también a su ficha).
+    function muerte(id) {
+        const d = leer();
+        const c = d.lista.find((x) => x.id === id);
+        if (!c || !c.pj || !caido(c)) {
+            return null;
+        }
+        const estado = Object.assign({ exitos: 0, fallos: 0 }, c.muerte || {});
+        return cajaMuerte(estado, c.nombre, (e, revive) => {
+            const x = leer();
+            const y = x.lista.find((z) => z.id === id);
+            if (!y) {
+                return;
+            }
+            if (revive) {
+                y.pg = 1;
+                delete y.muerte;
+            } else {
+                y.muerte = { exitos: e.exitos || 0, fallos: e.fallos || 0 };
+            }
+            guardar(x, true);
+            document.dispatchEvent(new CustomEvent("oc-iniciativa:pg", { detail: { pj: y.pj, pg: y.pg, muerte: y.muerte || null } }));
+        }, "ini-" + id);
+    }
+
     // Empezar el combate: ronda 1, le toca al primero.
     function empezar(d) {
         d.modo = "combate";
@@ -3732,7 +3870,7 @@ window.ocTurnos = (function () {
             delete c.concCD;
         });
     }
-    return { CLAVE, editores, editar, vida, chapas, sonar, conSonido, leer, guardar, grupoDe, marcasDe, inicioDe, finDe, delTurno, nombresDe, gastarRonda, pasar, empezar };
+    return { CLAVE, editores, editar, vida, chapas, cajaMuerte, muerte, caido, sonar, conSonido, leer, guardar, grupoDe, marcasDe, inicioDe, finDe, delTurno, nombresDe, gastarRonda, pasar, empezar };
 })();
 
 window.ocMontar.iniciativa = function (sitio, opciones) {
@@ -3875,7 +4013,7 @@ window.ocMontar.iniciativa = function (sitio, opciones) {
             return;
         }
         meter({ nombre: nombre.value.trim(), color: elegido, ini: numeroDe(ini.value), ca: numeroDe(ca.value),
-            pg: numeroDe(pg.value) });
+            pg: numeroDe(pg.value), pgMax: numeroDe(pg.value) });
         nombre.value = "";
         ini.value = "";
         ca.value = "";
@@ -4360,6 +4498,16 @@ window.ocMontar.iniciativa = function (sitio, opciones) {
         avisar(ocT("Ronda {ronda}: le toca a {nombresDe}.{n}", { ronda: datos.ronda, nombresDe: nombresDe(turno), n: acabadas.length ? ocT(" Se acaba: {join}.", { join: acabadas.join(", ") }) : "" }));
     };
     const siguiente = botonDe("oc-vida-accion es-principal", ocT("siguiente ▶"), () => pasar(1));
+    // ⏭️: al pasar, saltarse a los que no son de la party y están a 0 PG.
+    const saltar = botonDe("oc-vida-accion oc-ini-saltar", ocT("⏭️ saltar a los caídos"), () => {
+        datos.saltarCaidos = !datos.saltarCaidos;
+        guardar();
+        pintarSaltar();
+        avisar(datos.saltarCaidos ? ocT("Al pasar de turno, se salta a los que no son de la party y están a 0 PG.")
+            : ocT("Al pasar de turno, no se salta a nadie."));
+    });
+    saltar.title = ocT("Saltarse en los turnos a los que no son de la party y están a 0 PG");
+    const pintarSaltar = () => saltar.setAttribute("aria-pressed", String(!!datos.saltarCaidos));
     const anterior = botonDe("oc-vida-accion", ocT("◀ anterior"), () => pasar(-1));
     // Las dos pantallas: preparar (añadir, ordenar, quitar) y combate
     // (quién va, avanzar y retroceder, los PG y las marcas).
@@ -4530,7 +4678,7 @@ window.ocMontar.iniciativa = function (sitio, opciones) {
             return caja;
         };
         campos.append(campoE("nombre", ocT("nombre")), campoE("ini", ocT("iniciativa"), true), campoE("pg", ocT("PG"), true),
-            campoE("ca", ocT("CA"), true));
+            campoE("pgMax", ocT("PG máximos"), true), campoE("ca", ocT("CA"), true));
         cuerpo.appendChild(campos);
         // Sus estados y marcas: los de siempre a un toque, uno a mano y los
         // que lleva (lo mismo que ⭐, aquí dentro).
@@ -4541,6 +4689,24 @@ window.ocMontar.iniciativa = function (sitio, opciones) {
         window.ocVentana.abrir({ titulo: ocT("✎ {nombre}", { nombre: c.nombre }), cuerpo, vuelta,
             foco: cuerpo.querySelector("#oc-ini-editar-pg") });
         return true;
+    }
+
+    // Las salvaciones de muerte de un PJ a 0 PG (en su fila del combate).
+    function muerteDe(c) {
+        const estado = Object.assign({ exitos: 0, fallos: 0 }, c.muerte || {});
+        return window.ocTurnos.cajaMuerte(estado, c.nombre, (e, revive) => {
+            const x = datos.lista.find((y) => y.id === c.id);
+            if (!x) {
+                return;
+            }
+            if (revive) {
+                ponerPg(x, 1);
+                return;
+            }
+            x.muerte = { exitos: e.exitos || 0, fallos: e.fallos || 0 };
+            guardar();
+            document.dispatchEvent(new CustomEvent("oc-iniciativa:pg", { detail: { pj: x.pj, pg: x.pg, muerte: x.muerte } }));
+        }, "ini-" + c.id);
     }
 
     // ---- LA VIDA: un número y tres botones (daño, cura, vida temporal).
@@ -4556,7 +4722,7 @@ window.ocMontar.iniciativa = function (sitio, opciones) {
         const ahora = crear("p", "oc-ini-vida-ahora");
         const pintarAhora = () => {
             const x = de() || c;
-            ahora.textContent = ocT("PG: {pg}{temp}", { pg: x.pg === "" || x.pg === undefined ? "—" : x.pg,
+            ahora.textContent = ocT("PG: {pg}{temp}", { pg: (x.pg === "" || x.pg === undefined ? "—" : x.pg) + (numeroDe(x.pgMax) ? " / " + x.pgMax : ""),
                 temp: numeroDe(x.temp) ? ocT(" (+{n} temporales)", { n: x.temp }) : "" });
         };
         pintarAhora();
@@ -4588,8 +4754,11 @@ window.ocMontar.iniciativa = function (sitio, opciones) {
                 pintar();
                 avisar(ocT("{nombre}: {n} PG temporales.", { nombre: x.nombre, n: x.temp }));
             } else if (que === "cura") {
-                ponerPg(x, pg + n);
-                avisar(ocT("{nombre} se cura {n}: {pg} PG.", { nombre: x.nombre, n, pg: x.pg }));
+                // Sin pasar de sus PG máximos (si se saben).
+                const max = numeroDe(x.pgMax);
+                ponerPg(x, max ? Math.max(pg, Math.min(max, pg + n)) : pg + n);
+                avisar(ocT("{nombre} se cura {n}: {pg} PG.", { nombre: x.nombre, n, pg: x.pg })
+                    + (max && x.pg === max ? ocT(" (Al máximo.)") : ""));
             } else {
                 const aTemp = Math.min(temp, n);
                 x.temp = temp - aTemp || "";
@@ -4622,6 +4791,15 @@ window.ocMontar.iniciativa = function (sitio, opciones) {
         c.pg = nuevo;
         let alerta = false;
         const recibido = dano || (antes !== "" && nuevo !== "" && nuevo < antes ? antes - nuevo : 0);
+        // Un PJ: con PG, sin salvaciones de muerte; y daño estando a 0, un
+        // fallo.
+        if (c.pj && numeroDe(nuevo) > 0) {
+            delete c.muerte;
+        } else if (c.pj && antes === 0 && recibido > 0) {
+            c.muerte = Object.assign({ exitos: 0, fallos: 0 }, c.muerte);
+            c.muerte.fallos = Math.min(3, c.muerte.fallos + 1);
+            avisar(ocT("{nombre} recibe daño a 0 PG: un fallo de salvación de muerte.", { nombre: c.nombre }));
+        }
         if (recibido > 0 && marcasDe(c).some((mk) => mk.t === "concentración")) {
             c.concCD = Math.min(30, Math.max(10, Math.floor(recibido / 2)));
             avisar(ocT("¡{nombre} se concentra! Salvación de Constitución CD {concCD}.", { nombre: c.nombre, concCD: c.concCD }));
@@ -4629,7 +4807,7 @@ window.ocMontar.iniciativa = function (sitio, opciones) {
         }
         guardar();
         if (c.pj) {
-            document.dispatchEvent(new CustomEvent("oc-iniciativa:pg", { detail: { pj: c.pj, pg: c.pg } }));
+            document.dispatchEvent(new CustomEvent("oc-iniciativa:pg", { detail: { pj: c.pj, pg: c.pg, muerte: c.muerte || null } }));
         }
         pintar();
         if (alerta) {
@@ -4685,19 +4863,20 @@ window.ocMontar.iniciativa = function (sitio, opciones) {
     // ---- LO GASTADO EN SU TURNO: acción, acción adicional y reacción (y las
     // legendarias de los monstruos que las tienen). Se recupera al empezar
     // su turno. ----
-    const USOS = [["a", "⚔️", "acción"], ["b", "⚡", "adicional"], ["r", "↩️", "reacción"]];
+    const USOS = [["a", "⚔️", ocT("acción"), ocT("Acción")], ["b", "⚡", ocT("adicional"), ocT("Acción adicional")],
+        ["r", "↩️", ocT("reacción"), ocT("Reacción")]];
     function usosDe(c) {
         const caja = crear("div", "oc-ini-usos");
         caja.setAttribute("role", "group");
         caja.setAttribute("aria-label", ocT("Lo gastado por {nombre} este turno", { nombre: c.nombre }));
         c.usado = c.usado || {};
-        USOS.forEach(([k, emoji, texto]) => {
+        USOS.forEach(([k, emoji, texto, largo]) => {
             const b = botonDe("oc-ini-uso", "", () => {
                 c.usado[k] = !c.usado[k];
                 guardar();
                 b.setAttribute("aria-pressed", c.usado[k] ? "true" : "false");
                 avisar(c.nombre + ": " + texto + (c.usado[k] ? ocT(" gastada.") : ocT(" libre.")));
-            }, ocT("{n} de {nombre}", { n: texto === "acción" ? "Acción" : texto === "adicional" ? ocT("Acción adicional") : "Reacción", nombre: c.nombre }));
+            }, ocT("{n} de {nombre}", { n: largo, nombre: c.nombre }));
             const em = crear("span", "", emoji);
             em.setAttribute("aria-hidden", "true");
             b.append(em, crear("span", "oc-ini-uso-texto", texto));
@@ -4829,6 +5008,7 @@ window.ocMontar.iniciativa = function (sitio, opciones) {
         const ahora = datos.lista[datos.turno];
         const turno = delTurno(datos.turno);
         rondaC.textContent = ocT("Ronda {ronda}", { ronda: datos.ronda });
+        pintarSaltar();
         toca.replaceChildren(crear("span", "oc-ini-combate-le", ocT("le toca a ")), crear("strong", "", nombresDe(turno)),
             turno.length < 2 ? chapasDe(ahora) : document.createTextNode(""));
         toca.style.borderLeftColor = colorDe(ahora);
@@ -4876,6 +5056,9 @@ window.ocMontar.iniciativa = function (sitio, opciones) {
             li.append(quien, datosC, mandos, usosDe(c));
             if (c.concCD) {
                 li.appendChild(avisoConcentracion(c));
+            }
+            if (c.pj && window.ocTurnos.caido(c)) {
+                li.appendChild(muerteDe(c));
             }
             return li;
         }));
@@ -4986,7 +5169,7 @@ window.ocMontar.iniciativa = function (sitio, opciones) {
         b.setAttribute("aria-controls", p.id);
     });
     const mandosC = crear("div", "oc-vida-descansos oc-ini-combate-mandos");
-    mandosC.append(anterior, siguiente, terminar);
+    mandosC.append(anterior, siguiente, saltar, terminar);
     panelPreparar.append(
         ventanita("combate.ini", "⏱️", [ronda, mandos, vacio, lista, leyenda]),
         ventanita("añadir.txt", "＋", anadirme ? [form, anadirme] : [form]));

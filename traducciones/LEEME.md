@@ -28,6 +28,8 @@ Cada archivo es una lista de textos. A la izquierda, el texto en castellano (no 
 
 Sirve cualquier editor de texto que guarde en UTF-8 (Visual Studio Code, Notepad++, el editor de GitHub…).
 
+Si usas el programa de escritorio o la app de Android guardando en una carpeta, estos archivos también están en ella, en `ordenado/traducciones/`: puedes traducir ahí mismo y probarlo (abajo).
+
 ## Cómo probarla
 
 En la app: **Aa → 🌐 idioma**, elige el idioma y pulsa **«🧪 probar un archivo de traducción…»**. Elige tu archivo (por ejemplo, `ca.json`) y la app se pone con tu traducción. Se queda así en ese dispositivo hasta que pulses «✕ quitar la traducción de prueba».

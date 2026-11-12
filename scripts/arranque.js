@@ -87,8 +87,24 @@
             return cola.then(function () {
                 return fetch("__datos", { method: "POST", body: cuerpo, headers: { "Content-Type": "application/json" } });
             });
+        },
+        // «mis-datos/ordenado»: lo mismo con sus nombres, para mirarlo (ver
+        // «LA CARPETA ORDENADA» en pantalla-master.js).
+        ordenado: {
+            escribir: function (ruta, texto) {
+                return fetch("__ordenado/" + rutaUrl(ruta), { method: "PUT", body: texto });
+            },
+            copiar: function (ruta, id) {
+                return fetch("__ordenado/" + rutaUrl(ruta) + "?archivo=" + encodeURIComponent(id), { method: "PUT" });
+            },
+            borrar: function (ruta) {
+                return fetch("__ordenado/" + rutaUrl(ruta), { method: "DELETE" });
+            }
         }
     };
+    function rutaUrl(ruta) {
+        return String(ruta).split("/").map(encodeURIComponent).join("/");
+    }
 })();
 
 (function () {

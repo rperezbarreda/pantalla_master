@@ -152,6 +152,22 @@ final class Puente {
         carpeta().borrarArchivo(id);
     }
 
+    /** «ordenado/» (una copia con nombres, para mirarla): escribir, copiar un archivo subido y borrar. */
+    @JavascriptInterface
+    public void ordenadoEscribir(String ruta, String texto) {
+        carpeta().escribirOrdenado(ruta, texto);
+    }
+
+    @JavascriptInterface
+    public void ordenadoCopiar(String ruta, String id) {
+        carpeta().copiarOrdenado(ruta, id);
+    }
+
+    @JavascriptInterface
+    public void ordenadoBorrar(String ruta) {
+        carpeta().borrarOrdenado(ruta);
+    }
+
     @JavascriptInterface
     public boolean copiaFalta() {
         return carpeta().copiaFalta();

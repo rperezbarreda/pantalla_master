@@ -12,6 +12,13 @@ package main
 //   GET  /__archivos/<id>    → el archivo
 //   PUT  /__archivos/<id>    ← el archivo (Content-Type: su tipo)
 //   DELETE /__archivos/<id>
+//   PUT  /__ordenado/<ruta>  ← un archivo de «ordenado» (o, con
+//                              ?archivo=<id>, la copia de uno subido)
+//   DELETE /__ordenado/<ruta>
+//
+// «mis-datos/ordenado» es lo mismo con sus nombres, para mirarlo (cada
+// campaña, tablero, personaje, documento, canción…): lo escribe la web
+// (ver «LA CARPETA ORDENADA» en pantalla-master.js) y la app no lo lee.
 //
 // Sólo atiende a la propia app (Host y Origin 127.0.0.1:47321): otra web
 // abierta en el navegador no puede leerlo ni escribirlo.
@@ -33,7 +40,23 @@ var (
 	carpetaDatos string
 	almacenMu    sync.Mutex
 	idValido     = regexp.MustCompile(`^[A-Za-z0-9_-]{1,80}$`)
+	trozoValido  = regexp.MustCompile(`^[^\\/:*?"<>|\x00-\x1f]{1,120}$`)
 )
+
+// La ruta en el disco de algo de «ordenado» («campañas/Mi campaña/…»), o
+// "" si algún trozo no vale.
+func rutaOrdenada(ruta string) string {
+	if len(ruta) > 600 {
+		return ""
+	}
+	trozos := strings.Split(ruta, "/")
+	for _, t := range trozos {
+		if !trozoValido.MatchString(t) || t == "." || t == ".." {
+			return ""
+		}
+	}
+	return filepath.Join(append([]string{carpetaDatos, "ordenado"}, trozos...)...)
+}
 
 // Dónde va «mis-datos»: junto a la carpeta «archivos» (en un Mac, junto a
 // la .app); si ahí no se puede escribir, en la carpeta de datos del usuario.
@@ -238,6 +261,52 @@ func montarAlmacen(mux *http.ServeMux) {
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("Cache-Control", "no-store")
 		json.NewEncoder(w).Encode(lista)
+	})
+	mux.HandleFunc("/__ordenado/", func(w http.ResponseWriter, r *http.Request) {
+		if !esDeLaApp(r) {
+			http.Error(w, "", http.StatusForbidden)
+			return
+		}
+		ruta := rutaOrdenada(strings.TrimPrefix(r.URL.Path, "/__ordenado/"))
+		if ruta == "" {
+			http.Error(w, "", http.StatusBadRequest)
+			return
+		}
+		switch r.Method {
+		case http.MethodPut:
+			var b []byte
+			var err error
+			if id := r.URL.Query().Get("archivo"); id != "" {
+				if !idValido.MatchString(id) {
+					http.Error(w, "", http.StatusBadRequest)
+					return
+				}
+				b, err = os.ReadFile(filepath.Join(carpetaDatos, "archivos", id))
+			} else {
+				b, err = io.ReadAll(io.LimitReader(r.Body, 60<<20))
+			}
+			if err != nil {
+				http.Error(w, "", http.StatusBadRequest)
+				return
+			}
+			if os.MkdirAll(filepath.Dir(ruta), 0o755) != nil || escribirSeguro(ruta, b) != nil {
+				http.Error(w, "", http.StatusInternalServerError)
+				return
+			}
+			w.WriteHeader(http.StatusNoContent)
+		case http.MethodDelete:
+			os.Remove(ruta)
+			// Y su carpeta, si se ha quedado vacía (hasta «ordenado»).
+			base := filepath.Join(carpetaDatos, "ordenado")
+			for d := filepath.Dir(ruta); d != base && strings.HasPrefix(d, base); d = filepath.Dir(d) {
+				if os.Remove(d) != nil {
+					break
+				}
+			}
+			w.WriteHeader(http.StatusNoContent)
+		default:
+			http.Error(w, "", http.StatusMethodNotAllowed)
+		}
 	})
 	mux.HandleFunc("/__archivos/", func(w http.ResponseWriter, r *http.Request) {
 		if !esDeLaApp(r) {

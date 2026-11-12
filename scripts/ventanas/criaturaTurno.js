@@ -28,7 +28,8 @@
             // Si se cambia su nombre, su iniciativa, su CA o sus estados, se
             // vuelve a pintar; los PG, solos (más abajo).
             const clave = turno.map((c) => c.id).join(",") + "|" + elegido.id + "|"
-                + JSON.stringify([elegido.nombre, elegido.ini, elegido.ca, elegido.temp, elegido.marcas || []]);
+                + JSON.stringify([elegido.nombre, elegido.ini, elegido.ca, elegido.temp, elegido.marcas || [],
+                    elegido.pj && T.caido(elegido) ? elegido.muerte || {} : null]);
             if (clave === pintado && !forzar) {
                 // El mismo turno: sólo los PG (de la iniciativa).
                 const pg = dentro.querySelector("[data-pg-turno]");
@@ -60,7 +61,13 @@
                 cabezaPj.style.setProperty("--turno-color", PM.colorIni(elegido));
                 cabezaPj.append(PM.crear("strong", "master-turnos-nombre", elegido.nombre), PM.datosIni(elegido, true),
                     PM.mandosDe(elegido, dentro));
-                caja.append(cabezaPj, resumenPj(PM.normalizarPj(pj), elegido));
+                caja.appendChild(cabezaPj);
+                // A 0 PG: sus salvaciones de muerte.
+                const muerte = T.muerte(elegido.id);
+                if (muerte) {
+                    caja.appendChild(muerte);
+                }
+                caja.appendChild(resumenPj(PM.normalizarPj(pj), elegido));
                 dentro.replaceChildren(caja);
                 return;
             }
@@ -127,7 +134,7 @@
         }
         const pgV = enIni && enIni.pg !== "" && enIni.pg !== undefined ? enIni.pg : PM.numPj(pj.pg) === null ? PM.numPj(pj.pgmax) : PM.numPj(pj.pg);
         const datos = PM.crear("div", "master-turnos-datos");
-        [["PG", pgV, PM.numPj(pj.pgmax)], ["CA", pj.ca], ["vel.", pj.velocidad]].forEach(([k, v, max]) => {
+        [["PG", pgV, PM.numPj(pj.pgmax)], ["CA", pj.ca], [ocT("vel."), pj.velocidad]].forEach(([k, v, max]) => {
             if (v === "" || v === undefined || v === null) {
                 return;
             }
@@ -152,7 +159,7 @@
             }
             const comp = pj.salvaciones.includes(k);
             const li = PM.crear("li", "master-pj-c" + (comp ? " es-competente" : ""));
-            li.append(PM.crear("span", "master-party-et", (comp ? "● " : "○ ") + k.toUpperCase()), PM.dadoPj(PM.modDe(n) + (comp ? prof : 0),
+            li.append(PM.crear("span", "master-party-et", (comp ? "● " : "○ ") + PM.CAR_ABR[k]), PM.dadoPj(PM.modDe(n) + (comp ? prof : 0),
                 ocT("Salvación de {n} de {quien}", { n: PM.CAR_VER[k], quien: quien })));
             salv.appendChild(li);
         });

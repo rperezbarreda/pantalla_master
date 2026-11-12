@@ -33,7 +33,7 @@ import zipfile
 RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 LANZADOR = os.path.join(RAIZ, "lanzador")
 DIST = os.path.join(RAIZ, "dist")
-DENTRO = ["index.html", "reproductor.html", "jugadores.html", "manifest.webmanifest", "sw.js", "estilos", "scripts", "datos", "tipografias", "imagenes", "sonidos", "idiomas"]
+DENTRO = ["index.html", "reproductor.html", "jugadores.html", "manifest.webmanifest", "sw.js", "estilos", "scripts", "datos", "tipografias", "imagenes", "sonidos", "idiomas", "traducciones"]
 NOMBRE = "Pantalla de máster"
 VERSION = "dev"
 

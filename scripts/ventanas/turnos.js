@@ -103,8 +103,17 @@
             sonido.title = T.conSonido() ? ocT("Con sonido (pulsa para quitarlo)") : ocT("Sin sonido (pulsa para ponerlo)");
         };
         pintarSonido();
+        // ⏭️: saltarse a los caídos (los que no son de la party, a 0 PG).
+        const saltar = PM.botonDe("oc-vida-accion master-turnos-sonido oc-ini-saltar", "⏭️", () => {
+            const d = T.leer();
+            d.saltarCaidos = !d.saltarCaidos;
+            T.guardar(d, true);
+            PM.avisar(d.saltarCaidos ? ocT("Al pasar de turno, se salta a los que no son de la party y están a 0 PG.")
+                : ocT("Al pasar de turno, no se salta a nadie."));
+        }, ocT("Saltar a los caídos"));
+        saltar.title = ocT("Saltarse en los turnos a los que no son de la party y están a 0 PG");
         mandos.append(PM.botonDe("oc-vida-accion", ocT("◀ anterior turno"), () => pasarTurno(-1), ocT("Volver al turno anterior")),
-            PM.botonDe("oc-vida-accion es-principal", ocT("siguiente turno ▶"), () => pasarTurno(1), ocT("Pasar al siguiente turno")), sonido);
+            PM.botonDe("oc-vida-accion es-principal", ocT("siguiente turno ▶"), () => pasarTurno(1), ocT("Pasar al siguiente turno")), sonido, saltar);
         function pintar() {
             const d = T.leer();
             if (!d.lista.length) {
@@ -135,11 +144,17 @@
             }
             d.turno = T.inicioDe(d, d.turno);
             const turno = T.delTurno(d, d.turno);
+            saltar.setAttribute("aria-pressed", String(!!d.saltarCaidos));
             ronda.textContent = ocT("Ronda {ronda}", { ronda: d.ronda });
             ahora.replaceChildren(PM.crear("p", "master-turnos-le", ocT("le toca a")), ...turno.map((c) => {
                 const fila = PM.crear("div", "master-turnos-fila es-ahora");
                 fila.style.setProperty("--turno-color", PM.colorIni(c));
                 fila.append(PM.crear("strong", "master-turnos-nombre", c.nombre), PM.datosIni(c, true), mandosDe(c, dentro));
+                // Un PJ a 0 PG: sus salvaciones de muerte.
+                const muerte = T.muerte(c.id);
+                if (muerte) {
+                    fila.appendChild(muerte);
+                }
                 return fila;
             }));
             // Los demás turnos, en orden, desde el siguiente (los de la

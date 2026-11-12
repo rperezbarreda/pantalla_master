@@ -37,6 +37,10 @@ import java.util.regex.Pattern;
  *   almacen.json        {clave: valor}: lo que la web guarda en localStorage
  *   archivos/<id>       las imágenes, PDF y música que se suben
  *   archivos/<id>.tipo  su tipo (image/png…)
+ *   ordenado/           lo mismo, para mirarlo: cada campaña, tablero,
+ *                       personaje, documento, canción… con su nombre (lo
+ *                       escribe la web, ver «LA CARPETA ORDENADA» en
+ *                       pantalla-master.js; la app no lo lee)
  * La carpeta la elige cada uno con el selector de Android y sigue ahí aunque
  * se desinstale la app.
  *
@@ -49,6 +53,8 @@ final class Carpeta {
     private static final String PREFS = "carpeta";
     private static final String ARBOL = "arbol";
     private static final Pattern ID = Pattern.compile("^[A-Za-z0-9_-]{1,80}$");
+    // Cada trozo de una ruta de «ordenado/»: un nombre de archivo normal.
+    private static final Pattern TROZO = Pattern.compile("^[^\\\\/:*?\"<>|\\x00-\\x1f]{1,120}$");
     private static Carpeta una;
 
     private final Context ctx;
@@ -455,6 +461,80 @@ final class Carpeta {
         } catch (IOException | RuntimeException e) {
             return false;
         }
+    }
+
+    // ---- LA CARPETA ORDENADA (ordenado/): se escribe en su hilo, sin
+    // esperar (la web no se queda parada copiando una canción). ----
+
+    /** Los trozos de una ruta de «ordenado/» o null si alguno no vale. */
+    private static String[] trozos(String ruta) {
+        if (ruta == null || ruta.length() > 600) {
+            return null;
+        }
+        String[] t = ruta.split("/");
+        for (String x : t) {
+            if (!TROZO.matcher(x).matches() || x.equals(".") || x.equals("..")) {
+                return null;
+            }
+        }
+        return t;
+    }
+
+    /** La carpeta donde va (creándola), o null. */
+    private String padreOrdenado(String[] t, boolean crearla) throws IOException {
+        String padre = crearla ? crear(raiz, "ordenado", Document.MIME_TYPE_DIR) : hijo(raiz, "ordenado");
+        for (int i = 0; padre != null && i < t.length - 1; i++) {
+            padre = crearla ? crear(padre, t[i], Document.MIME_TYPE_DIR) : hijo(padre, t[i]);
+        }
+        return padre;
+    }
+
+    void escribirOrdenado(String ruta, String texto) {
+        final String[] t = trozos(ruta);
+        if (!hay() || t == null) {
+            return;
+        }
+        final byte[] b = texto == null ? new byte[0] : texto.getBytes(StandardCharsets.UTF_8);
+        hilo.post(() -> {
+            try {
+                escribir(padreOrdenado(t, true), t[t.length - 1], "application/octet-stream", new java.io.ByteArrayInputStream(b));
+            } catch (IOException | RuntimeException e) {
+                // La próxima vez.
+            }
+        });
+    }
+
+    void copiarOrdenado(String ruta, String id) {
+        final String[] t = trozos(ruta);
+        if (!hay() || t == null || !idValido(id)) {
+            return;
+        }
+        hilo.post(() -> {
+            try (InputStream in = abrir(carpetaArchivos(), id)) {
+                if (in != null) {
+                    escribir(padreOrdenado(t, true), t[t.length - 1], "application/octet-stream", in);
+                }
+            } catch (IOException | RuntimeException e) {
+                // La próxima vez.
+            }
+        });
+    }
+
+    void borrarOrdenado(String ruta) {
+        final String[] t = trozos(ruta);
+        if (!hay() || t == null) {
+            return;
+        }
+        hilo.post(() -> {
+            try {
+                String padre = padreOrdenado(t, false);
+                if (padre != null) {
+                    borrar(padre, t[t.length - 1]);
+                }
+            } catch (IOException | RuntimeException e) {
+                // Si no se puede, se queda.
+            }
+        });
     }
 
     void borrarArchivo(String id) {

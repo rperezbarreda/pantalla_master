@@ -5269,3 +5269,26 @@ button.oc-casilla[data-estado="libre"]:hover {
     outline-offset: -3px;
 }
 
+
+/* ⏭️ saltar a los caídos: pulsado, relleno. */
+.oc-ini-saltar[aria-pressed="true"] {
+    background: var(--yellow);
+    color: var(--yellow-contrast);
+}
+
+/* 💀 Las salvaciones de muerte de un PJ a 0 PG (en el combate y en su
+   ficha). */
+.oc-muerte {
+    margin-top: 8px;
+}
+
+.oc-muerte-estado {
+    margin: 0;
+    color: var(--white);
+    font-family: var(--fuente-mono);
+    font-size: 0.8125rem;
+}
+
+.oc-muerte-estado:empty {
+    display: none;
+}
