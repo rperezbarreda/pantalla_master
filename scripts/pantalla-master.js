@@ -2219,12 +2219,17 @@
                 li.append(crear("strong", "", de + ": "), document.createTextNode(como + "."));
                 ayuda.appendChild(li);
             });
-        cuerpo.append(crear("p", "oc-hoja-nota", ocT("Puedes traerlo de:")), ayuda);
+        cuerpo.append(crear("p", "oc-hoja-nota", ocT("Puedes traerlo de:")), ayuda,
+            crear("p", "master-importar-red", ocT("🌐 Con un enlace (D&D Beyond, Nivel20) hace falta conexión a internet: la ficha se trae de su página. Desde un archivo, no.")));
         const et = crear("label", "oc-dados-etiqueta", ocT("enlace, JSON o página"));
         const area = crear("textarea", "oc-dados-texto master-pegar-area");
         area.id = "master-importar-texto";
         area.rows = 4;
         et.htmlFor = area.id;
+        // Si se trajo de un enlace, se recuerda: actualizarla es un toque.
+        if (pj && pj.importadoDe) {
+            area.value = pj.importadoDe;
+        }
         const estado = crear("p", "oc-hoja-nota");
         estado.setAttribute("role", "status");
         const ok = crear("button", "oc-vida-accion es-principal", ocT("📥 traer"));
@@ -2237,11 +2242,31 @@
             ocT("Elegir un archivo: el JSON de Foundry o de D&D Beyond, o la página guardada de Nivel20"));
         const fila = crear("div", "master-creador-barra");
         fila.append(ok, elegir);
-        cuerpo.append(et, area, fila, archivo, estado, crear("p", "oc-hoja-nota", ocT("Se traen sus números, competencias, conjuros, objetos, dinero e historia, y los rasgos por su nombre (no sus textos). Se queda en este dispositivo.")));
+        // Mientras se trae: la pantalla de carga (encima del formulario).
+        const cargando = crear("div", "master-cargando");
+        cargando.hidden = true;
+        const rueda = crear("span", "master-cargando-rueda");
+        rueda.setAttribute("aria-hidden", "true");
+        const cargandoTexto = crear("p", "master-cargando-texto");
+        cargando.append(rueda, cargandoTexto);
+        cuerpo.append(et, area, fila, archivo, estado, cargando, crear("p", "oc-hoja-nota", ocT("Se traen sus números, competencias, conjuros, objetos, dinero e historia, y los rasgos por su nombre (no sus textos). Se queda en este dispositivo.")));
         const traer = (texto) => {
+            const url = /^https?:\/\/\S+$/i.test(String(texto).trim()) ? String(texto).trim() : "";
+            if (url && navigator.onLine === false) {
+                estado.textContent = ocT("⚠️ No hay conexión a internet: para traerla de un enlace hace falta. Conéctate o usa «📄 desde un archivo».");
+                return;
+            }
             ok.disabled = true;
             elegir.disabled = true;
             estado.textContent = ocT("Trayendo…");
+            cargandoTexto.textContent = url ? ocT("Trayendo la ficha de {sitio}…", { sitio: url.replace(/^https?:\/\/(www\.)?/i, "").split("/")[0] })
+                : ocT("Leyendo la ficha…");
+            cargando.hidden = false;
+            cuerpo.setAttribute("aria-busy", "true");
+            const acabar = () => {
+                cargando.hidden = true;
+                cuerpo.removeAttribute("aria-busy");
+            };
             traductorDdb().then((t) => leerPjDe(texto, t)).then((r) => {
                 if (pj && (pj.foto || pj.fotoUrl)) {
                     delete r.pj.fotoUrl;
@@ -2249,9 +2274,16 @@
                 }
                 return guardarFotoImportada(r.pj).then(() => r);
             }).then(({ pj: nuevo, avisos, origen }) => {
+                acabar();
                 let quien;
+                if (url) {
+                    nuevo.importadoDe = url;
+                }
                 if (pj) {
-                    const guarda = { id: pj.id, apuntes: pj.apuntes, notas: pj.notas, pnjs: pj.pnjs };
+                    const guarda = { id: pj.id, apuntes: pj.apuntes, notas: pj.notas, pnjs: pj.pnjs, secretos: pj.secretos };
+                    if (!url && pj.importadoDe) {
+                        guarda.importadoDe = pj.importadoDe;
+                    }
                     if (pj.foto || pj.fotoUrl) {
                         Object.assign(guarda, { foto: pj.foto, fotoUrl: pj.fotoUrl });
                     }
@@ -2269,10 +2301,11 @@
                 }
                 avisar(ocT("Traído de {n}: {nombre}.{n2}", { n: ORIGENES_PJ[origen], nombre: quien.nombre, n2: avisos.length ? " " + avisos.join(" ") : "" }));
             }).catch((err) => {
+                acabar();
                 ok.disabled = false;
                 elegir.disabled = false;
-                estado.textContent = "⚠️ " + (err && err.message && !/JSON/.test(err.name) ? err.message
-                    : ocT("Eso no se puede leer: ¿está entero?"));
+                estado.textContent = "⚠️ " + (url && err instanceof TypeError ? ocT("No he podido llegar a la página: ¿hay conexión a internet?")
+                    : err && err.message && !/JSON/.test(err.name) ? err.message : ocT("Eso no se puede leer: ¿está entero?"));
             });
         };
         cuerpo.addEventListener("submit", (e) => {
@@ -3512,7 +3545,8 @@
     // sus marcas (cegado, concentrado…).
     function datosIni(c, conMarcas) {
         const caja = crear("div", "master-turnos-datos");
-        [[ocT("ini"), c.ini], [ocT("CA"), c.ca], [ocT("PG"), c.pg]].forEach(([k, v]) => {
+        const temp = parseInt(c.temp, 10) > 0 ? ocT(" (+{n} temp.)", { n: c.temp }) : "";
+        [[ocT("ini"), c.ini], [ocT("CA"), c.ca], [ocT("PG"), c.pg === "" || c.pg === undefined || c.pg === null ? c.pg : c.pg + temp]].forEach(([k, v]) => {
             if (v === "" || v === undefined || v === null) {
                 return;
             }
@@ -3521,7 +3555,11 @@
             caja.appendChild(chapa);
         });
         const marcas = Array.isArray(c.marcas) ? c.marcas : [];
-        if (conMarcas && marcas.length) {
+        // Con su dibujo y que se pulsan (las de la iniciativa: ocTurnos).
+        const chapas = conMarcas && marcas.length && c.id && window.ocTurnos.chapas ? window.ocTurnos.chapas(c.id) : null;
+        if (chapas) {
+            caja.appendChild(chapas);
+        } else if (conMarcas && marcas.length) {
             const ul = crear("ul", "oc-ini-marcas");
             ul.setAttribute("aria-label", ocT("Marcas de {nombre}", { nombre: c.nombre }));
             marcas.forEach((mk) => ul.appendChild(crear("li", "oc-ini-marca", textoMarcaIni(mk))));
@@ -5338,7 +5376,8 @@
             etF.htmlFor = filtro.id;
             filtro.addEventListener("input", () => pintarLista(k));
             filtros[k] = filtro;
-            const ul = crear("ul", "master-creador-lista");
+            const ul = crear("div", "master-creador-grupos");
+            ul.setAttribute("role", "region");
             ul.setAttribute("aria-label", ocT("{replace} tuyos", { replace: titulo.replace(/^\S+\s/, "") }));
             listas[k] = ul;
             panel.append(botones, etF, filtro, ul);
@@ -5462,12 +5501,87 @@
                 }
             }).catch(() => (k === "otros" ? abrirOtro(x, vuelta) : avisar(ocT("No he podido cargarlo."))));
         }
+        // LAS CATEGORÍAS: el libro de cada cosa tuya («La caldera de Tasha»,
+        // «Inventado»…), las de todos los tipos, para elegir y ordenar.
+        function categoriasPropias() {
+            const p = leerPropios();
+            const todas = new Set();
+            TIPOS.forEach(([k]) => p[k].forEach((x) => {
+                if ((x.libro || "").trim()) {
+                    todas.add(x.libro.trim());
+                }
+            }));
+            return Array.from(todas).sort((a, b) => a.localeCompare(b, "es"));
+        }
+        // Lo tuyo de una lista, por categorías: [[categoría, [cosas]], …].
+        function porCategorias(lista) {
+            const grupos = new Map();
+            lista.forEach((x) => {
+                const c = (x.libro || "").trim() || ocT("sin categoría");
+                if (!grupos.has(c)) {
+                    grupos.set(c, []);
+                }
+                grupos.get(c).push(x);
+            });
+            return Array.from(grupos.entries()).sort((a, b) => a[0].localeCompare(b[0], "es"));
+        }
+        // Un grupo con su título y su lista.
+        function grupoCategoria(titulo, filas) {
+            const caja = crear("div");
+            const ul = crear("ul", "master-creador-lista");
+            ul.setAttribute("aria-label", titulo);
+            ul.append(...filas);
+            caja.append(crear("h4", "master-creador-cat", titulo), ul);
+            return caja;
+        }
+        // EL AVISO AL TOCAR EL SRD: antes de cambiar o borrar algo del
+        // contenido de base, cuidado (se puede pedir que no salga más:
+        // «richi-master-aviso-srd»).
+        function conAvisoSrd(que, nombre, vuelta, hacer) {
+            let saltar = false;
+            try {
+                saltar = localStorage.getItem("richi-master-aviso-srd") === "no";
+            } catch (e) {
+                saltar = false;
+            }
+            if (saltar) {
+                hacer();
+                return;
+            }
+            const cuerpo = crear("div");
+            cuerpo.append(crear("p", "master-informe-estado es-mal", que === "borrar"
+                ? ocT("⚠️ Vas a borrar «{nombre}», del contenido de base (el SRD).", { nombre })
+                : ocT("⚠️ Vas a cambiar «{nombre}», del contenido de base (el SRD).", { nombre })),
+            crear("p", "", ocT("Lo que cambies o borres del SRD cambia en toda la app: el bestiario, los encuentros, la tienda, los conjuros, el buscador… Ten cuidado: si te equivocas, en «✎ editar» lo puedes dejar como era (↺) y en «🗑️ borrar» recuperarlo («borrados del SRD»), pero lo que hubieras escrito en tu versión se pierde.")));
+            const et = crear("label", "master-creador-check");
+            const recordar = crear("input");
+            recordar.type = "checkbox";
+            et.append(recordar, ocT(" no volver a avisar"));
+            const botones = crear("div", "master-creador-barra");
+            let cerrar = () => {};
+            const seguir = botonDe("oc-vida-accion es-principal", que === "borrar" ? ocT("🗑️ sí, borrar") : ocT("✎ sí, cambiar"), () => {
+                if (recordar.checked) {
+                    try {
+                        localStorage.setItem("richi-master-aviso-srd", "no");
+                    } catch (e) {
+                        // Sin guardar: avisa la próxima vez.
+                    }
+                }
+                cerrar();
+                hacer();
+            });
+            botones.append(seguir, botonDe("oc-vida-accion", ocT("cancelar"), () => cerrar()));
+            cuerpo.append(et, botones);
+            cerrar = window.ocVentana.abrir({ titulo: ocT("cuidado con el SRD"), cuerpo, vuelta, foco: seguir });
+        }
+
         function pintarLista(k) {
             const ul = listas[k];
             const q = llano(filtros[k].value.trim());
             const todos = leerPropios()[k].slice().sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
             const salen = todos.filter((x) => !q || llano(x.nombre + " " + x.en + " " + (x.libro || "")).includes(q));
-            ul.replaceChildren(...salen.map((x) => {
+            const filas = new Map();
+            salen.forEach((x) => {
                 const li = crear("li", "master-creador-fila");
                 const ver = botonDe("master-creador-ver", "", () => abrirUno(k, x, ver));
                 ver.dataset.id = x.id;
@@ -5498,10 +5612,12 @@
                     filtros[k].focus();
                 }, ocT("Quitar {nombre}", { nombre: x.nombre }));
                 li.append(ver, cambiar, duplicar, quitar);
-                return li;
-            }));
+                filas.set(x, li);
+            });
+            // Por categorías (el libro de cada uno).
+            ul.replaceChildren(...porCategorias(salen).map(([cat, xs]) => grupoCategoria("📕 " + cat, xs.map((x) => filas.get(x)))));
             if (!salen.length) {
-                ul.appendChild(crear("li", "oc-vacio", todos.length ? ocT("Nada con eso.") : ocT("Aún no hay. Crea uno, copia uno del SRD o importa un .json.")));
+                ul.appendChild(crear("p", "oc-vacio", todos.length ? ocT("Nada con eso.") : ocT("Aún no hay. Crea uno, copia uno del SRD o importa un .json.")));
             }
         }
         function pintarListas() {
@@ -5530,7 +5646,8 @@
             busca.id = uid + "-" + d.accion + "-" + k;
             busca.autocomplete = "off";
             etB.htmlFor = busca.id;
-            const ul = crear("ul", "master-creador-lista");
+            const ul = crear("div", "master-creador-grupos");
+            ul.setAttribute("role", "region");
             ul.setAttribute("aria-label", ocT("Resultados"));
             const borrados = crear("details", "master-creador-srd");
             panel.append(etB, busca, ul);
@@ -5570,8 +5687,10 @@
                     detalleDe(k, y) + " · " + de));
                 li.appendChild(ver);
                 if (!borrar) {
-                    li.appendChild(botonDe("master-docs-mando", "✎", () => editar(k, y.propio ? y
-                        : Object.assign(JSON.parse(JSON.stringify(y)), { cambia: claveSrd(k, y) })), ocT("Cambiar {nombre}", { nombre: y.nombre })));
+                    const cambiarB = botonDe("master-docs-mando", "✎", () => (y.propio ? editar(k, y)
+                        : conAvisoSrd("editar", y.nombre, cambiarB, () => editar(k, Object.assign(JSON.parse(JSON.stringify(y)),
+                            { cambia: claveSrd(k, y) })))), ocT("Cambiar {nombre}", { nombre: y.nombre }));
+                    li.appendChild(cambiarB);
                     if (y.cambia) {
                         const original = botonDe("master-docs-mando", "↺", null, ocT("Dejar {nombre} como era en el SRD", { nombre: y.nombre }));
                         dosVeces(original, ocT("dejarlo como era"), () => {
@@ -5584,7 +5703,7 @@
                     return li;
                 }
                 const quitar = botonDe("master-docs-mando", "✕", null, ocT("Borrar {nombre}", { nombre: y.nombre }));
-                dosVeces(quitar, ocT("borrar {nombre}", { nombre: y.nombre }), () => {
+                const borrarYa = () => {
                     const p = leerPropios();
                     p.ocultos = p.ocultos || {};
                     const ocultos = p.ocultos[k] = Array.isArray(p.ocultos[k]) ? p.ocultos[k] : [];
@@ -5596,7 +5715,14 @@
                         ocultos.push(clave);
                     }
                     guardarYPintar(p, ocT("Borrado: {nombre}.", { nombre: y.nombre }));
-                });
+                };
+                // Lo tuyo, pulsando dos veces; lo del SRD (o tu versión de
+                // uno), con el aviso.
+                if (y.propio && !y.cambia) {
+                    dosVeces(quitar, ocT("borrar {nombre}", { nombre: y.nombre }), borrarYa);
+                } else {
+                    quitar.addEventListener("click", () => conAvisoSrd("borrar", y.nombre, quitar, borrarYa));
+                }
                 li.appendChild(quitar);
                 return li;
             }
@@ -5609,12 +5735,22 @@
                 const q = llano(busca.value.trim());
                 const salen = todos.filter((y) => !q || llano(y.nombre + " " + (y.en || "") + " " + (y.libro || "")).includes(q))
                     .sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
-                ul.replaceChildren(...salen.slice(0, 100).map(fila));
+                // Separados: lo de base (el SRD, tal cual) y lo tuyo (por
+                // categorías; con tus versiones del SRD).
+                const vistos = salen.slice(0, 100);
+                const base = vistos.filter((y) => !y.propio);
+                const tuyos = vistos.filter((y) => y.propio);
+                const grupos = [];
+                if (base.length) {
+                    grupos.push(grupoCategoria(ocT("📖 contenido de base (SRD)"), base.map(fila)));
+                }
+                porCategorias(tuyos).forEach(([cat, xs]) => grupos.push(grupoCategoria(ocT("🛠️ tuyo · {cat}", { cat }), xs.map(fila))));
+                ul.replaceChildren(...grupos);
                 if (salen.length > 100) {
-                    ul.appendChild(crear("li", "oc-vacio", ocT("…y {n} más: escribe para encontrarlo.", { n: salen.length - 100 })));
+                    ul.appendChild(crear("p", "oc-vacio", ocT("…y {n} más: escribe para encontrarlo.", { n: salen.length - 100 })));
                 }
                 if (!salen.length) {
-                    ul.appendChild(crear("li", "oc-vacio", ocT("Nada con eso.")));
+                    ul.appendChild(crear("p", "oc-vacio", ocT("Nada con eso.")));
                 }
                 // Lo borrado del SRD, para recuperarlo.
                 const quitados = srd[k].filter((y) => ocultos.has(claveSrd(k, y)));
@@ -5817,7 +5953,8 @@
             const base = grupo(ocT("Lo básico"));
             const nombre = campo(base, ocT("nombre (en español)"), v.nombre, { obligatorio: true });
             const en = k === "otros" ? null : campo(base, ocT("nombre original"), v.en === v.nombre ? "" : v.en, { ayuda: ocT("opcional") });
-            const libro = campo(base, ocT("de dónde sale"), v.libro, { ayuda: ocT("Monster Manual 2025, p. 12 · inventado…") });
+            const libro = campo(base, ocT("categoría (de qué libro)"), v.libro, { lista: categoriasPropias(),
+                ayuda: ocT("Elige una o escribe una nueva: «La caldera de Tasha», «Inventado»… Lo tuyo se ordena por categorías.") });
             const leer = { comun: () => ({ nombre: nombre.value, en: (en && en.value.trim()) || nombre.value, libro: libro.value }) };
             if (k === "monstruos") {
                 const t = /^(.+?)(?: \(([^)]*)\))? ((?:Diminuto|Pequeño|Mediano|Grande|Enorme|Gargantuesco)(?: o \S+)?)$/
@@ -6253,6 +6390,9 @@
             desc: ocT("Los estados: agarrado, cegado, derribado…"), montar: (d, m) => montarReglas(d, m, "Estados") },
         acciones: { nombre: "acciones", emoji: "⚔️", grupo: "combate", unico: true, w: 460, h: 420,
             desc: ocT("Lo que se puede hacer en un turno."), montar: (d, m) => montarReglas(d, m, "Acciones") },
+        tiradas: { nombre: ocT("registro de tiradas"), emoji: "🎲", grupo: "mesa", unico: true, w: 380, h: 480,
+            desc: ocT("Las tiradas de los dados, una debajo de otra, siempre a la vista (las mismas que en la ventana de los dados)."),
+            montar: PM.montarTiradas },
         turnos: { nombre: ocT("turnos"), emoji: "⏩", grupo: "turno", unico: true, w: 380, h: 640,
             desc: ocT("A quién le toca, en grande; quién va después, y pasar al turno siguiente o al anterior."), montar: PM.montarTurnos },
         criaturaTurno: { nombre: ocT("criatura del turno"), emoji: "🐲", grupo: "turno", unico: true, w: 520, h: 640,
@@ -6524,6 +6664,7 @@
     const REJILLAS = {
         combate: { nombre: ocT("combate: lista, perfil y dos a la derecha"),
             huecos: [[1, 1, 3, 6], [4, 1, 5, 6], [9, 1, 4, 2], [9, 3, 4, 4]] },
+        combate3: { nombre: ocT("combate: lista, perfil y pestañas"), huecos: [[1, 1, 3, 6], [4, 1, 5, 6], [9, 1, 4, 6]] },
         notas: { nombre: ocT("lateral y seis"), huecos: [[1, 1, 3, 6], [4, 1, 3, 3], [7, 1, 3, 3], [10, 1, 3, 3], [4, 4, 3, 3],
             [7, 4, 3, 3], [10, 4, 3, 3]] },
         una: { nombre: ocT("una, a toda la pantalla"), huecos: [[1, 1, 12, 6]] },
@@ -6541,9 +6682,16 @@
         ["📝", ocT("notas"), "notas", [["documentos", 0, ""], ["tarjeta", 1, "amarillo"], ["tarjeta", 2, "verde"], ["tarjeta", 3, "celeste"],
             ["tarjeta", 4, "coral"], ["tarjeta", 5, "rosa"], ["tarjeta", 6, "lima"]]],
         ["🛡️", ocT("party"), "una", [["visor", 0, "verde"]]],
-        ["⚔️", ocT("combate"), "combate", [["turnos", 0, "#ca1c1c"], ["criaturaTurno", 1, "#151619"], ["condiciones", 2, "morado", "gmc", 1],
-            ["acciones", 2, "fucsia", "gmc", 0], ["reglas", 2, "naranja", "gmc", 0], ["iniciativa", 3, "lavanda"]]]
+        // Combate, en tres: los turnos; la criatura del turno (con la party
+        // y el bestiario en pestañas); y la iniciativa con las condiciones,
+        // las acciones y las reglas, en pestañas.
+        ["⚔️", ocT("combate"), "combate3", [["turnos", 0, "#ca1c1c"], ["criaturaTurno", 1, "#151619", "gct", 1],
+            ["party", 1, "verde", "gct", 0], ["bestiario", 1, "rojo", "gct", 0], ["iniciativa", 2, "lavanda", "gmc", 1],
+            ["condiciones", 2, "morado", "gmc", 0], ["acciones", 2, "fucsia", "gmc", 0], ["reglas", 2, "naranja", "gmc", 0]]]
     ];
+    // El combate de antes (cuatro huecos), tal y como venía: si nadie lo ha
+    // tocado, se cambia por el de ahora.
+    const COMBATE_DE_ANTES = "turnos:0,criaturaTurno:1,condiciones:2,acciones:2,reglas:2,iniciativa:3";
     function modosDeSerie() {
         return MODOS_DE_SERIE.map(([emoji, nombre, rejilla, ventanas]) => ({ nombre, emoji, rejilla,
             modulos: ventanas.filter((v) => MODULOS[v[0]]).map(([tipo, hueco, color, grupo, delante]) => Object.assign({ tipo, hueco,
@@ -6622,6 +6770,9 @@
             c.conModos = true;
         }
         c.modos = (Array.isArray(c.modos) ? c.modos : []).filter((mo) => mo && typeof mo === "object");
+        c.modos = c.modos.map((mo) => (mo.rejilla === "combate" && Array.isArray(mo.modulos)
+            && mo.modulos.map((m) => m.tipo + ":" + m.hueco).join(",") === COMBATE_DE_ANTES
+            ? Object.assign(modosDeSerie().find((x) => x.rejilla === "combate3"), { id: mo.id, nombre: mo.nombre, emoji: mo.emoji }) : mo));
         c.modos.forEach((mo) => {
             mo.id = /^o\d+$/.test(mo.id || "") ? mo.id : "o" + siguienteModo++;
             siguienteModo = Math.max(siguienteModo, parseInt(mo.id.slice(1), 10) + 1);
@@ -7447,7 +7598,10 @@
         // Un modo, de alto lo que queda de pantalla debajo de la barra.
         if (esModo(estado)) {
             const arriba = lienzo.getBoundingClientRect().top + window.scrollY;
-            lienzo.style.height = Math.max(420, Math.round(window.innerHeight - arriba - 14)) + "px";
+            // Con el menú de los modos en su sitio (abajo), le deja hueco
+            // debajo para que no tape nada.
+            const menu = menuModos.isConnected && !menuModos.classList.contains("es-movido") ? menuModos.offsetHeight + 22 : 0;
+            lienzo.style.height = Math.max(420, Math.round(window.innerHeight - arriba - 14 - menu)) + "px";
             return;
         }
         const fondo = Math.max(480, ...estado.modulos.map((m) => m.y + (m.plegado ? 60 : m.h) + 240));
@@ -7859,7 +8013,7 @@
     // perfiles con sus ventanas, la iniciativa, las marcas propias y las
     // tiradas guardadas) a un archivo .json, y de vuelta. Para guardarlo,
     // pasarlo a otro navegador o compartir un tablero montado. ----
-    const CLAVES = (k) => k === CLAVE || k === CLAVE_HOMEBREW || k === CLAVE_IMAGENES || k === CLAVE_PLANTILLAS || k === CLAVE_PROPIOS || k === CLAVE_ASPECTOS || k === CLAVE_TABLAS || k === CLAVE_NOMBRES || k === window.ocReglas.CLAVE || k === CLAVE_ENCENDIDA || k === CLAVE_COPIA || k === "richi-master-modos-sitio" || k === "richi-idioma" || k === "richi-idioma-prueba" || /^richi-oc-(iniciativa|marcas|partida-pantalla-master)/.test(k);
+    const CLAVES = (k) => k === CLAVE || k === CLAVE_HOMEBREW || k === CLAVE_IMAGENES || k === CLAVE_PLANTILLAS || k === CLAVE_PROPIOS || k === CLAVE_ASPECTOS || k === CLAVE_TABLAS || k === CLAVE_NOMBRES || k === window.ocReglas.CLAVE || k === CLAVE_ENCENDIDA || k === CLAVE_COPIA || k === "richi-master-modos-sitio" || k === "richi-master-carpeta-no" || k === "richi-master-aviso-srd" || k === "richi-idioma" || k === "richi-idioma-prueba" || /^richi-oc-(iniciativa|marcas|partida-pantalla-master)/.test(k);
 
     // UNA COPIA DE SEGURIDAD: lo guardado (las claves de CLAVES) y, si se
     // pide, los archivos (imágenes, PDF, música) en «data:». La usan
@@ -8868,6 +9022,9 @@
         }
     }
     function ponerSitioModos(sitio, guardarlo) {
+        if (esModo(estado)) {
+            requestAnimationFrame(() => crecerLienzo());
+        }
         if (!sitio) {
             menuModos.style.left = "";
             menuModos.style.top = "";
@@ -9009,6 +9166,15 @@
         listaModos.replaceChildren(...todo.modos.map((mo) => {
             const li = boton(mo.emoji + " " + mo.nombre, () => activarModo(mo), ocT("Modo {nombre}", { nombre: mo.nombre }), estado === mo, mo.id);
             li.firstChild.id = "master-modo-b-" + mo.id;
+            // ✎: su nombre, su dibujo, su rejilla, o borrarlo.
+            const cambiar = botonDe("master-modos-editar", "✎", () => {
+                verListaModos(false);
+                editarModo(mo, abrirModos);
+            }, ocT("Cambiar o borrar el modo {nombre}", { nombre: mo.nombre }));
+            cambiar.dataset.modo = "editar-" + mo.id;
+            cambiar.setAttribute("aria-haspopup", "dialog");
+            li.classList.add("master-modos-con-editar");
+            li.appendChild(cambiar);
             return li;
         }), boton(ocT("▦ tableros"), volverATableros, ocT("Volver a los tableros (las pestañas de arriba)"), !ahora, "tableros"),
         boton(ocT("＋ modo nuevo"), () => editarModo(null, abrirModos), ocT("Crear un modo nuevo"), false, "nuevo"),
@@ -9234,20 +9400,21 @@
     // el dedo, sin teclado), con las tarjetas en el mismo orden.
     // Las de los modos, iguales en los dos.
     const TARJETAS_MODOS = [
-        [ocT("🧩 Los modos"), "lima", ocT("<p>Además de los tableros, están los <strong>modos</strong>: pantallas fijas que se llenan solas, sin arrastrar ni colocar nada (pensadas para la tablet).</p><ul><li>El menú de los modos está <strong>abajo a la izquierda</strong>: tócalo y elige un modo de la lista. <strong>Mantenlo pulsado</strong> para llevarlo a otro sitio (o «✥ mover este menú»).</li><li><strong>▦ tableros</strong> vuelve a las pestañas de siempre.</li><li>En un hueco vacío, <strong>＋ elegir ventana</strong>. En el <strong>✎</strong> de una ventana, la pestaña <strong>🧩 hueco</strong> la cambia por otra o le pone otra al lado, en pestañas.</li><li><strong>＋</strong> crea un modo tuyo: vacío con la rejilla que elijas o copiando uno de serie. El <strong>✎</strong> de junto a las pestañas le cambia el nombre, el dibujo o la rejilla, o lo borra.</li></ul>")],
-        [ocT("⚔️ Modo combate"), "rojo", ocT("<ul><li><strong>⏩ turnos</strong>: a quién le toca, en grande, y quién va después. <strong>◀ anterior</strong> y <strong>siguiente ▶</strong> pasan el turno (van a la par con la iniciativa).</li><li><strong>🐲 criatura del turno</strong>: el bloque del bestiario de quien le toca, o su ficha resumida si es de la party.</li><li>Las <strong>condiciones</strong> y las <strong>reglas</strong>, juntas en pestañas, y la <strong>⏱️ iniciativa</strong> para añadir o quitar a alguien.</li><li><strong>✎</strong> en cada uno (en los turnos, la criatura del turno y la iniciativa) cambia sus PG, su iniciativa, su nombre y sus <strong>estados</strong>: cada criatura es única.</li><li>Las dos primeras también se pueden poner en cualquier tablero: <strong>🧰 → ▶️ turno a turno</strong>.</li></ul>")],
-        [ocT("🛡️ Modo party"), "verde", ocT("<p><strong>🧝 Fichas de la party</strong>: elige un personaje arriba y su ficha se abre como un libro.</p><ul><li>La tarjeta: retrato, <strong>PG</strong> (se cambian ahí mismo), CA y características.</li><li>Las secciones: historia, la ficha (combate, habilidades, acciones, conjuros, inventario, rasgos), sus <strong>criaturas</strong> (compañeros y monturas, con su perfil del bestiario), PNJ y notas, <strong>imágenes</strong>, extra y lo del máster.</li><li>También está en <strong>🧰 → mesa</strong>, para ponerla en un tablero.</li></ul><p>Y el modo <strong>📝 notas</strong>: tus documentos y seis post-its.</p>")]
+        [ocT("🧩 Los modos"), "lima", ocT("<p>Además de los tableros, están los <strong>modos</strong>: pantallas fijas que se llenan solas, sin arrastrar ni colocar nada (pensadas para la tablet).</p><ul><li>El menú de los modos está <strong>abajo a la izquierda</strong>: tócalo y elige un modo de la lista. <strong>Mantenlo pulsado</strong> para llevarlo a otro sitio (o «✥ mover este menú»).</li><li><strong>▦ tableros</strong> vuelve a las pestañas de siempre.</li><li>En un hueco vacío, <strong>＋ elegir ventana</strong>. En el <strong>✎</strong> de una ventana, la pestaña <strong>🧩 hueco</strong> la cambia por otra o le pone otra al lado, en pestañas.</li><li>El <strong>✎</strong> de cada modo en la lista le cambia el nombre o lo borra.</li><li><strong>＋</strong> crea un modo tuyo: vacío con la rejilla que elijas o copiando uno de serie. El <strong>✎</strong> de junto a las pestañas le cambia el nombre, el dibujo o la rejilla, o lo borra.</li></ul>")],
+        [ocT("⚔️ Modo combate"), "rojo", ocT("<ul><li><strong>⏩ turnos</strong>: a quién le toca, en grande, y quién va después. <strong>◀ anterior</strong> y <strong>siguiente ▶</strong> pasan el turno (van a la par con la iniciativa).</li><li><strong>🐲 criatura del turno</strong>: el bloque del bestiario de quien le toca, o su ficha resumida si es de la party.</li><li>En pestañas: con la criatura del turno, la <strong>party</strong> y el <strong>bestiario</strong>; a la derecha, la <strong>⏱️ iniciativa</strong> con las condiciones, las acciones y las reglas.</li><li><strong>❤️</strong> en cada uno: un número y <strong>daño</strong>, <strong>cura</strong> o <strong>vida temporal</strong>. Si se estaba concentrando, salta la tirada de concentración.</li><li><strong>✎</strong> cambia sus PG, su iniciativa, su nombre y sus <strong>estados</strong> (sus dibujos se pulsan para leerlos): cada criatura es única.</li><li>Suena al pasar de turno y de ronda (🔔 lo calla).</li><li>Las dos primeras también se pueden poner en cualquier tablero: <strong>🧰 → ▶️ turno a turno</strong>.</li></ul>")],
+        [ocT("🛡️ Modo party"), "verde", ocT("<p><strong>🧝 Fichas de la party</strong>: elige un personaje arriba y su ficha se abre como un libro. Al lado de cada uno, <strong>✎</strong> edita su ficha y <strong>🗑</strong> lo quita; <strong>＋</strong> añade otro y <strong>📥</strong> lo trae de D&amp;D Beyond o Nivel20 (y se recuerda de dónde, para actualizarlo).</p><ul><li>La tarjeta: retrato, <strong>PG</strong> (se cambian ahí mismo), CA y características.</li><li>Las secciones: historia, la ficha (combate, habilidades, acciones, conjuros, inventario, rasgos), sus <strong>criaturas</strong> (compañeros y monturas, con su perfil del bestiario), PNJ y notas, <strong>imágenes</strong>, extra y lo del máster.</li><li>También está en <strong>🧰 → mesa</strong>, para ponerla en un tablero.</li></ul><p>Y el modo <strong>📝 notas</strong>: tus documentos y seis post-its.</p>")]
     ];
     // Las de los modos son más largas: van en la última fila, más altas.
-    const ALTO_MODOS = 940;
+    const ALTO_MODOS = 1140;
     // Lo que decían antes algunas tarjetas: si siguen así (nadie las ha
     // tocado), se cambian por lo de ahora.
     const TUTORIAL_VIEJO = {
-        "🧩 Los modos": ["<p>Abajo a la derecha está el menú de los <strong>modos</strong>: pantallas que se llenan solas, sin mover ventanas.</p><ul><li><strong>⚔️ combate</strong>: a quién le toca y quién va después, el perfil de la criatura del turno, condiciones y reglas, y la iniciativa.</li><li><strong>📝 notas</strong>: tus documentos y seis post-its.</li><li><strong>🛡️ party</strong>: la ficha de cada personaje, como un libro.</li><li>En un hueco vacío, <strong>＋ elegir ventana</strong>; en el ✎ de una ventana, «🧩 hueco» la cambia por otra o le pone otra en pestaña.</li><li><strong>＋</strong> crea un modo tuyo, <strong>✎</strong> (junto a las pestañas) cambia el de ahora y <strong>▦ tableros</strong> vuelve a las pestañas.</li></ul>", "<p>Además de los tableros, están los <strong>modos</strong>: pantallas fijas que se llenan solas, sin arrastrar ni colocar nada (pensadas para la tablet).</p><ul><li>El menú de los modos está <strong>abajo a la derecha</strong>: toca uno para entrar; <strong>−</strong> lo pliega.</li><li><strong>▦ tableros</strong> vuelve a las pestañas de siempre.</li><li>En un hueco vacío, <strong>＋ elegir ventana</strong>. En el <strong>✎</strong> de una ventana, la pestaña <strong>🧩 hueco</strong> la cambia por otra o le pone otra al lado, en pestañas.</li><li><strong>＋</strong> crea un modo tuyo: vacío con la rejilla que elijas o copiando uno de serie. El <strong>✎</strong> de junto a las pestañas le cambia el nombre, el dibujo o la rejilla, o lo borra.</li></ul>"],
+        "🧩 Los modos": ["<p>Abajo a la derecha está el menú de los <strong>modos</strong>: pantallas que se llenan solas, sin mover ventanas.</p><ul><li><strong>⚔️ combate</strong>: a quién le toca y quién va después, el perfil de la criatura del turno, condiciones y reglas, y la iniciativa.</li><li><strong>📝 notas</strong>: tus documentos y seis post-its.</li><li><strong>🛡️ party</strong>: la ficha de cada personaje, como un libro.</li><li>En un hueco vacío, <strong>＋ elegir ventana</strong>; en el ✎ de una ventana, «🧩 hueco» la cambia por otra o le pone otra en pestaña.</li><li><strong>＋</strong> crea un modo tuyo, <strong>✎</strong> (junto a las pestañas) cambia el de ahora y <strong>▦ tableros</strong> vuelve a las pestañas.</li></ul>", "<p>Además de los tableros, están los <strong>modos</strong>: pantallas fijas que se llenan solas, sin arrastrar ni colocar nada (pensadas para la tablet).</p><ul><li>El menú de los modos está <strong>abajo a la derecha</strong>: toca uno para entrar; <strong>−</strong> lo pliega.</li><li><strong>▦ tableros</strong> vuelve a las pestañas de siempre.</li><li>En un hueco vacío, <strong>＋ elegir ventana</strong>. En el <strong>✎</strong> de una ventana, la pestaña <strong>🧩 hueco</strong> la cambia por otra o le pone otra al lado, en pestañas.</li><li><strong>＋</strong> crea un modo tuyo: vacío con la rejilla que elijas o copiando uno de serie. El <strong>✎</strong> de junto a las pestañas le cambia el nombre, el dibujo o la rejilla, o lo borra.</li></ul>", "<p>Además de los tableros, están los <strong>modos</strong>: pantallas fijas que se llenan solas, sin arrastrar ni colocar nada (pensadas para la tablet).</p><ul><li>El menú de los modos está <strong>abajo a la izquierda</strong>: tócalo y elige un modo de la lista. <strong>Mantenlo pulsado</strong> para llevarlo a otro sitio (o «✥ mover este menú»).</li><li><strong>▦ tableros</strong> vuelve a las pestañas de siempre.</li><li>En un hueco vacío, <strong>＋ elegir ventana</strong>. En el <strong>✎</strong> de una ventana, la pestaña <strong>🧩 hueco</strong> la cambia por otra o le pone otra al lado, en pestañas.</li><li><strong>＋</strong> crea un modo tuyo: vacío con la rejilla que elijas o copiando uno de serie. El <strong>✎</strong> de junto a las pestañas le cambia el nombre, el dibujo o la rejilla, o lo borra.</li></ul>"],
         "🧰 Añadir herramientas": ["<p>El botón <strong>🧰</strong> (arriba a la izquierda) abre todas las ventanas que puedes poner, por grupos:</p><ul><li><strong>combate</strong>: iniciativa, condiciones, encuentros…</li><li><strong>consulta</strong>: reglas, conjuros, bestiario, tienda…</li><li><strong>mesa</strong>: la party, sonido ambiente, efectos de sonido, música…</li><li><strong>mundo</strong>: generadores de nombres, PNJ, dungeons, negocios, botín…</li><li><strong>apuntes</strong>: post-its, dibujo, documentos…</li></ul>"],
         "🔍 Buscar, crear y ajustes": ["<ul><li>El <strong>buscador</strong> de arriba encuentra conjuros, monstruos, reglas, objetos, rasgos, dotes y habilidades a la vez (también lo que añadas tú).</li><li><strong>⚙</strong>: zoom, ordenar o quitar ventanas, atajos y las <strong>copias de seguridad</strong> (exportar e importar).</li><li><strong>Aa</strong>: tamaño del texto, letra más legible y los temas de color.</li></ul>", "<ul><li>El <strong>buscador</strong> de arriba encuentra conjuros, monstruos, reglas, objetos, rasgos, dotes y habilidades a la vez (también lo que añadas tú).</li><li><strong>⚙</strong>: zoom, ordenar o quitar ventanas, las <strong>copias de seguridad</strong>, dónde se guarda, que la pantalla no se apague y buscar actualizaciones.</li><li><strong>Aa</strong>: tamaño del texto, letra más legible y los temas de color.</li></ul>"],
-        "⚔️ Modo combate": ["<ul><li><strong>⏩ turnos</strong>: a quién le toca, en grande, y quién va después. <strong>◀ anterior</strong> y <strong>siguiente ▶</strong> pasan el turno (van a la par con la iniciativa).</li><li><strong>🐲 criatura del turno</strong>: el bloque del bestiario de quien le toca, o su ficha resumida si es de la party.</li><li>Las <strong>condiciones</strong> y las <strong>reglas</strong>, juntas en pestañas, y la <strong>⏱️ iniciativa</strong> para añadir o quitar a alguien.</li><li>Las dos primeras también se pueden poner en cualquier tablero: <strong>🧰 → ▶️ turno a turno</strong>.</li></ul>"],
-        "🛠️ Crear contenido nuevo": ["<p>El botón <strong>🛠️</strong> (arriba a la izquierda, junto a 📚) abre el <strong>compendio</strong>: ahí añades monstruos, objetos, conjuros y más cosas (especies, dotes…).</p><ul><li><strong>＋ nuevo</strong>: rellenas un formulario.</li><li><strong>⧉ copiar</strong> uno del SRD y cambiarlo, para tu versión.</li><li><strong>📋 pegar un bloque</strong> copiado de D&amp;D Beyond o de un PDF: el formulario se rellena solo.</li><li><strong>⬆ importar</strong> muchos a la vez con la plantilla.</li></ul><p>Luego salen en el bestiario, los encuentros, la tienda, los conjuros y el buscador, con «🛠️ tuyo». Su primera pestaña, <strong>❓ cómo añadir</strong>, lo explica paso a paso.</p>"]
+        "⚔️ Modo combate": ["<ul><li><strong>⏩ turnos</strong>: a quién le toca, en grande, y quién va después. <strong>◀ anterior</strong> y <strong>siguiente ▶</strong> pasan el turno (van a la par con la iniciativa).</li><li><strong>🐲 criatura del turno</strong>: el bloque del bestiario de quien le toca, o su ficha resumida si es de la party.</li><li>Las <strong>condiciones</strong> y las <strong>reglas</strong>, juntas en pestañas, y la <strong>⏱️ iniciativa</strong> para añadir o quitar a alguien.</li><li>Las dos primeras también se pueden poner en cualquier tablero: <strong>🧰 → ▶️ turno a turno</strong>.</li></ul>", "<ul><li><strong>⏩ turnos</strong>: a quién le toca, en grande, y quién va después. <strong>◀ anterior</strong> y <strong>siguiente ▶</strong> pasan el turno (van a la par con la iniciativa).</li><li><strong>🐲 criatura del turno</strong>: el bloque del bestiario de quien le toca, o su ficha resumida si es de la party.</li><li>Las <strong>condiciones</strong> y las <strong>reglas</strong>, juntas en pestañas, y la <strong>⏱️ iniciativa</strong> para añadir o quitar a alguien.</li><li><strong>✎</strong> en cada uno (en los turnos, la criatura del turno y la iniciativa) cambia sus PG, su iniciativa, su nombre y sus <strong>estados</strong>: cada criatura es única.</li><li>Las dos primeras también se pueden poner en cualquier tablero: <strong>🧰 → ▶️ turno a turno</strong>.</li></ul>"],
+        "🛠️ Crear contenido nuevo": ["<p>El botón <strong>🛠️</strong> (arriba a la izquierda, junto a 📚) abre el <strong>compendio</strong>: ahí añades monstruos, objetos, conjuros y más cosas (especies, dotes…).</p><ul><li><strong>＋ nuevo</strong>: rellenas un formulario.</li><li><strong>⧉ copiar</strong> uno del SRD y cambiarlo, para tu versión.</li><li><strong>📋 pegar un bloque</strong> copiado de D&amp;D Beyond o de un PDF: el formulario se rellena solo.</li><li><strong>⬆ importar</strong> muchos a la vez con la plantilla.</li></ul><p>Luego salen en el bestiario, los encuentros, la tienda, los conjuros y el buscador, con «🛠️ tuyo». Su primera pestaña, <strong>❓ cómo añadir</strong>, lo explica paso a paso.</p>"],
+        "🛡️ Modo party": ["<p><strong>🧝 Fichas de la party</strong>: elige un personaje arriba y su ficha se abre como un libro.</p><ul><li>La tarjeta: retrato, <strong>PG</strong> (se cambian ahí mismo), CA y características.</li><li>Las secciones: historia, la ficha (combate, habilidades, acciones, conjuros, inventario, rasgos), sus <strong>criaturas</strong> (compañeros y monturas, con su perfil del bestiario), PNJ y notas, <strong>imágenes</strong>, extra y lo del máster.</li><li>También está en <strong>🧰 → mesa</strong>, para ponerla en un tablero.</li></ul><p>Y el modo <strong>📝 notas</strong>: tus documentos y seis post-its.</p>"]
     };
     const TUTORIAL_ORDENADOR = [
         [ocT("👋 Bienvenida"), "amarillo", ocT("<p>Esto es tu <strong>pantalla de máster</strong>: un tablero con ventanas que pones, mueves y quitas a tu gusto.</p><ul><li>Las <strong>pestañas de arriba</strong> son tus tableros (por ejemplo, uno para combate y otro para la ciudad).</li><li>Cada ventana es una herramienta: la iniciativa, el bestiario, las reglas, notas…</li><li>Este tablero es el tutorial: cuando ya no lo necesites, quítalo con <strong>✎</strong> (arriba, junto a las pestañas).</li></ul>")],
@@ -9865,7 +10032,43 @@
             }
         });
         document.body.appendChild(fondo);
-        (fondo.querySelector(".master-entrada-campana") || input).focus();
+        // En la app de Android, la primera vez: antes de nada, la carpeta
+        // donde se guarda todo (ordenado y a salvo aunque se desinstale).
+        // Hasta elegirla (o decir que dentro de la app), sólo este paso.
+        let sinCarpeta = false;
+        try {
+            sinCarpeta = EN_ANDROID && !EN_CARPETA && sinGuardarTodavia && localStorage.getItem("richi-master-carpeta-no") !== "si";
+        } catch (e) {
+            sinCarpeta = false;
+        }
+        if (sinCarpeta) {
+            const resto = Array.from(caja.children).filter((x) => x !== icono && x !== titulo && !x.classList.contains("master-entrada-idiomas"));
+            resto.forEach((x) => {
+                x.hidden = true;
+            });
+            const paso = crear("div");
+            const elegir = botonDe("oc-vida-accion es-principal", ocT("📁 elegir o crear la carpeta"), () => window.ocAndroid.elegirCarpeta());
+            const dentro = botonDe("oc-vida-accion", ocT("📱 prefiero guardarlo dentro de la app"), () => {
+                try {
+                    localStorage.setItem("richi-master-carpeta-no", "si");
+                } catch (e) {
+                    // Sin guardar: se vuelve a preguntar la próxima vez.
+                }
+                paso.remove();
+                resto.forEach((x) => {
+                    x.hidden = false;
+                });
+                input.focus();
+            });
+            const botones = crear("div", "master-anadir-otras");
+            botones.append(elegir, dentro);
+            paso.append(crear("p", "master-entrada-texto", ocT("¡Hola! Antes de empezar, elige una carpeta para guardarlo todo (por ejemplo, «Documentos/Pantalla de máster»): tus campañas, imágenes, PDF y música, ordenados y a salvo aunque desinstales la app. También se puede copiar al ordenador.")),
+                botones, crear("p", "oc-hoja-nota", ocT("Si lo guardas dentro de la app, se borra al desinstalarla. Se puede cambiar cuando quieras en ⚙ opciones.")));
+            titulo.after(paso);
+            elegir.focus();
+        } else {
+            (fondo.querySelector(".master-entrada-campana") || input).focus();
+        }
         verAvisoWeb(fondo);
     }
 

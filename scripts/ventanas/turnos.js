@@ -30,18 +30,50 @@
         PM.anadir("iniciativa");
     }
 
+    // A dónde vuelve el foco al cerrar: a su botón, aunque la ventana se
+    // haya vuelto a pintar (la criatura del turno tarda un poco: lo espera).
+    function volverA(dentro, que, id) {
+        const buscar = () => dentro.querySelector("[data-" + que + '="' + CSS.escape(id) + '"]');
+        return { focus: () => {
+            const b = buscar();
+            if (b) {
+                b.focus();
+                return;
+            }
+            setTimeout(() => {
+                const otro = buscar();
+                if (otro) {
+                    otro.focus();
+                }
+            }, 400);
+        } };
+    }
     // ✎ en cada uno: su nombre, iniciativa, PG, CA y estados (en la ventana
     // de la iniciativa: window.ocTurnos.editar). Al cerrar, el foco vuelve
     // a su ✎ aunque la lista se haya vuelto a pintar.
     function botonEditar(c, dentro) {
         const id = c.id;
-        const b = PM.botonDe("master-turnos-editar", "✎", () => window.ocTurnos.editar(id, {
-            focus: () => (dentro.querySelector('[data-editar="' + CSS.escape(id) + '"]') || dentro).focus()
-        }), ocT("Editar a {nombre}: PG, iniciativa, nombre y estados", { nombre: c.nombre }));
+        const b = PM.botonDe("master-turnos-editar", "✎", () => window.ocTurnos.editar(id, volverA(dentro, "editar", id)), ocT("Editar a {nombre}: PG, iniciativa, nombre y estados", { nombre: c.nombre }));
         b.dataset.editar = id;
         b.title = ocT("Editar: PG, iniciativa, nombre y estados");
         b.setAttribute("aria-haspopup", "dialog");
         return b;
+    }
+
+    // ❤️ en cada uno: daño, cura o vida temporal (window.ocTurnos.vida).
+    function botonVida(c, dentro) {
+        const id = c.id;
+        const b = PM.botonDe("master-turnos-editar es-vida", "❤️", () => window.ocTurnos.vida(id, volverA(dentro, "vida", id)), ocT("Daño, cura o vida temporal a {nombre}", { nombre: c.nombre }));
+        b.dataset.vida = id;
+        b.title = ocT("Daño, cura o vida temporal");
+        b.setAttribute("aria-haspopup", "dialog");
+        return b;
+    }
+    // Los dos, juntos, arriba a la derecha de su fila.
+    function mandosDe(c, dentro) {
+        const caja = PM.crear("div", "master-turnos-uno");
+        caja.append(botonVida(c, dentro), botonEditar(c, dentro));
+        return caja;
     }
 
     // ⏩ TURNOS: a quién le toca, en grande (él o su grupo), los que van
@@ -54,8 +86,25 @@
         const lista = PM.crear("ol", "master-turnos-lista");
         lista.setAttribute("aria-label", ocT("Los que van después"));
         const mandos = PM.crear("div", "master-turnos-mandos");
+        // 🔔: con o sin sonido al pasar de turno y de ronda.
+        const sonido = PM.botonDe("oc-vida-accion master-turnos-sonido", "", () => {
+            try {
+                localStorage.setItem("richi-oc-iniciativa-sonido", T.conSonido() ? "no" : "si");
+            } catch (e) {
+                // Sin guardar: nada.
+            }
+            pintarSonido();
+            PM.avisar(T.conSonido() ? ocT("Con sonido al pasar de turno.") : ocT("Sin sonido al pasar de turno."));
+        });
+        const pintarSonido = () => {
+            sonido.textContent = T.conSonido() ? "🔔" : "🔕";
+            sonido.setAttribute("aria-label", ocT("Sonido al pasar de turno y de ronda"));
+            sonido.setAttribute("aria-pressed", String(T.conSonido()));
+            sonido.title = T.conSonido() ? ocT("Con sonido (pulsa para quitarlo)") : ocT("Sin sonido (pulsa para ponerlo)");
+        };
+        pintarSonido();
         mandos.append(PM.botonDe("oc-vida-accion", ocT("◀ anterior turno"), () => pasarTurno(-1), ocT("Volver al turno anterior")),
-            PM.botonDe("oc-vida-accion es-principal", ocT("siguiente turno ▶"), () => pasarTurno(1), ocT("Pasar al siguiente turno")));
+            PM.botonDe("oc-vida-accion es-principal", ocT("siguiente turno ▶"), () => pasarTurno(1), ocT("Pasar al siguiente turno")), sonido);
         function pintar() {
             const d = T.leer();
             if (!d.lista.length) {
@@ -69,7 +118,7 @@
                 d.lista.forEach((c) => {
                     const li = PM.crear("li", "master-turnos-fila");
                     li.style.setProperty("--turno-color", PM.colorIni(c));
-                    li.append(PM.crear("span", "master-turnos-nombre", c.nombre), PM.datosIni(c, true), botonEditar(c, dentro));
+                    li.append(PM.crear("span", "master-turnos-nombre", c.nombre), PM.datosIni(c, true), mandosDe(c, dentro));
                     orden.appendChild(li);
                 });
                 caja.replaceChildren(PM.crear("p", "oc-hoja-nota", ocT("El combate no ha empezado ({n}{n2}", { n: d.lista.length, n2: d.lista.length === 1 ? ocT(" en la iniciativa).") : ocT(" en la iniciativa).") })),
@@ -90,7 +139,7 @@
             ahora.replaceChildren(PM.crear("p", "master-turnos-le", ocT("le toca a")), ...turno.map((c) => {
                 const fila = PM.crear("div", "master-turnos-fila es-ahora");
                 fila.style.setProperty("--turno-color", PM.colorIni(c));
-                fila.append(PM.crear("strong", "master-turnos-nombre", c.nombre), PM.datosIni(c, true), botonEditar(c, dentro));
+                fila.append(PM.crear("strong", "master-turnos-nombre", c.nombre), PM.datosIni(c, true), mandosDe(c, dentro));
                 return fila;
             }));
             // Los demás turnos, en orden, desde el siguiente (los de la
@@ -116,14 +165,14 @@
                 li.append(PM.crear("span", "master-turnos-nombre", T.nombresDe(cs)), cs.length === 1 ? PM.datosIni(cs[0], true)
                     : PM.crear("span", "master-turnos-chapa", ocT("{n} a la vez", { n: cs.length })));
                 if (cs.length === 1) {
-                    li.appendChild(botonEditar(cs[0], dentro));
+                    li.appendChild(mandosDe(cs[0], dentro));
                 } else {
                     // Un grupo: un ✎ con el nombre de cada uno.
                     const cada = PM.crear("div", "master-turnos-cada");
                     cs.forEach((c) => {
                         const b = botonEditar(c, dentro);
                         b.textContent = "✎ " + c.nombre;
-                        cada.appendChild(b);
+                        cada.append(botonVida(c, dentro), b);
                     });
                     li.appendChild(cada);
                 }
@@ -137,7 +186,8 @@
         pintar();
         PM.mientrasEste(dentro, "oc-iniciativa:guardada", pintar);
         PM.mientrasEste(dentro, "oc-iniciativa:cambio", pintar);
+        PM.mientrasEste(dentro, "oc-iniciativa:iconos", pintar);
     }
 
-    Object.assign(PM, { montarTurnos, botonEditar });
+    Object.assign(PM, { montarTurnos, botonEditar, mandosDe });
 })();

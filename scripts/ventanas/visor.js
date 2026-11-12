@@ -37,8 +37,27 @@
             const pj = pjs.find((x) => x.id === m.datos.pj) || pjs[0];
             m.datos.pj = pj.id;
             const foco = elegir.contains(document.activeElement);
+            // Cada personaje: su botón, ✎ (editar su ficha) y 🗑 (quitarlo,
+            // pulsando dos veces); al final, ＋ uno nuevo y 📥 importar.
+            const avisarCambio = () => document.dispatchEvent(new CustomEvent("master:pjs", { detail: {} }));
+            const nuevo = PM.botonDe("master-visor-mas", "＋", () => {
+                const n = PM.nuevoPj({ nombre: "" });
+                m.datos.pj = n.id;
+                m.datos.editar = true;
+                pintadoDe = null;
+                PM.guardar();
+                // (nuevoPj ya ha avisado: aquí, sólo pintar con su ficha
+                // abierta para escribirla.)
+                pintar();
+            }, ocT("Añadir un personaje nuevo a la party"));
+            nuevo.title = ocT("Personaje nuevo");
+            const importar = PM.botonDe("master-visor-mas", "📥", () => PM.abrirImportarPj(importar),
+                ocT("Importar un personaje de D&D Beyond, Nivel20 o Foundry VTT"));
+            importar.title = ocT("Importar un personaje");
+            importar.setAttribute("aria-haspopup", "dialog");
             elegir.replaceChildren(...pjs.map((x, i) => {
                 const quien = x.nombre || ocT("jugador {n}", { n: i + 1 });
+                const grupoPj = PM.crear("div", "master-visor-uno");
                 const b = PM.botonDe("master-visor-pj", "", () => {
                     if (m.datos.pj === x.id) {
                         return;
@@ -53,8 +72,36 @@
                 ini.setAttribute("aria-hidden", "true");
                 b.append(foto || ini, document.createTextNode(quien));
                 b.setAttribute("aria-pressed", String(x === pj));
-                return b;
-            }));
+                const editar = PM.botonDe("master-visor-mando", "✎", () => {
+                    m.datos.pj = x.id;
+                    m.datos.editar = true;
+                    pintadoDe = null;
+                    PM.guardar();
+                    pintar();
+                }, ocT("Editar la ficha de {quien}", { quien }));
+                let seguro = false;
+                const quitar = PM.botonDe("master-visor-mando", "🗑", () => {
+                    if (!seguro) {
+                        seguro = true;
+                        quitar.classList.add("es-seguro");
+                        quitar.setAttribute("aria-label", ocT("¿Seguro? Pulsa otra vez para quitar a {quien}", { quien }));
+                        PM.avisar(ocT("Pulsa otra vez para quitar a {quien}.", { quien }));
+                        return;
+                    }
+                    PM.todo.pjs = (PM.todo.pjs || []).filter((y) => y.id !== x.id);
+                    if (m.datos.pj === x.id) {
+                        delete m.datos.pj;
+                    }
+                    pintadoDe = null;
+                    PM.guardar();
+                    avisarCambio();
+                    PM.avisar(ocT("Quitado de la party: {quien}.", { quien }));
+                    const otro = elegir.querySelector(".master-visor-pj");
+                    (otro || dentro.querySelector("button")).focus();
+                }, ocT("Quitar a {quien} de la party", { quien }));
+                grupoPj.append(b, editar, quitar);
+                return grupoPj;
+            }), nuevo, importar);
             if (foco) {
                 elegir.querySelector("[aria-pressed=true]").focus();
             }

@@ -1985,6 +1985,20 @@
     display: none;
 }
 
+/* Los apartados plegables de la ficha: el título es el que se pulsa. */
+.master-pj-plegable > summary {
+    cursor: pointer;
+}
+
+.master-pj-plegable > summary > .master-pj-titulo {
+    display: inline;
+}
+
+.master-pj-plegable > summary:focus-visible {
+    outline: 3px solid var(--yellow);
+    outline-offset: 2px;
+}
+
 .master-pj-titulo {
     margin: 14px 0 6px;
     font-size: 1rem;
@@ -4440,6 +4454,21 @@
     min-width: 0;
 }
 
+/* Lo de cada pestaña del compendio, en grupos: lo de base (SRD) y lo
+   tuyo por categorías (el libro), cada uno con su título. */
+.master-creador-grupos {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.master-creador-cat {
+    margin: 0 0 6px;
+    padding-bottom: 2px;
+    border-bottom: 2px solid var(--yellow);
+    font-size: 0.95rem;
+}
+
 .master-creador-lista {
     display: flex;
     flex-direction: column;
@@ -4636,6 +4665,7 @@
 
 /* PEGAR UN BLOQUE y SU GUÍA (tus creaciones). */
 .master-pegar {
+    position: relative;
     display: flex;
     flex-direction: column;
     gap: 6px;
@@ -4844,6 +4874,11 @@
 .master-entrada-texto {
     margin: 0 0 12px;
     text-align: center;
+}
+
+/* Lo que se esconde de la entrada (mientras se pide la carpeta). */
+.master-entrada-caja > [hidden] {
+    display: none;
 }
 
 .master-entrada-texto a {
@@ -5936,6 +5971,30 @@ body:has(.master-compendio, .master-entrada) .master-modos {
     cursor: pointer;
 }
 
+/* Cada modo con su ✎ al lado. */
+.master-modos-con-editar {
+    display: flex;
+    gap: 3px;
+}
+
+.master-modos-editar {
+    flex: none;
+    width: 40px;
+    min-height: 40px;
+    padding: 0;
+    border: 2px solid var(--yellow);
+    background: transparent;
+    color: var(--white);
+    font: inherit;
+    cursor: pointer;
+}
+
+.master-modos-editar:hover,
+.master-modos-editar:focus-visible {
+    outline: 3px solid var(--yellow);
+    outline-offset: 2px;
+}
+
 .master-modos-boton[aria-current="true"] {
     background: var(--yellow);
     color: var(--yellow-contrast);
@@ -6025,13 +6084,13 @@ body:has(.master-compendio, .master-entrada) .master-modos {
     display: flex;
     flex-direction: column;
     gap: 4px;
-    padding: 8px 54px 8px 10px;
+    padding: 8px 100px 8px 10px;
     border: 2px solid var(--border);
     border-left: 8px solid var(--turno-color, var(--yellow));
 }
 
 .master-turnos-fila.es-ahora {
-    padding: 12px 58px 12px 12px;
+    padding: 12px 104px 12px 12px;
     border-color: var(--yellow);
     border-left-color: var(--turno-color, var(--yellow));
 }
@@ -6053,10 +6112,12 @@ body:has(.master-compendio, .master-entrada) .master-modos {
     cursor: pointer;
 }
 
-.master-turnos-fila > .master-turnos-editar {
+.master-turnos-fila > .master-turnos-uno {
     position: absolute;
     top: 6px;
     right: 6px;
+    display: flex;
+    gap: 4px;
 }
 
 .master-turnos-editar:hover,
@@ -6129,6 +6190,12 @@ body:has(.master-compendio, .master-entrada) .master-modos {
     flex: 1 1 0;
 }
 
+/* 🔔 (con o sin sonido): pequeño, al final. */
+.master-turnos-mandos > .master-turnos-sonido {
+    flex: 0 0 auto;
+    padding-inline: 10px;
+}
+
 /* 🐲 LA CRIATURA DEL TURNO y la ficha resumida de un PJ. */
 .master-turno-criatura,
 .master-turno-pj {
@@ -6167,6 +6234,41 @@ body:has(.master-compendio, .master-entrada) .master-modos {
 
 .master-visor-pj:hover,
 .master-visor-pj:focus-visible {
+    outline: 3px solid var(--yellow);
+    outline-offset: 2px;
+}
+
+/* Cada personaje con su ✎ y su 🗑 pegados; ＋ y 📥 al final. */
+.master-visor-uno {
+    display: inline-flex;
+}
+
+.master-visor-mando,
+.master-visor-mas {
+    min-width: 40px;
+    min-height: 44px;
+    padding: 0 8px;
+    border: 2px solid var(--yellow);
+    background: transparent;
+    color: var(--white);
+    font: inherit;
+    cursor: pointer;
+}
+
+.master-visor-mando {
+    margin-left: -2px;
+}
+
+.master-visor-mando.es-seguro {
+    background: var(--red, #b3261e);
+    color: #fff;
+}
+
+.master-visor-mando:hover,
+.master-visor-mando:focus-visible,
+.master-visor-mas:hover,
+.master-visor-mas:focus-visible {
+    position: relative;
     outline: 3px solid var(--yellow);
     outline-offset: 2px;
 }
@@ -6481,4 +6583,55 @@ body:has(.master-compendio, .master-entrada) .master-modos {
     width: 100%;
     aspect-ratio: 1;
     object-fit: cover;
+}
+
+/* IMPORTAR UN PERSONAJE: el aviso de internet y la pantalla de carga
+   (encima del formulario mientras se trae). */
+.master-importar-red {
+    margin: 0 0 10px;
+    padding: 6px 10px;
+    border-left: 4px solid var(--yellow);
+}
+
+.master-cargando {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    background: color-mix(in srgb, var(--purple-lighter) 92%, transparent);
+}
+
+.master-cargando[hidden] {
+    display: none;
+}
+
+.master-cargando-rueda {
+    width: 44px;
+    height: 44px;
+    border: 5px solid color-mix(in srgb, var(--yellow) 30%, transparent);
+    border-top-color: var(--yellow);
+    border-radius: 50%;
+    animation: master-girar 0.9s linear infinite;
+}
+
+.master-cargando-texto {
+    margin: 0;
+    font-weight: 700;
+    text-align: center;
+}
+
+@keyframes master-girar {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .master-cargando-rueda {
+        animation-duration: 3s;
+    }
 }

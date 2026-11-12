@@ -28,23 +28,30 @@ Es gratis, sin anuncios y sin nada de pago. Sale de la pantalla de máster de [E
   - Usa el tamaño de letra del sistema, se puede ampliar la página con dos dedos fuera del tablero y funciona con TalkBack y con teclado.
 - **En el ordenador:** abre la web y, si quieres, instálala desde el navegador (Chrome/Edge: el icono de instalar de la barra de direcciones).
 - **En una tablet:** ábrela en el navegador y «Añadir a pantalla de inicio» (iPad: Safari → Compartir; Android: Chrome → menú).
+- En vertical (pantallas estrechas), en vez de las pestañas sale un desplegable con los tableros, y la barra cabe en una línea.
+- **🎲 registro de tiradas** (en 🧰, «la mesa»): las tiradas de los dados en una ventana aparte, siempre a la vista.
 - La primera vez se guarda entera en el dispositivo; desde entonces funciona **sin internet**. Cuando hay una versión nueva, avisa con «↻ actualizar» (no se recarga sola en mitad de una partida).
 
 ## Los modos
 
 Además de los tableros (las pestañas, donde las ventanas van donde las dejas), están los **modos**: pantallas fijas que se llenan solas, sin arrastrar nada (pensadas para la tablet). Se cambia de modo con el botón de abajo a la izquierda, que despliega la lista de los modos de la campaña; manteniéndolo pulsado se lleva a otro sitio (o con «✥ mover este menú» y las flechas), y «↺ a su sitio» lo devuelve:
 
-- **⚔️ combate:** ⏩ *turnos* (a quién le toca, en grande; quién va después; anterior y siguiente turno), 🐲 *criatura del turno* (su bloque del bestiario o, si es de la party, su ficha resumida), condiciones y reglas en pestañas, y la ⏱️ iniciativa para editarla. Las dos primeras están en 🧰, en «▶️ turno a turno». Con **✎** en cada criatura (en los turnos, la criatura del turno o la iniciativa) se cambian sus PG, su iniciativa, su nombre, su CA y sus estados: cada criatura de la iniciativa es única.
+- **⚔️ combate** (tres columnas): ⏩ *turnos* (a quién le toca, en grande; quién va después; anterior y siguiente turno; suena al pasar de turno y de ronda, 🔔 lo calla), 🐲 *criatura del turno* (su bloque del bestiario o, si es de la party, su ficha resumida; con la party y el bestiario en pestañas) y la ⏱️ iniciativa con las condiciones, las acciones y las reglas en pestañas. Las dos primeras están en 🧰, en «▶️ turno a turno». En cada criatura: **❤️** (un número y daño, cura o vida temporal; si se concentra, salta su tirada de concentración) y **✎** (PG, iniciativa, nombre, CA y estados): cada criatura de la iniciativa es única. Sus estados salen con su dibujo y se pulsan para leerlos.
 - **📝 notas:** los documentos y seis post-its.
-- **🛡️ party:** 🧝 *fichas de la party*: eliges un personaje y ves su ficha como el visor de fichas del blog (tarjeta con PG, CA, retrato y características; historia, ficha, criaturas, PNJ, imágenes, extra y lo del máster).
-- En un hueco vacío, «＋ elegir ventana»; en el ✎ de una ventana, la pestaña «🧩 hueco» la cambia por otra o le pone otra en pestaña. «＋» crea un modo (vacío, con una rejilla, o como uno de serie); el ✎ de junto a las pestañas cambia el de ahora (nombre, dibujo, rejilla) o lo borra; «▦ tableros» vuelve a las pestañas.
+- **🛡️ party:** 🧝 *fichas de la party*: eliges un personaje y ves su ficha como el visor de fichas del blog (tarjeta con PG, CA, retrato y características; historia —su historia, cómo es, secretos y extra—, ficha, criaturas, PNJ, imágenes y lo del máster). Cada apartado se pliega pulsando su título. Junto a cada personaje, ✎ (editar) y 🗑 (quitar); al final, ＋ (nuevo) y 📥 (importar: con un enlace hace falta internet; se recuerda el enlace para «📥 actualizar»).
+- En la lista de los modos, el ✎ de cada uno le cambia el nombre, el dibujo o la rejilla, o lo borra. En un hueco vacío, «＋ elegir ventana»; en el ✎ de una ventana, la pestaña «🧩 hueco» la cambia por otra o le pone otra en pestaña. «＋» crea un modo (vacío, con una rejilla, o como uno de serie); el ✎ de junto a las pestañas cambia el de ahora (nombre, dibujo, rejilla) o lo borra; «▦ tableros» vuelve a las pestañas.
+
+## La primera vez
+
+En la app de Android, al abrirla por primera vez pide una carpeta donde guardarlo todo (campañas, imágenes, PDF y música), que sigue ahí aunque se desinstale la app. Se puede elegir guardarlo dentro de la app, y cambiarlo luego en ⚙ opciones.
 
 ## El compendio
 
 El botón 🛠️ (arriba a la izquierda) abre el compendio. Arriba a la derecha se elige qué hacer:
 
 - **＋ añadir:** monstruos, objetos, conjuros, rasgos y más cosas, nuevos, copiados de uno del SRD, pegando un bloque o importando un `.json`.
-- **✎ editar:** busca cualquiera, del SRD o tuyo, y cámbialo. Si es del SRD, se guarda tu versión, que sale en su lugar en toda la app; «↺» lo deja como era.
+- Lo tuyo se ordena por **categorías** (el libro de donde sale: «La caldera de Tasha», «Inventado»…): se elige una o se escribe una nueva en el formulario, y las listas salen agrupadas así. En editar y borrar, lo de base (el SRD) va aparte de lo tuyo.
+- **✎ editar:** busca cualquiera, del SRD o tuyo, y cámbialo (antes de tocar algo del SRD, un aviso, que se puede pedir que no salga más). Si es del SRD, se guarda tu versión, que sale en su lugar en toda la app; «↺» lo deja como era.
 - **🗑️ borrar:** lo tuyo se borra; lo del SRD deja de salir en la app y se puede recuperar en «borrados del SRD».
 
 ## Idiomas

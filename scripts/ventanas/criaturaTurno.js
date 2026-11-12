@@ -28,7 +28,7 @@
             // Si se cambia su nombre, su iniciativa, su CA o sus estados, se
             // vuelve a pintar; los PG, solos (más abajo).
             const clave = turno.map((c) => c.id).join(",") + "|" + elegido.id + "|"
-                + JSON.stringify([elegido.nombre, elegido.ini, elegido.ca, elegido.marcas || []]);
+                + JSON.stringify([elegido.nombre, elegido.ini, elegido.ca, elegido.temp, elegido.marcas || []]);
             if (clave === pintado && !forzar) {
                 // El mismo turno: sólo los PG (de la iniciativa).
                 const pg = dentro.querySelector("[data-pg-turno]");
@@ -59,7 +59,7 @@
                 const cabezaPj = PM.crear("div", "master-turnos-fila es-ahora");
                 cabezaPj.style.setProperty("--turno-color", PM.colorIni(elegido));
                 cabezaPj.append(PM.crear("strong", "master-turnos-nombre", elegido.nombre), PM.datosIni(elegido, true),
-                    PM.botonEditar(elegido, dentro));
+                    PM.mandosDe(elegido, dentro));
                 caja.append(cabezaPj, resumenPj(PM.normalizarPj(pj), elegido));
                 dentro.replaceChildren(caja);
                 return;
@@ -78,7 +78,7 @@
                 const cabeza = PM.crear("div", "master-turnos-fila es-ahora");
                 cabeza.style.setProperty("--turno-color", PM.colorIni(elegido));
                 cabeza.append(PM.crear("strong", "master-turnos-nombre", elegido.nombre), PM.datosIni(elegido, true),
-                    PM.botonEditar(elegido, dentro));
+                    PM.mandosDe(elegido, dentro));
                 const pgChapa = Array.from(cabeza.querySelectorAll(".master-turnos-chapa")).find((x) => /^PG/.test(x.textContent));
                 if (pgChapa) {
                     pgChapa.lastChild.remove();
@@ -104,6 +104,7 @@
         pintar(true);
         PM.mientrasEste(dentro, "oc-iniciativa:guardada", () => pintar(false));
         PM.mientrasEste(dentro, "oc-iniciativa:cambio", () => pintar(false));
+        PM.mientrasEste(dentro, "oc-iniciativa:iconos", () => pintar(true));
         PM.mientrasEste(dentro, "master:pjs", () => {
             pintado = "";
             pintar(true);

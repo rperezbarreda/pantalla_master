@@ -45,6 +45,26 @@
     // «op.visor»: como el visor de fichas del blog (para el visor de la
     // party): a la izquierda, la tarjeta (nombre, PG, CA, retrato, nivel,
     // características) y un menú de secciones; a la derecha, la sección.
+    // Los apartados de un panel (cada título y lo que va debajo hasta el
+    // siguiente), plegables: un <details> abierto con el título en su
+    // <summary>.
+    function plegables(panel) {
+        const hijos = Array.from(panel.children);
+        let actual = null;
+        hijos.forEach((h) => {
+            if (h.matches("h3.master-pj-titulo")) {
+                actual = PM.crear("details", "master-pj-plegable");
+                actual.open = true;
+                const resumen = PM.crear("summary");
+                panel.insertBefore(actual, h);
+                resumen.appendChild(h);
+                actual.appendChild(resumen);
+            } else if (actual) {
+                actual.appendChild(h);
+            }
+        });
+    }
+
     function montarPj(dentro, m, op) {
         m.datos = m.datos || {};
         const visor = !!(op && op.visor);
@@ -54,6 +74,10 @@
             return;
         }
         PM.normalizarPj(pj);
+        // La última vez que se monta aquí manda: lo que llegue tarde de una
+        // anterior (la carga de los datos) no la pisa.
+        const vez = {};
+        dentro.ocMontado = vez;
         const repintar = () => {
             dentro.replaceChildren();
             montarPj(dentro, m, op);
@@ -72,6 +96,9 @@
         dentro.appendChild(PM.crear("p", "oc-hoja-nota", ocT("Cargando…")));
         Promise.all([PM.pedir(PM.CONJUROS_SRD), PM.pedir(PM.TIENDA).catch(() => ({ objetos: [] })),
             PM.pedir(PM.BESTIARIO).catch(() => ({ monstruos: [] }))]).then(([conj, tienda, bestiario]) => {
+            if (dentro.ocMontado !== vez) {
+                return;
+            }
             const srd = {};
             (conj.conjuros || []).forEach((c) => {
                 srd[PM.llano(c.nombre)] = c;
@@ -160,6 +187,9 @@
             const ddb = PM.botonDe("oc-vida-accion", ocT("📥 actualizar"), () => PM.abrirImportarPj(ddb, pj),
                 ocT("Actualizar a {quien} desde D&D Beyond, Nivel20 o Foundry VTT", { quien: quien }));
             ddb.setAttribute("aria-haspopup", "dialog");
+            if (pj.importadoDe) {
+                ddb.title = ocT("Se trajo de {url}: «📥 actualizar» la vuelve a traer de ahí.", { url: pj.importadoDe });
+            }
             const ini = PM.botonDe("oc-vida-accion", ocT("＋ iniciativa"), () => {
                 const n = PM.meterEnIniciativa(PM.iniDePj(pj, quien));
                 PM.avisar(n ? ocT("A la iniciativa: {n}.", { n: n }) : ocT("{quien} ya está en la iniciativa.", { quien: quien }));
@@ -443,14 +473,22 @@
             }
             panelRasgos.appendChild(datosDe([[ocT("Competencias"), pj.competencias], [ocT("Idiomas"), pj.idiomas]]));
 
-            // 6. HISTORIA: cómo es y de dónde viene (se escribe aquí mismo).
+            // 6. HISTORIA: primero su historia; luego cómo es, sus secretos y
+            // lo extra (lugares, su gente…). Se escribe aquí mismo.
             const panelHist = PM.crear("div");
-            panelHist.append(area(pj, "aspecto", ocT("aspecto (cómo es)"), 3), area(pj, "personalidad", ocT("personalidad"), 2),
-                area(pj, "ideales", ocT("ideales"), 2), area(pj, "vinculos", ocT("vínculos"), 2), area(pj, "defectos", ocT("defectos"), 2),
-                area(pj, "historia", ocT("su historia"), 8));
+            const comoEs = [area(pj, "aspecto", ocT("aspecto (cómo es)"), 3), area(pj, "personalidad", ocT("personalidad"), 2),
+                area(pj, "ideales", ocT("ideales"), 2), area(pj, "vinculos", ocT("vínculos"), 2), area(pj, "defectos", ocT("defectos"), 2)];
             if ((pj.trasfondo || "").trim()) {
-                panelHist.appendChild(area(pj, "trasfondo", ocT("trasfondo (de antes)"), 3));
+                comoEs.push(area(pj, "trasfondo", ocT("trasfondo (de antes)"), 3));
             }
+            titulo(panelHist, ocT("📜 Su historia"));
+            panelHist.appendChild(area(pj, "historia", ocT("su historia"), 8));
+            titulo(panelHist, ocT("🎭 Cómo es"));
+            panelHist.append(...comoEs);
+            titulo(panelHist, ocT("🤫 Secretos"));
+            panelHist.appendChild(area(pj, "secretos", ocT("sus secretos (lo que esconde)"), 4));
+            titulo(panelHist, ocT("📎 Extra"));
+            panelHist.appendChild(area(pj, "extra", ocT("extra: lugares, su gente, ganchos, lo que quieras"), 8));
 
             // 7. PNJ Y NOTAS: la gente que conoce y lo que apunta el jugador.
             const panelPnj = PM.crear("div");
@@ -679,14 +717,13 @@
             panelImg.append(listaImg, botonImg, subirImg);
             pintarImg();
 
-            // 11. EXTRA: lo que no cabe en lo demás.
-            const panelExtra = PM.crear("div");
-            panelExtra.appendChild(area(pj, "extra", ocT("extra: lugares, su gente, ganchos, lo que quieras"), 12));
+            // Cada apartado (con su título), plegable: se pulsa el título.
+            [panelFicha, panelHab, panelCombate, panelConj, panelInv, panelRasgos, panelHist, panelPnj].forEach(plegables);
 
             if (!visor) {
                 const paneles = [[ocT("📋 ficha"), panelFicha], [ocT("⚔️ combate"), panelCombate], [ocT("✨ conjuros"), panelConj],
                     [ocT("🎒 inventario"), panelInv], [ocT("⭐ rasgos"), panelRasgos], [ocT("📜 historia"), panelHist], [ocT("👥 PNJ y notas"), panelPnj],
-                    [ocT("🐾 criaturas"), panelCriaturas], [ocT("🖼️ imágenes"), panelImg], [ocT("📎 extra"), panelExtra], [ocT("🎭 máster"), panelMaster]];
+                    [ocT("🐾 criaturas"), panelCriaturas], [ocT("🖼️ imágenes"), panelImg], [ocT("🎭 máster"), panelMaster]];
                 const { lista, elegir } = PM.pestanasDe(paneles, ocT("Ficha de {quien}", { quien: quien }), uid, (i) => {
                     m.datos.pestana = i;
                     PM.guardar();
@@ -773,7 +810,7 @@
             const secciones = [["📖", ocT("historia"), panelHist], ["📋", ocT("ficha"), null, [["📊", ocT("combate"), panelFicha],
                 ["🎯", ocT("habilidades"), panelHab], ["⚔️", ocT("acciones"), panelCombate], ["✨", ocT("conjuros"), panelConj],
                 ["🎒", ocT("inventario"), panelInv], ["⭐", ocT("rasgos y competencias"), panelRasgos]]], ["🐾", ocT("criaturas"), panelCriaturas],
-                ["👥", ocT("PNJ y notas"), panelPnj], ["🖼️", ocT("imágenes"), panelImg], ["📎", ocT("extra"), panelExtra], ["🎭", ocT("máster"), panelMaster]];
+                ["👥", ocT("PNJ y notas"), panelPnj], ["🖼️", ocT("imágenes"), panelImg], ["🎭", ocT("máster"), panelMaster]];
             // (Un div con su papel, no un <section>: la base de la web le da
             // a todos alto, relleno y centrado.)
             const contenido = PM.crear("div", "master-visor-contenido");
