@@ -148,13 +148,14 @@
 // LOS IDIOMAS: la app está escrita en castellano y cada texto de la
 // interfaz pasa por window.ocT("texto original", {variables}). Con otro
 // idioma elegido («richi-idioma»), ocT busca el texto en el diccionario
-// de ese idioma (idiomas/<código>.js, que se genera desde lo que traduce
-// la comunidad en Weblate) y, si no está, deja el original. En castellano
-// no hace nada más que poner las variables: la app queda igual.
+// de ese idioma (idiomas/<código>.js, que se genera desde
+// traducciones/<código>.json, lo que traduce la comunidad) y, si no está,
+// deja el original. En castellano no hace nada más que poner las variables:
+// la app queda igual.
 // El compendio (bestiario, conjuros, objetos…) se traduce al cargarse con
-// window.ocIdioma.datos(json), desde idiomas/<código>/compendio.json.
-// «richi-idioma-prueba» guarda una traducción cargada a mano desde Aa
-// para probarla antes de que esté en Weblate.
+// window.ocIdioma.datos(json), desde idiomas/<código>.json.
+// «richi-idioma-prueba» guarda un traducciones/<código>.json cargado a mano
+// desde Aa, para probar una traducción antes de que esté en la app.
 // =========================================
 (function () {
     var raiz = document.documentElement;
@@ -170,7 +171,7 @@
     } catch (e) {
         prueba = null;
     }
-    if (prueba && (typeof prueba !== "object" || prueba.codigo !== codigo)) {
+    if (prueba && (typeof prueba !== "object" || prueba.codigo !== codigo || !prueba.textos)) {
         prueba = null;
     }
     var interfaz = {};
@@ -248,8 +249,8 @@
                 return Promise.resolve(json);
             }
             if (!pedido) {
-                pedido = prueba && prueba.compendio ? Promise.resolve(prueba.compendio)
-                    : fetch("idiomas/" + codigo + "/compendio.json").then(function (r) {
+                pedido = prueba ? Promise.resolve(prueba.textos)
+                    : fetch("idiomas/" + codigo + ".json").then(function (r) {
                         return r.ok ? r.json() : {};
                     }).catch(function () {
                         return {};
@@ -297,7 +298,7 @@
         return;
     }
     if (prueba) {
-        window.ocIdioma.poner(prueba.interfaz);
+        window.ocIdioma.poner(prueba.textos);
     } else {
         // Bloqueante a propósito: tiene que estar antes que los scripts «defer».
         document.write('<script src="idiomas/' + codigo + '.js"><\/script>');

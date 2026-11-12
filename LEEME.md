@@ -41,9 +41,9 @@ Además de los tableros (las pestañas, donde las ventanas van donde las dejas),
 
 ## Idiomas
 
-La app está en castellano y la traduce la comunidad (de momento, al catalán, gallego y euskera) en **Weblate**: [hosted.weblate.org/engage/pantalla-de-master](https://hosted.weblate.org/engage/pantalla-de-master/). Se elige el idioma en **Aa → 🌐 idioma**, que dice cuánto lleva traducido cada uno; lo que aún no está traducido sale en castellano.
+La app está en castellano y la traduce la comunidad (de momento, al catalán, gallego y euskera): cada idioma es un archivo de la carpeta [`traducciones/`](traducciones/), y allí mismo está [cómo ayudar](traducciones/LEEME.md). Se elige el idioma en **Aa → 🌐 idioma**, que dice cuánto lleva traducido cada uno; lo que aún no está traducido sale en castellano.
 
-Para ver una traducción antes de que llegue a la app: en Weblate, descarga el archivo del idioma (`interfaz.json` y, si quieres, `compendio.json`), y en Aa elige el idioma y pulsa «🧪 probar un archivo de traducción…». Se queda puesta en ese dispositivo hasta «✕ quitar la traducción de prueba».
+Para ver una traducción antes de que llegue a la app: en Aa, elige el idioma y pulsa «🧪 probar un archivo de traducción…» con el archivo (por ejemplo, `ca.json`). Se queda puesta en ese dispositivo hasta «✕ quitar la traducción de prueba».
 
 ## Dónde se guarda lo tuyo
 
@@ -67,7 +67,8 @@ datos/                  el SRD 5.2 en español (CC BY 4.0) y las tablas
 tipografias/            las letras (con sus licencias OFL)
 imagenes/               iconos y fondos
 sonidos/                las grabaciones (ver sonidos/LEEME.txt)
-idiomas/                las traducciones (ver «Los idiomas», abajo)
+traducciones/           un JSON por idioma: lo que traduce la comunidad (ver «Los idiomas»)
+idiomas/                GENERADO: lo que lee la app, desde traducciones/
 herramientas/           precache.py, idiomas.py, construir-ejecutables.py, iconos.py y la plantilla del sw
 lanzador/               el ejecutable (Go)
 android/                la app de Android (Java, sin librerías; ver abajo)
@@ -80,14 +81,10 @@ android/                la app de Android (Java, sin librerías; ver abajo)
 - Cada texto de la interfaz va en `ocT("texto en castellano")`, con las partes que cambian como `{nombre}`: `ocT("Quitado: {nombre}.", { nombre: x.nombre })`. Nunca se pega un texto con `+` («"Quitar " + nombre»): se escribe la frase entera con su `{…}`, que el orden de las palabras cambia de un idioma a otro. Lo que es un identificador (clases, claves, valores que se comparan) no va en `ocT`. En castellano `ocT` sólo pone las variables, así que la app es la misma.
 - Lo escrito tal cual en los `.html` (títulos, `aria-label`, `title`, `placeholder`) se traduce solo al cargar; con `translate="no"` en un elemento, eso no.
 - El compendio (`datos/`) se traduce al cargarse (`window.ocIdioma.datos`, en `pedir`, `pedirNombres` y `ocReglas.cargar`), menos los campos de `FIJOS` en `arranque.js` (los nombres en inglés, los id, y las categorías con las que filtra el programa: clases, rarezas, escuelas, tipos…; esas salen en castellano). Si se añade un campo de ese tipo, va en `FIJOS` aquí **y** en `herramientas/idiomas.py`.
-- `python3 herramientas/idiomas.py` (lo llama `precache.py`) saca las **plantillas** `idiomas/es/interfaz.json` (todos los `ocT("…")` y los textos de los `.html`) y `idiomas/es/compendio.json` (cada texto distinto de `datos/`), y para cada idioma hace `idiomas/<código>.js` (el diccionario que carga la app) desde `idiomas/<código>/interfaz.json`, y `idiomas/lista.json` con lo traducido. Weblate escribe `idiomas/<código>/interfaz.json` y `idiomas/<código>/compendio.json`; al subirlos, la Action `idiomas` (`.github/workflows/idiomas.yml`) rehace lo demás y lo sube en otro commit.
-- Las claves son el propio texto en castellano: si se cambia un texto, su traducción vuelve a estar pendiente (Weblate lo marca).
-- **Un idioma nuevo:** se añade en Weblate (o la carpeta `idiomas/<código>/` con `interfaz.json` y `compendio.json` con `{}`) y su nombre en `NOMBRES` de `herramientas/idiomas.py`.
-- **Montar Weblate (una vez):** en [hosted.weblate.org](https://hosted.weblate.org) (gratis para proyectos libres; hace falta que el repo sea público), «Add new translation project» con el nombre «Pantalla de máster» (URL `pantalla-de-master`, la del enlace de Aa) y dos componentes desde este repo, rama `desarrollo`:
-  - «Interfaz»: formato *JSON file*, máscara `idiomas/*/interfaz.json`, plantilla monolingüe `idiomas/es/interfaz.json`, idioma de origen español. En «Translation flags»: `placeholders:r"\{[A-Za-z0-9_]+\}", safe-html`.
-  - «Compendio»: igual con `compendio.json` y la *flag* de los `{…}`.
-  - Para que Weblate suba lo traducido: en el componente, «Repository push URL» con el repo y la clave de Weblate añadida en GitHub (Settings → Deploy keys, con escritura), o la integración de GitHub de Weblate; y en Settings → Webhooks del repo, el de Weblate (`https://hosted.weblate.org/hooks/github/`) para que vea los cambios.
-  - Añadir el catalán, el gallego y el euskera (ya tienen su carpeta).
+- `python3 herramientas/idiomas.py` (lo llama `precache.py`) rehace `traducciones/es.json`, el **original** (todos los `ocT("…")`, los textos de los `.html` y cada texto distinto de `datos/`; la interfaz primero), y pone al día cada `traducciones/<código>.json`: le añade vacíos los textos nuevos y le quita los que ya no se usan. Desde ellos hace lo que lee la app: `idiomas/<código>.js` (la interfaz, se carga antes que todo), `idiomas/<código>.json` (el compendio) e `idiomas/lista.json` (los idiomas y cuánto llevan, para Aa).
+- Las claves son el propio texto en castellano: si se cambia un texto, su traducción se pierde y vuelve a salir vacío para traducirlo otra vez.
+- Las traducciones llegan como *pull request* que cambia `traducciones/<código>.json` (o se ponen a mano); al subirlas, la Action `idiomas` (`.github/workflows/idiomas.yml`) rehace `idiomas/` y `sw.js` y lo sube en otro commit.
+- **Un idioma nuevo:** `traducciones/<código>.json` con `{}` y su nombre en `NOMBRES` de `herramientas/idiomas.py`.
 
 **Las reglas y los nombres se cambian en sus JSON** (`datos/personajes/compendio/`):
 

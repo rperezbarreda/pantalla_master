@@ -68,10 +68,6 @@ def archivos_de_la_app():
         for base, _, archivos in os.walk(o):
             for a in sorted(archivos):
                 ruta = os.path.join(base, a)
-                rel = os.path.relpath(ruta, RAIZ).replace(os.sep, "/")
-                # De idiomas/, sin las plantillas ni lo de Weblate.
-                if rel.startswith("idiomas/es/") or rel.endswith("/interfaz.json"):
-                    continue
                 if not a.endswith((".txt", ".md", ".py")):
                     lista.append((ruta, os.path.relpath(ruta, RAIZ).replace(os.sep, "/")))
     return lista

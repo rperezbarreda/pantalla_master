@@ -412,15 +412,20 @@ function armarAjustesMovimiento() {
 
 // EL IDIOMA
 //
-// Un botón por idioma (de idiomas/lista.json, con cuánto lleva traducido
-// la comunidad en Weblate). Al elegir uno se guarda en «richi-idioma» y la
-// app vuelve a arrancar: los textos se ponen al cargar (ver arranque.js).
-// «🧪 probar un archivo» carga los .json que se descargan de Weblate
-// (interfaz.json, compendio.json) para ver una traducción antes de que
-// esté en la app; se guarda en «richi-idioma-prueba» hasta quitarla.
-const AJUSTES_WEBLATE = "https://hosted.weblate.org/engage/pantalla-de-master/";
+// Un botón por idioma (de idiomas/lista.json, con cuánto lleva traducido).
+// Al elegir uno se guarda en «richi-idioma» y la app vuelve a arrancar: los
+// textos se ponen al cargar (ver arranque.js). «🧪 probar un archivo» carga
+// un traducciones/<código>.json para ver cómo queda una traducción antes de
+// que esté en la app; se guarda en «richi-idioma-prueba» hasta quitarla.
+const AJUSTES_TRADUCIR = "https://github.com/rperezbarreda/pantalla_master/tree/main/traducciones";
 
 function ajustesRecargar() {
+    // Que vuelva a la campaña de antes, sin pasar por la entrada.
+    try {
+        sessionStorage.setItem("richi-master-recarga", "1");
+    } catch (e) {
+        // Sin sessionStorage: pasa por la entrada, nada más.
+    }
     const almacen = window.ocAlmacen;
     const esperar = almacen && almacen.guardarYa ? almacen.guardarYa().catch(() => null) : Promise.resolve();
     esperar.then(() => location.reload());
@@ -486,14 +491,13 @@ function armarAjustesIdioma() {
         }
     }).catch(() => {});
 
-    // Probar una traducción descargada de Weblate.
+    // Probar un archivo de la carpeta «traducciones».
     const prueba = document.createElement("div");
     prueba.className = "ajustes-mandos ajustes-mandos-anchos";
     const archivo = document.createElement("input");
     archivo.type = "file";
     archivo.accept = ".json,application/json";
-    archivo.multiple = true;
-    archivo.hidden = true;
+        archivo.hidden = true;
     const probar = document.createElement("button");
     probar.type = "button";
     probar.className = "ajustes-opcion";
@@ -511,37 +515,29 @@ function armarAjustesIdioma() {
         if (!archivos.length) {
             return;
         }
-        Promise.all(archivos.map((a) => a.text().then((t) => [a.name, JSON.parse(t)]))).then((leidos) => {
-            const datos = { codigo: ahora, interfaz: {}, compendio: null };
-            leidos.forEach(([nombreArchivo, json]) => {
+        Promise.all(archivos.map((a) => a.text().then((t) => JSON.parse(t)))).then((leidos) => {
+            // Sólo lo traducido (lo vacío sale en castellano igual).
+            const textos = {};
+            leidos.forEach((json) => {
                 if (!json || typeof json !== "object" || Array.isArray(json)) {
                     throw new Error("formato");
                 }
-                if (json.interfaz || json.compendio) {
-                    Object.assign(datos.interfaz, json.interfaz || {});
-                    datos.compendio = Object.assign(datos.compendio || {}, json.compendio || {});
-                } else if (/compendio/i.test(nombreArchivo)) {
-                    datos.compendio = Object.assign(datos.compendio || {}, json);
-                } else {
-                    Object.assign(datos.interfaz, json);
-                }
+                Object.keys(json).forEach((k) => {
+                    if (typeof json[k] === "string" && json[k].trim()) {
+                        textos[k] = json[k];
+                    }
+                });
             });
             try {
-                localStorage.setItem("richi-idioma-prueba", JSON.stringify(datos));
+                localStorage.setItem("richi-idioma-prueba", JSON.stringify({ codigo: ahora, textos }));
             } catch (e) {
-                // Muy grande para el almacén: se prueba sólo la interfaz.
-                datos.compendio = null;
-                try {
-                    localStorage.setItem("richi-idioma-prueba", JSON.stringify(datos));
-                } catch (e2) {
-                    aviso.textContent = ocT("No cabe en el almacén de este navegador.");
-                    return;
-                }
+                aviso.textContent = ocT("No cabe en el almacén de este navegador.");
+                return;
             }
             aviso.textContent = ocT("Traducción de prueba cargada. Volviendo a arrancar…");
             ajustesRecargar();
         }).catch(() => {
-            aviso.textContent = ocT("No he podido leer ese archivo: tiene que ser el .json que se descarga de Weblate.");
+            aviso.textContent = ocT("No he podido leer ese archivo: tiene que ser uno de la carpeta «traducciones» (por ejemplo, ca.json).");
         });
     });
     prueba.append(probar, archivo);
@@ -563,10 +559,10 @@ function armarAjustesIdioma() {
     nota.className = "ajustes-grupo-nota";
     nota.appendChild(document.createTextNode(ocT("Las traducciones las hace la comunidad. ")));
     const enlace = document.createElement("a");
-    enlace.href = AJUSTES_WEBLATE;
+    enlace.href = AJUSTES_TRADUCIR;
     enlace.target = "_blank";
     enlace.rel = "noopener";
-    enlace.textContent = ocT("Ayuda a traducir la app en Weblate");
+    enlace.textContent = ocT("Cómo ayudar a traducir la app");
     nota.appendChild(enlace);
     fila.appendChild(nota);
     fila.appendChild(aviso);

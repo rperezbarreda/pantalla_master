@@ -1,2 +1,2 @@
-// Generado por herramientas/idiomas.py desde idiomas/gl/interfaz.json: no tocar a mano.
+// Generado por herramientas/idiomas.py desde traducciones/gl.json: no tocar a mano.
 window.ocIdioma.poner({});

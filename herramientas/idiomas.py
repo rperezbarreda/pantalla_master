@@ -1,37 +1,39 @@
 #!/usr/bin/env python3
 """Los idiomas de la app. Lo llama precache.py (y la Action «idiomas» de
-GitHub cuando Weblate sube traducciones), así que no hace falta pasarlo a
-mano:
+GitHub cuando alguien sube una traducción), así que no hace falta pasarlo
+a mano:
 
     python3 herramientas/idiomas.py
 
-Hace esto:
-  1. idiomas/es/interfaz.json: la plantilla de la interfaz. Todos los textos
-     que pasan por ocT("…") en scripts/ y los que están escritos tal cual en
-     los .html (títulos, etiquetas, aria-label…). Clave = valor = el texto en
-     castellano. Es lo que Weblate enseña para traducir.
-  2. idiomas/es/compendio.json: la plantilla del compendio (bestiario,
-     conjuros, objetos, reglas, rasgos, tablas, nombres…): cada texto
-     distinto de datos/, sin los campos que no se traducen (los mismos que
-     FIJOS y PIEZAS en scripts/arranque.js).
-  3. Para cada idioma (cada carpeta de idiomas/ que no sea «es»):
-     idiomas/<código>.js, el diccionario de la interfaz que carga la app
-     (desde idiomas/<código>/interfaz.json, lo que escribe Weblate). El del
-     compendio, idiomas/<código>/compendio.json, lo lee la app tal cual.
-  4. idiomas/lista.json: los idiomas que hay y cuánto tienen traducido
-     (lo enseña el selector de Aa).
+Las traducciones están en traducciones/, un archivo por idioma (ver
+traducciones/LEEME.md, que es lo que lee quien traduce):
+  - traducciones/es.json: el ORIGINAL, que se rehace aquí (no se toca a
+    mano). Clave = valor = el texto en castellano. Lleva todo: los textos de
+    la interfaz (los ocT("…") de scripts/ y lo escrito en los .html) y los del
+    compendio (cada texto distinto de datos/, sin los campos de FIJOS y
+    PIEZAS, los mismos que en scripts/arranque.js).
+  - traducciones/<código>.json (ca, gl, eu…): lo traducido. Aquí se le
+    añaden, vacíos, los textos nuevos de la app (así quien traduce ve lo que
+    falta) y se le quitan los que la app ya no usa. Lo vacío sale en
+    castellano.
 
-Para añadir un idioma: crearlo en Weblate (o una carpeta idiomas/<código>
-con interfaz.json y compendio.json que tengan «{}») y ponerle nombre en
-NOMBRES, aquí abajo.
+Y de ahí hace lo que lee la app, en idiomas/ (generado, no se toca):
+  - idiomas/<código>.js: lo de la interfaz (se carga antes que todo);
+  - idiomas/<código>.json: lo del compendio (se pide al cargar los datos);
+  - idiomas/lista.json: los idiomas y cuánto llevan (el selector de Aa).
+
+Un idioma nuevo: traducciones/<código>.json con «{}» (se llena solo con
+todos los textos vacíos) y su nombre en NOMBRES, aquí abajo.
 """
 import html.parser
 import json
 import os
 import re
+import shutil
 
 RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 IDIOMAS = os.path.join(RAIZ, "idiomas")
+TRADUCCIONES = os.path.join(RAIZ, "traducciones")
 SCRIPTS = os.path.join(RAIZ, "scripts")
 HTMLS = ["index.html", "jugadores.html", "reproductor.html"]
 # El nombre de cada idioma en ese idioma.
@@ -162,35 +164,54 @@ def traducidos(dic, plantilla):
     return {k: v for k, v in dic.items() if k in plantilla and isinstance(v, str) and v.strip()}
 
 
+def porcentaje(dic, plantilla):
+    hechos = sum(1 for k, v in dic.items() if v != k or len(k) < 4)
+    return int(100 * hechos / max(1, len(plantilla)))
+
+
 def main():
     interfaz = plantilla_interfaz()
     compendio = plantilla_compendio()
-    escribir(os.path.join(IDIOMAS, "es", "interfaz.json"), interfaz)
-    escribir(os.path.join(IDIOMAS, "es", "compendio.json"), compendio)
+    # La plantilla: todo junto (la interfaz primero), cada texto una vez.
+    plantilla = dict(interfaz)
+    for k in compendio:
+        plantilla.setdefault(k, k)
+    escribir(os.path.join(TRADUCCIONES, "es.json"), plantilla)
+    os.makedirs(IDIOMAS, exist_ok=True)
     lista = [{"codigo": "es", "nombre": NOMBRES["es"], "interfaz": 100, "compendio": 100}]
-    for codigo in sorted(os.listdir(IDIOMAS)):
-        carpeta = os.path.join(IDIOMAS, codigo)
-        if codigo == "es" or not os.path.isdir(carpeta) or not CODIGO.match(codigo):
+    hechos = set()
+    for nombre in sorted(os.listdir(TRADUCCIONES)):
+        codigo = nombre[:-5]
+        if not nombre.endswith(".json") or codigo == "es" or not CODIGO.match(codigo):
             continue
-        ti = traducidos(leer(os.path.join(carpeta, "interfaz.json"), {}), interfaz)
-        ruta_c = os.path.join(carpeta, "compendio.json")
-        if leer(ruta_c) is None:
-            escribir(ruta_c, {})
-        if leer(os.path.join(carpeta, "interfaz.json")) is None:
-            escribir(os.path.join(carpeta, "interfaz.json"), {})
-        tc = traducidos(leer(ruta_c, {}), compendio)
+        dic = leer(os.path.join(TRADUCCIONES, nombre), {})
+        if not isinstance(dic, dict):
+            print("traducciones/%s no es un JSON válido: no se toca." % nombre)
+            continue
+        # El archivo, con todos los textos de ahora y en el mismo orden que
+        # el original: lo traducido, y lo que falta vacío.
+        escribir(os.path.join(TRADUCCIONES, nombre),
+                 {k: dic[k] if isinstance(dic.get(k), str) else "" for k in plantilla})
+        ti = traducidos(dic, interfaz)
+        tc = traducidos(dic, compendio)
         with open(os.path.join(IDIOMAS, codigo + ".js"), "w", encoding="utf-8") as f:
-            f.write("// Generado por herramientas/idiomas.py desde idiomas/%s/interfaz.json: no tocar a mano.\n" % codigo)
+            f.write("// Generado por herramientas/idiomas.py desde traducciones/%s.json: no tocar a mano.\n" % codigo)
             f.write("window.ocIdioma.poner(")
             json.dump(ti, f, ensure_ascii=False, indent=0, sort_keys=True)
             f.write(");\n")
+        with open(os.path.join(IDIOMAS, codigo + ".json"), "w", encoding="utf-8") as f:
+            json.dump(tc, f, ensure_ascii=False, separators=(",", ":"), sort_keys=True)
+        hechos.update([codigo + ".js", codigo + ".json"])
         lista.append({"codigo": codigo, "nombre": NOMBRES.get(codigo, codigo),
-                      "interfaz": int(100 * len(ti) / max(1, len(interfaz))),
-                      "compendio": int(100 * len(tc) / max(1, len(compendio)))})
-    # Los .js de idiomas que ya no tienen carpeta, fuera.
+                      "interfaz": porcentaje(ti, interfaz), "compendio": porcentaje(tc, compendio)})
+    # Lo de idiomas que ya no tiene traducción, fuera.
     for a in os.listdir(IDIOMAS):
-        if a.endswith(".js") and not os.path.isdir(os.path.join(IDIOMAS, a[:-3])):
-            os.remove(os.path.join(IDIOMAS, a))
+        ruta = os.path.join(IDIOMAS, a)
+        if a != "lista.json" and a not in hechos:
+            if os.path.isdir(ruta):
+                shutil.rmtree(ruta)
+            else:
+                os.remove(ruta)
     escribir(os.path.join(IDIOMAS, "lista.json"), lista)
     print("idiomas: %d textos de interfaz, %d del compendio; %s." % (
         len(interfaz), len(compendio), ", ".join("%s %d%%/%d%%" % (x["codigo"], x["interfaz"], x["compendio"]) for x in lista[1:]) or "ninguno más"))
