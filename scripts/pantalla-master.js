@@ -18640,31 +18640,44 @@
     // el primero en cada campaña nueva (se puede quitar como cualquiera).
     // Uno para el ordenador y otro para la tableta (la app de Android: con
     // el dedo, sin teclado), con las tarjetas en el mismo orden.
-    // La de los modos, igual en los dos.
-    const TARJETA_MODOS = [ocT("🧩 Los modos"), "lima", ocT("<p>Abajo a la derecha está el menú de los <strong>modos</strong>: pantallas que se llenan solas, sin mover ventanas.</p><ul><li><strong>⚔️ combate</strong>: a quién le toca y quién va después, el perfil de la criatura del turno, condiciones y reglas, y la iniciativa.</li><li><strong>📝 notas</strong>: tus documentos y seis post-its.</li><li><strong>🛡️ party</strong>: la ficha de cada personaje, como un libro.</li><li>En un hueco vacío, <strong>＋ elegir ventana</strong>; en el ✎ de una ventana, «🧩 hueco» la cambia por otra o le pone otra en pestaña.</li><li><strong>＋</strong> crea un modo tuyo, <strong>✎</strong> (junto a las pestañas) cambia el de ahora y <strong>▦ tableros</strong> vuelve a las pestañas.</li></ul>")];
+    // Las de los modos, iguales en los dos.
+    const TARJETAS_MODOS = [
+        [ocT("🧩 Los modos"), "lima", ocT("<p>Además de los tableros, están los <strong>modos</strong>: pantallas fijas que se llenan solas, sin arrastrar ni colocar nada (pensadas para la tablet).</p><ul><li>El menú de los modos está <strong>abajo a la derecha</strong>: toca uno para entrar; <strong>−</strong> lo pliega.</li><li><strong>▦ tableros</strong> vuelve a las pestañas de siempre.</li><li>En un hueco vacío, <strong>＋ elegir ventana</strong>. En el <strong>✎</strong> de una ventana, la pestaña <strong>🧩 hueco</strong> la cambia por otra o le pone otra al lado, en pestañas.</li><li><strong>＋</strong> crea un modo tuyo: vacío con la rejilla que elijas o copiando uno de serie. El <strong>✎</strong> de junto a las pestañas le cambia el nombre, el dibujo o la rejilla, o lo borra.</li></ul>")],
+        [ocT("⚔️ Modo combate"), "rojo", ocT("<ul><li><strong>⏩ turnos</strong>: a quién le toca, en grande, y quién va después. <strong>◀ anterior</strong> y <strong>siguiente ▶</strong> pasan el turno (van a la par con la iniciativa).</li><li><strong>🐲 criatura del turno</strong>: el bloque del bestiario de quien le toca, o su ficha resumida si es de la party.</li><li>Las <strong>condiciones</strong> y las <strong>reglas</strong>, juntas en pestañas, y la <strong>⏱️ iniciativa</strong> para añadir o quitar a alguien.</li><li>Las dos primeras también se pueden poner en cualquier tablero: <strong>🧰 → ▶️ turno a turno</strong>.</li></ul>")],
+        [ocT("🛡️ Modo party"), "verde", ocT("<p><strong>🧝 Fichas de la party</strong>: elige un personaje arriba y su ficha se abre como un libro.</p><ul><li>La tarjeta: retrato, <strong>PG</strong> (se cambian ahí mismo), CA y características.</li><li>Las secciones: historia, la ficha (combate, habilidades, acciones, conjuros, inventario, rasgos), sus <strong>criaturas</strong> (compañeros y monturas, con su perfil del bestiario), PNJ y notas, <strong>imágenes</strong>, extra y lo del máster.</li><li>También está en <strong>🧰 → mesa</strong>, para ponerla en un tablero.</li></ul><p>Y el modo <strong>📝 notas</strong>: tus documentos y seis post-its.</p>")]
+    ];
+    // Las de los modos son más largas: van en la última fila, más altas.
+    const ALTO_MODOS = 880;
+    // Lo que decían antes algunas tarjetas: si siguen así (nadie las ha
+    // tocado), se cambian por lo de ahora.
+    const TUTORIAL_VIEJO = {
+        "🧩 Los modos": ["<p>Abajo a la derecha está el menú de los <strong>modos</strong>: pantallas que se llenan solas, sin mover ventanas.</p><ul><li><strong>⚔️ combate</strong>: a quién le toca y quién va después, el perfil de la criatura del turno, condiciones y reglas, y la iniciativa.</li><li><strong>📝 notas</strong>: tus documentos y seis post-its.</li><li><strong>🛡️ party</strong>: la ficha de cada personaje, como un libro.</li><li>En un hueco vacío, <strong>＋ elegir ventana</strong>; en el ✎ de una ventana, «🧩 hueco» la cambia por otra o le pone otra en pestaña.</li><li><strong>＋</strong> crea un modo tuyo, <strong>✎</strong> (junto a las pestañas) cambia el de ahora y <strong>▦ tableros</strong> vuelve a las pestañas.</li></ul>"],
+        "🧰 Añadir herramientas": ["<p>El botón <strong>🧰</strong> (arriba a la izquierda) abre todas las ventanas que puedes poner, por grupos:</p><ul><li><strong>combate</strong>: iniciativa, condiciones, encuentros…</li><li><strong>consulta</strong>: reglas, conjuros, bestiario, tienda…</li><li><strong>mesa</strong>: la party, sonido ambiente, efectos de sonido, música…</li><li><strong>mundo</strong>: generadores de nombres, PNJ, dungeons, negocios, botín…</li><li><strong>apuntes</strong>: post-its, dibujo, documentos…</li></ul>"],
+        "🔍 Buscar, crear y ajustes": ["<ul><li>El <strong>buscador</strong> de arriba encuentra conjuros, monstruos, reglas, objetos, rasgos, dotes y habilidades a la vez (también lo que añadas tú).</li><li><strong>⚙</strong>: zoom, ordenar o quitar ventanas, atajos y las <strong>copias de seguridad</strong> (exportar e importar).</li><li><strong>Aa</strong>: tamaño del texto, letra más legible y los temas de color.</li></ul>", "<ul><li>El <strong>buscador</strong> de arriba encuentra conjuros, monstruos, reglas, objetos, rasgos, dotes y habilidades a la vez (también lo que añadas tú).</li><li><strong>⚙</strong>: zoom, ordenar o quitar ventanas, las <strong>copias de seguridad</strong>, dónde se guarda, que la pantalla no se apague y buscar actualizaciones.</li><li><strong>Aa</strong>: tamaño del texto, letra más legible y los temas de color.</li></ul>"]
+    };
     const TUTORIAL_ORDENADOR = [
         [ocT("👋 Bienvenida"), "amarillo", ocT("<p>Esto es tu <strong>pantalla de máster</strong>: un tablero con ventanas que pones, mueves y quitas a tu gusto.</p><ul><li>Las <strong>pestañas de arriba</strong> son tus tableros (por ejemplo, uno para combate y otro para la ciudad).</li><li>Cada ventana es una herramienta: la iniciativa, el bestiario, las reglas, notas…</li><li>Este tablero es el tutorial: cuando ya no lo necesites, quítalo con <strong>✎</strong> (arriba, junto a las pestañas).</li></ul>")],
         [ocT("🪟 Las ventanas"), "celeste", ocT("<ul><li><strong>Toca la barra</strong> de una ventana para plegarla o desplegarla.</li><li><strong>Mantén pulsada la barra</strong> y arrastra para moverla.</li><li>La esquina de abajo a la derecha cambia su <strong>tamaño</strong>.</li><li><strong>✎</strong> le cambia el nombre, el color y el tamaño de la letra; <strong>−</strong> la pliega y <strong>✕</strong> la quita.</li><li>Suelta una ventana sobre la barra de otra y se <strong>juntan en pestañas</strong>; ⇱ la vuelve a sacar.</li></ul>")],
         [ocT("🗂️ Tableros y campañas"), "verde", ocT("<ul><li><strong>＋</strong> (junto a las pestañas) crea un tablero nuevo, vacío o desde una plantilla; <strong>✎</strong> cambia el de ahora: nombre, colores o quitarlo.</li><li>Mantén pulsada una pestaña para <strong>cambiarla de sitio</strong>.</li><li><strong>📚</strong> son tus campañas: cada una con sus tableros, su party y sus documentos, sin mezclarse.</li></ul>")],
-        [ocT("🧰 Añadir herramientas"), "naranja", ocT("<p>El botón <strong>🧰</strong> (arriba a la izquierda) abre todas las ventanas que puedes poner, por grupos:</p><ul><li><strong>combate</strong>: iniciativa, condiciones, encuentros…</li><li><strong>consulta</strong>: reglas, conjuros, bestiario, tienda…</li><li><strong>mesa</strong>: la party, sonido ambiente, efectos de sonido, música…</li><li><strong>mundo</strong>: generadores de nombres, PNJ, dungeons, negocios, botín…</li><li><strong>apuntes</strong>: post-its, dibujo, documentos…</li></ul>")],
-        [ocT("🔍 Buscar, crear y ajustes"), "morado", ocT("<ul><li>El <strong>buscador</strong> de arriba encuentra conjuros, monstruos, reglas, objetos, rasgos, dotes y habilidades a la vez (también lo que añadas tú).</li><li><strong>⚙</strong>: zoom, ordenar o quitar ventanas, atajos y las <strong>copias de seguridad</strong> (exportar e importar).</li><li><strong>Aa</strong>: tamaño del texto, letra más legible y los temas de color.</li></ul>")],
+        [ocT("🧰 Añadir herramientas"), "naranja", ocT("<p>El botón <strong>🧰</strong> (arriba a la izquierda) abre todas las ventanas que puedes poner, por grupos:</p><ul><li><strong>combate</strong>: iniciativa, condiciones, encuentros…</li><li><strong>▶️ turno a turno</strong>: los turnos y la criatura del turno.</li><li><strong>consulta</strong>: reglas, conjuros, bestiario, tienda…</li><li><strong>mesa</strong>: la party, las fichas de la party, sonido ambiente, efectos de sonido, música…</li><li><strong>mundo</strong>: generadores de nombres, PNJ, dungeons, negocios, botín…</li><li><strong>apuntes</strong>: post-its, dibujo, documentos…</li></ul>")],
+        [ocT("🔍 Buscar, crear y ajustes"), "morado", ocT("<ul><li>El <strong>buscador</strong> de arriba encuentra conjuros, monstruos, reglas, objetos, rasgos, dotes y habilidades a la vez (también lo que añadas tú).</li><li><strong>⚙</strong>: zoom, ordenar o quitar ventanas, atajos y las <strong>copias de seguridad</strong> (exportar e importar).</li><li><strong>Aa</strong>: tamaño del texto, letra más legible, los temas de color y el <strong>🌐 idioma</strong>.</li></ul>")],
         [ocT("🛠️ Crear contenido nuevo"), "turquesa", ocT("<p>El botón <strong>🛠️</strong> (arriba a la izquierda, junto a 📚) abre el <strong>compendio</strong>: ahí añades monstruos, objetos, conjuros y más cosas (especies, dotes…).</p><ul><li><strong>＋ nuevo</strong>: rellenas un formulario.</li><li><strong>⧉ copiar</strong> uno del SRD y cambiarlo, para tu versión.</li><li><strong>📋 pegar un bloque</strong> copiado de D&amp;D Beyond o de un PDF: el formulario se rellena solo.</li><li><strong>⬆ importar</strong> muchos a la vez con la plantilla.</li></ul><p>Luego salen en el bestiario, los encuentros, la tienda, los conjuros y el buscador, con «🛠️ tuyo». Su primera pestaña, <strong>❓ cómo añadir</strong>, lo explica paso a paso.</p>")],
         [ocT("🎲 Los dados"), "rosa", ocT("<ul><li>El <strong>botón redondo</strong> de abajo a la derecha (o la tecla <strong>D</strong>) abre los dados; pulsándolo otra vez se pliegan.</li><li>Toca los dados que quieras, pon el modificador y <strong>tirar</strong>. Con ventaja o desventaja, el d20 se tira dos veces.</li><li>Las últimas tiradas quedan debajo, para repetirlas.</li><li>En las fichas, los números con dados también se tiran tocándolos: prueba aquí con 1d20+5.</li></ul>")],
         [ocT("💾 Tus datos"), "gris", ocT("<ul><li>Todo lo que haces se guarda <strong>sólo en este dispositivo</strong>: no se sube a ningún sitio.</li><li>Si borras los datos del navegador, se pierde: haz de vez en cuando una copia con <strong>⚙ → exportar</strong>.</li><li>Para llevarlo a otro dispositivo: exportar aquí e <strong>importar</strong> allí.</li></ul>")],
         [ocT("⌨️ Atajos"), "azul", ocT("<p>Con teclado va todo más rápido (pulsa <strong>?</strong> para verlos todos):</p><ul><li><strong>/</strong> buscar · <strong>A</strong> añadir una ventana · <strong>N</strong> post-it nuevo</li><li><strong>D</strong> dados · <strong>I</strong> iniciativa · <strong>C</strong> campañas</li><li><strong>[</strong> y <strong>]</strong> tablero anterior y siguiente</li><li><strong>+</strong> y <strong>−</strong> zoom del tablero</li></ul>")],
-        TARJETA_MODOS,
+        ...TARJETAS_MODOS,
     ];
     const TUTORIAL_TABLETA = [
         [ocT("👋 Bienvenida"), "amarillo", ocT("<p>Esto es tu <strong>pantalla de máster</strong>: un tablero con ventanas que pones, mueves y quitas a tu gusto.</p><ul><li>Las <strong>pestañas de arriba</strong> son tus tableros (uno para combate, otro para la ciudad…); desliza la fila con el dedo para ver todas.</li><li>Cada ventana es una herramienta: la iniciativa, el bestiario, las reglas, notas…</li><li>Este tablero es el tutorial: cuando ya no lo necesites, quítalo con <strong>✎</strong> (arriba, junto a las pestañas).</li></ul>")],
         [ocT("✋ Con el dedo"), "celeste", ocT("<ul><li><strong>Desliza</strong> para moverte por el tablero; con <strong>dos dedos</strong>, pellizcando, lo acercas o lo alejas (también en los dibujos).</li><li><strong>Toca la barra</strong> de una ventana para plegarla o desplegarla.</li><li>Para moverla, <strong>deja el dedo quieto en su barra</strong> hasta que la tablet vibre y la barra se marque, y arrastra.</li><li>La <strong>esquina de abajo a la derecha</strong> cambia su tamaño.</li><li>Suelta una ventana sobre la barra de otra y se <strong>juntan en pestañas</strong>; ⇱ la vuelve a sacar.</li><li><strong>✎</strong> le cambia el nombre, el color y la letra; <strong>−</strong> la pliega y <strong>✕</strong> la quita. El botón <strong>atrás</strong> cierra lo que tengas abierto.</li></ul>")],
         [ocT("🗂️ Tableros y campañas"), "verde", ocT("<ul><li><strong>＋</strong> (junto a las pestañas) crea un tablero nuevo, vacío o desde una plantilla; <strong>✎</strong> cambia el de ahora: nombre, colores o quitarlo.</li><li>Deja el dedo sobre una pestaña para <strong>cambiarla de sitio</strong>.</li><li><strong>📚</strong> son tus campañas: cada una con sus tableros, su party y sus documentos, sin mezclarse.</li></ul>")],
         TUTORIAL_ORDENADOR[3],
-        [ocT("🔍 Buscar, crear y ajustes"), "morado", ocT("<ul><li>El <strong>buscador</strong> de arriba encuentra conjuros, monstruos, reglas, objetos, rasgos, dotes y habilidades a la vez (también lo que añadas tú).</li><li><strong>⚙</strong>: zoom, ordenar o quitar ventanas, las <strong>copias de seguridad</strong>, dónde se guarda, que la pantalla no se apague y buscar actualizaciones.</li><li><strong>Aa</strong>: tamaño del texto, letra más legible y los temas de color.</li></ul>")],
+        [ocT("🔍 Buscar, crear y ajustes"), "morado", ocT("<ul><li>El <strong>buscador</strong> de arriba encuentra conjuros, monstruos, reglas, objetos, rasgos, dotes y habilidades a la vez (también lo que añadas tú).</li><li><strong>⚙</strong>: zoom, ordenar o quitar ventanas, las <strong>copias de seguridad</strong>, dónde se guarda, que la pantalla no se apague y buscar actualizaciones.</li><li><strong>Aa</strong>: tamaño del texto, letra más legible, los temas de color y el <strong>🌐 idioma</strong>.</li></ul>")],
         TUTORIAL_ORDENADOR[5],
         [ocT("🎲 Los dados"), "rosa", ocT("<ul><li>El <strong>botón redondo</strong> de abajo a la derecha abre los dados; tocándolo otra vez se pliegan.</li><li>Toca los dados que quieras, pon el modificador y <strong>tirar</strong>. Con ventaja o desventaja, el d20 se tira dos veces.</li><li>Las últimas tiradas quedan debajo, para repetirlas.</li><li>En las fichas, los números con dados también se tiran tocándolos: prueba aquí con 1d20+5.</li></ul>")],
         [ocT("💾 Tus datos"), "gris", ocT("<ul><li>Todo se guarda <strong>sólo en esta tablet</strong>: no se sube a ningún sitio.</li><li>Dentro de la app, si la desinstalas, se pierde. Mejor en una <strong>carpeta</strong> (⚙ → dónde se guarda): sigue ahí, se puede copiar al ordenador y la app deja una copia al día.</li><li>Haz de vez en cuando una copia con <strong>⚙ → exportar</strong>; para llevarlo a otro sitio, <strong>importar</strong> allí.</li><li>Desde otras apps, <strong>Compartir</strong> o <strong>Abrir con</strong> trae copias, imágenes, PDF y audios.</li></ul>")],
         [ocT("📺 En la mesa"), "azul", ocT("<ul><li>La <strong>pantalla de jugadores</strong> sale en la tele o el monitor si los conectas por cable; si no, en otra ventana, al lado si cabe.</li><li>La <strong>música</strong> sigue sonando aunque dejes la app detrás o apagues la pantalla, y los botones de volumen son los suyos.</li><li>Mientras la app está a la vista, <strong>la pantalla no se apaga</strong> (se cambia en ⚙).</li></ul>")],
-        TARJETA_MODOS,
+        ...TARJETAS_MODOS,
     ];
     const TUTORIAL = EN_ANDROID ? TUTORIAL_TABLETA : TUTORIAL_ORDENADOR;
     // Los tableros de tutorial de antes: la nota nueva del compendio, y la
@@ -18690,11 +18703,27 @@
                 m.datos.html = buscar[2];
                 algo = true;
             });
-            [nueva, TARJETA_MODOS].forEach((t) => {
-                if (!pf.modulos.some((m) => m.titulo === t[0])) {
-                    const y = Math.max(0, ...pf.modulos.map((m) => m.y + m.h)) + 20;
-                    pf.modulos.push({ id: "m" + siguienteId++, tipo: "tarjeta", x: 10, y, w: 410, h: 540, titulo: t[0],
+            // Las que siguen como venían, a lo de ahora.
+            pf.modulos.forEach((m) => {
+                const viejas = m.tipo === "tarjeta" && m.datos && TUTORIAL_VIEJO[m.titulo];
+                const ahora = viejas && viejas.includes(m.datos.html) && TUTORIAL.find((t) => t[0] === ocT(m.titulo));
+                if (ahora) {
+                    [m.titulo, m.color, m.datos.html] = ahora;
+                    if (TARJETAS_MODOS.includes(ahora)) {
+                        m.h = Math.max(m.h, ALTO_MODOS);
+                    }
+                    algo = true;
+                }
+            });
+            // Las que faltan, en una fila debajo de todo.
+            const y = Math.max(0, ...pf.modulos.map((m) => m.y + m.h)) + 20;
+            let x = 10;
+            [nueva, ...TARJETAS_MODOS].forEach((t) => {
+                if (t && !pf.modulos.some((m) => m.titulo === t[0])) {
+                    pf.modulos.push({ id: "m" + siguienteId++, tipo: "tarjeta", x, y, w: 410,
+                        h: TARJETAS_MODOS.includes(t) ? ALTO_MODOS : 540, titulo: t[0],
                         color: t[1], plegado: false, escala: 1, datos: { html: t[2] } });
+                    x += 430;
                     algo = true;
                 }
             });
@@ -18734,7 +18763,8 @@
             // En filas de cuatro (en la tableta, de tres: lo que cabe).
             modulos: TUTORIAL.map(([titulo, color, html], i) => ({ tipo: "tarjeta", x: (i % (EN_ANDROID ? 3 : 4)) * 430,
                 y: Math.floor(i / (EN_ANDROID ? 3 : 4)) * 560,
-                w: 410, h: 540, titulo, color, plegado: false, escala: 1, datos: { html } })) };
+                w: 410, h: TARJETAS_MODOS.includes(TUTORIAL[i]) ? ALTO_MODOS : 540, titulo, color, plegado: false, escala: 1,
+                datos: { html } })) };
     }
     // Una campaña nueva: el tutorial y luego las plantillas de tableros.
     function crearCampana(nombre, unidades, edicion) {
