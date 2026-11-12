@@ -1,0 +1,39 @@
+# Cuando Weblate (o quien sea) sube traducciones a idiomas/<código>/*.json,
+# rehace lo que lee la app (idiomas/<código>.js, idiomas/lista.json) y sw.js,
+# con herramientas/precache.py, y lo sube en otro commit a la misma rama.
+# (Lo que sube esta Action no vuelve a lanzar Actions: no hay bucles.)
+name: idiomas
+
+on:
+  push:
+    branches: [desarrollo, main]
+    paths:
+      - "idiomas/*/interfaz.json"
+      - "idiomas/*/compendio.json"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: idiomas-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  rehacer:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Rehacer los idiomas y sw.js
+        run: python3 herramientas/precache.py
+      - name: Subir si ha cambiado algo
+        run: |
+          git add -A idiomas sw.js sonidos/indice.json
+          if git diff --cached --quiet; then
+            echo "::notice::Nada que rehacer."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Idiomas: rehechos los diccionarios de la app"
+          git push

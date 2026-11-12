@@ -196,7 +196,7 @@
                 if (!r.ok) {
                     throw new Error(r.status);
                 }
-                return r.json();
+                return r.json().then(window.ocIdioma.datos);
             });
         }
         const k = PROPIOS_EN[ruta];
@@ -251,8 +251,7 @@
     }
 
     // De dónde sale (en vez del crédito del SRD).
-    const fuenteDe = (x, f) => (x && x.propio ? "🛠️ Creado por ti" + (x.libro ? " · " + x.libro : "")
-        + ". Se guarda sólo en este navegador." : f);
+    const fuenteDe = (x, f) => (x && x.propio ? ocT("🛠️ Creado por ti{n}. Se guarda sólo en este navegador.", { n: x.libro ? " · " + x.libro : "" }) : f);
 
     // EL TRADUCTOR DE TÉRMINOS: pasa al español (el del SRD 5.2 en
     // español) lo que se repite en los bloques de estadísticas y las
@@ -370,7 +369,7 @@
         }
         const tam = (x) => (T_TAMANOS.find(([en]) => en === x) || [x, x])[1];
         const tipo = (T_TIPOS.find(([en]) => en === m[3]) || [m[3], m[3]])[1];
-        return tipo + traducir(m[4]) + " " + tam(m[1]) + (m[2] ? " o " + tam(m[2]) : "");
+        return tipo + traducir(m[4]) + " " + tam(m[1]) + (m[2] ? ocT(" o {tam}", { tam: tam(m[2]) }) : "");
     }
 
     // ---- LAS REGLAS (o solo las de un grupo: las condiciones son
@@ -424,7 +423,7 @@
             cuerpo.appendChild(grande);
         }
         if (r.grupo) {
-            cuerpo.appendChild(crear("p", "oc-hoja-nota", r.grupo + (r.alias ? " · también: " + r.alias : "")));
+            cuerpo.appendChild(crear("p", "oc-hoja-nota", r.grupo + (r.alias ? ocT(" · también: {alias}", { alias: r.alias }) : "")));
         }
         cuerpo.appendChild(markdown(r.texto));
         if (fuente) {
@@ -433,25 +432,25 @@
         if (window.ocDadosEnTexto) {
             window.ocDadosEnTexto(cuerpo);
         }
-        const fijar = botonDe("oc-vida-accion", "📌 al tablero", () => {
+        const fijar = botonDe("oc-vida-accion", ocT("📌 al tablero"), () => {
             cerrar();
             anadir("ficha", { titulo: r.nombre, datos: { que: r.propia ? "propia" : "regla", id: r.id || r.nombre } });
-        }, "Poner " + r.nombre + " en el tablero");
+        }, ocT("Poner {nombre} en el tablero", { nombre: r.nombre }));
         const barra = crear("div", "master-creador-barra");
         barra.appendChild(fijar);
         // Las del JSON se pueden cambiar (y volver a como venían).
         if (r.id && !r.propia) {
-            barra.appendChild(botonDe("oc-vida-accion", "✎ cambiar", () => {
+            barra.appendChild(botonDe("oc-vida-accion", ocT("✎ cambiar"), () => {
                 cerrar();
                 editarRegla(r, vuelta);
-            }, "Cambiar " + r.nombre));
+            }, ocT("Cambiar {nombre}", { nombre: r.nombre })));
             if (r.cambiada) {
-                cuerpo.appendChild(crear("p", "oc-hoja-nota", "✎ Cambiada por ti (la original: «" + r.original.nombre + "»)."));
-                barra.appendChild(botonDe("oc-vida-accion", "↺ volver a la original", () => {
+                cuerpo.appendChild(crear("p", "oc-hoja-nota", ocT("✎ Cambiada por ti (la original: «{nombre}»).", { nombre: r.original.nombre })));
+                barra.appendChild(botonDe("oc-vida-accion", ocT("↺ volver a la original"), () => {
                     window.ocReglas.guardarCambio(r.id, null);
-                    avisar(r.original.nombre + ": otra vez como venía.");
+                    avisar(r.original.nombre + ocT(": otra vez como venía."));
                     cerrar();
-                }, "Volver a la original de " + r.nombre));
+                }, ocT("Volver a la original de {nombre}", { nombre: r.nombre })));
             }
         }
         cuerpo.appendChild(barra);
@@ -459,7 +458,7 @@
     }
 
     // De dónde sale una regla: las opcionales son texto propio.
-    const fuenteDeRegla = (r, fuente) => (r.opcional ? "Regla opcional: texto propio, no del SRD." : fuente);
+    const fuenteDeRegla = (r, fuente) => (r.opcional ? ocT("Regla opcional: texto propio, no del SRD.") : fuente);
 
     // Cambiar una regla del JSON: lo cambiado va a «richi-master-reglas»
     // (window.ocReglas) y el archivo no se toca. Si es la de una marca de
@@ -481,27 +480,25 @@
                 form.append(et, x);
                 return x;
             };
-            const nombre = campo("nombre", "nombre", null, r.nombre);
+            const nombre = campo("nombre", ocT("nombre"), null, r.nombre);
             nombre.maxLength = 80;
             nombre.required = true;
-            const icono = campo("icono", "dibujo (un emoji)", null, r.icono);
+            const icono = campo("icono", ocT("dibujo (un emoji)"), null, r.icono);
             icono.maxLength = 4;
-            const alias = campo("alias", "también se busca por (opcional)", null, r.alias);
-            const texto = campo("texto", "la regla (con **negrita**, *cursiva*, «- » para listas y «| a | b |» para tablas)",
+            const alias = campo("alias", ocT("también se busca por (opcional)"), null, r.alias);
+            const texto = campo("texto", ocT("la regla (con **negrita**, *cursiva*, «- » para listas y «| a | b |» para tablas)"),
                 "textarea", r.texto);
             texto.rows = 10;
-            const corto = marcas.length ? campo("corto", "resumen corto (sale en la iniciativa al pasar por la marca "
-                + marcas.map((mk) => "«" + mk.marca + "»").join(", ") + ")", "textarea", marcas[0].corto) : null;
+            const corto = marcas.length ? campo("corto", ocT("resumen corto (sale en la iniciativa al pasar por la marca {join})", { join: marcas.map((mk) => "«" + mk.marca + "»").join(", ") }), "textarea", marcas[0].corto) : null;
             if (corto) {
                 corto.rows = 3;
                 corto.classList.remove("oc-notas-texto");
             }
             const barra = crear("div", "master-anadir-otras");
-            const listo = crear("button", "oc-vida-accion es-principal", "guardar");
+            const listo = crear("button", "oc-vida-accion es-principal", ocT("guardar"));
             listo.type = "submit";
-            barra.append(listo, botonDe("oc-vida-accion", "cancelar", () => cerrar()));
-            form.append(barra, crear("p", "oc-hoja-nota", "Se guarda con tus cosas (⚙ → exportar se lo lleva); el archivo"
-                + " de las reglas no cambia. Para dejarla como venía: «↺ volver a la original»."));
+            barra.append(listo, botonDe("oc-vida-accion", ocT("cancelar"), () => cerrar()));
+            form.append(barra, crear("p", "oc-hoja-nota", ocT("Se guarda con tus cosas (⚙ → exportar se lo lleva); el archivo de las reglas no cambia. Para dejarla como venía: «↺ volver a la original».")));
             form.addEventListener("submit", (e) => {
                 e.preventDefault();
                 const n = nombre.value.trim();
@@ -522,10 +519,10 @@
                     cambio.corto = corto.value.trim();
                 }
                 if (!window.ocReglas.guardarCambio(r.id, Object.keys(cambio).length ? cambio : null)) {
-                    avisar("No se ha podido guardar.");
+                    avisar(ocT("No se ha podido guardar."));
                     return;
                 }
-                avisar(Object.keys(cambio).length ? "Guardada: " + n + "." : n + ": como venía.");
+                avisar(Object.keys(cambio).length ? ocT("Guardada: {n}.", { n: n }) : n + ocT(": como venía."));
                 cerrar();
             });
             const cerrar = window.ocVentana.abrir({ titulo: "✎ " + r.nombre, cuerpo: form, vuelta, clase: "es-regla" });
@@ -535,7 +532,7 @@
 
     function montarReglas(dentro, m, soloGrupo) {
         m.datos = m.datos || {};
-        dentro.appendChild(crear("p", "oc-hoja-nota", "Cargando las reglas…"));
+        dentro.appendChild(crear("p", "oc-hoja-nota", ocT("Cargando las reglas…")));
         const pintar = (datos) => {
                 const propias = soloGrupo ? [] : leerHomebrew().map((r) => Object.assign({ grupo: "🏠 Reglas propias",
                     propia: true }, r));
@@ -606,13 +603,12 @@
                     });
                 }
                 if (datos.fuente) {
-                    dentro.appendChild(crear("p", "oc-hoja-nota master-fuente", datos.fuente
-                        + (reglas.some((r) => r.opcional) ? " Las opcionales (como el flanqueo), texto propio." : "")
-                        + " Cualquiera se cambia con «✎ cambiar» al abrirla."));
+                    dentro.appendChild(crear("p", "oc-hoja-nota master-fuente", ocT("{n} Cualquiera se cambia con «✎ cambiar» al abrirla.", { n: datos.fuente
+                        + (reglas.some((r) => r.opcional) ? ocT(" Las opcionales (como el flanqueo), texto propio.") : "") })));
                 }
         };
         const cargar = () => pedir(REGLAS).then(pintar).catch(() => {
-            dentro.replaceChildren(crear("p", "oc-vacio", "No he podido cargar las reglas."));
+            dentro.replaceChildren(crear("p", "oc-vacio", ocT("No he podido cargar las reglas.")));
         });
         cargar();
         mientrasEste(dentro, "oc:reglas", cargar);
@@ -623,8 +619,8 @@
 
     function montarHomebrew(dentro) {
         const lista = crear("ul", "master-homebrew");
-        lista.setAttribute("aria-label", "Reglas propias");
-        const vacio = crear("p", "oc-vacio", "Todavía no hay reglas propias.");
+        lista.setAttribute("aria-label", ocT("Reglas propias"));
+        const vacio = crear("p", "oc-vacio", ocT("Todavía no hay reglas propias."));
         // El formulario: para una nueva o para cambiar una.
         const form = crear("form", "master-homebrew-form");
         form.hidden = true;
@@ -639,23 +635,23 @@
             form.append(et, x);
             return x;
         };
-        const nombre = campo("nombre", "nombre");
+        const nombre = campo("nombre", ocT("nombre"));
         nombre.maxLength = 60;
         nombre.required = true;
-        const icono = campo("icono", "dibujo (un emoji, si quieres)");
+        const icono = campo("icono", ocT("dibujo (un emoji, si quieres)"));
         icono.maxLength = 4;
         icono.placeholder = "🍺";
-        const texto = campo("texto", "la regla (con **negrita**, *cursiva*, «- » para listas y «| a | b |» para tablas)",
+        const texto = campo("texto", ocT("la regla (con **negrita**, *cursiva*, «- » para listas y «| a | b |» para tablas)"),
             "textarea");
         texto.rows = 8;
         const botones = crear("div", "master-anadir-otras");
-        const listo = crear("button", "oc-vida-accion es-principal", "guardar");
+        const listo = crear("button", "oc-vida-accion es-principal", ocT("guardar"));
         listo.type = "submit";
         let editando = null;
-        const cancelar = botonDe("oc-vida-accion", "cancelar", () => cerrarForm());
+        const cancelar = botonDe("oc-vida-accion", ocT("cancelar"), () => cerrarForm());
         botones.append(listo, cancelar);
         form.appendChild(botones);
-        const nueva = botonDe("oc-vida-accion es-principal", "＋ regla propia", () => abrirForm(null));
+        const nueva = botonDe("oc-vida-accion es-principal", ocT("＋ regla propia"), () => abrirForm(null));
         function abrirForm(r) {
             editando = r;
             nombre.value = r ? r.nombre : "";
@@ -687,7 +683,7 @@
                 todas.push(Object.assign({ id: "h" + Date.now().toString(36) }, datos));
             }
             guardarHomebrew(todas);
-            avisar("Guardada: " + datos.nombre + ".");
+            avisar(ocT("Guardada: {nombre}.", { nombre: datos.nombre }));
             cerrarForm();
         });
         const pintar = () => {
@@ -700,19 +696,19 @@
                 const d = crear("span", "oc-regla-dibujo", r.icono || "🏠");
                 d.setAttribute("aria-hidden", "true");
                 ver.append(d, crear("span", "oc-regla-texto", r.nombre));
-                const cambiar = botonDe("master-party-quitar", "✎", () => abrirForm(r), "Cambiar " + r.nombre);
+                const cambiar = botonDe("master-party-quitar", "✎", () => abrirForm(r), ocT("Cambiar {nombre}", { nombre: r.nombre }));
                 let seguro = false;
                 const quitar = botonDe("master-party-quitar", "✕", () => {
                     if (!seguro) {
                         seguro = true;
-                        quitar.setAttribute("aria-label", "¿Seguro? Pulsa otra vez para borrar " + r.nombre);
-                        avisar("Pulsa otra vez para borrar " + r.nombre + ".");
+                        quitar.setAttribute("aria-label", ocT("¿Seguro? Pulsa otra vez para borrar {nombre}", { nombre: r.nombre }));
+                        avisar(ocT("Pulsa otra vez para borrar {nombre}.", { nombre: r.nombre }));
                         return;
                     }
                     guardarHomebrew(leerHomebrew().filter((x) => x.id !== r.id));
-                    avisar("Borrada: " + r.nombre + ".");
+                    avisar(ocT("Borrada: {nombre}.", { nombre: r.nombre }));
                     nueva.focus();
-                }, "Borrar " + r.nombre);
+                }, ocT("Borrar {nombre}", { nombre: r.nombre }));
                 li.append(ver, cambiar, quitar);
                 return li;
             }));
@@ -727,14 +723,14 @@
     // datos/personajes/compendio/conjuros-srd.json. Cada uno abre su
     // ventana (abrirConjuro), desde el buscador o desde un monstruo. ----
     const CONJUROS_SRD = "datos/personajes/compendio/conjuros-srd.json";
-    const nivelDe = (c) => (c.nivel ? "Nivel " + c.nivel : "Truco");
+    const nivelDe = (c) => (c.nivel ? ocT("Nivel {nivel}", { nivel: c.nivel }) : "Truco");
 
     function abrirConjuro(c, vuelta, fuente) {
         const cuerpo = cuerpoConjuro(c, fuente);
-        const fijar = botonDe("oc-vida-accion", "📌 al tablero", () => {
+        const fijar = botonDe("oc-vida-accion", ocT("📌 al tablero"), () => {
             cerrar();
             anadir("ficha", { titulo: c.nombre, datos: { que: "conjuro", id: c.en } });
-        }, "Poner " + c.nombre + " en el tablero");
+        }, ocT("Poner {nombre} en el tablero", { nombre: c.nombre }));
         cuerpo.appendChild(fijar);
         const cerrar = window.ocVentana.abrir({ titulo: c.nombre, cuerpo, vuelta, clase: "es-regla" });
     }
@@ -754,7 +750,7 @@
         });
         cuerpo.append(chapas, dl);
         if (c.ingles) {
-            cuerpo.appendChild(crear("p", "oc-hoja-nota", "Este todavía no está traducido: va en inglés."));
+            cuerpo.appendChild(crear("p", "oc-hoja-nota", ocT("Este todavía no está traducido: va en inglés.")));
         }
         cuerpo.appendChild(markdown(c.texto));
         if (c.superior) {
@@ -818,21 +814,20 @@
     function panelImagen(clave, nombre) {
         const caja = crear("div", "master-imagen");
         const img = crear("img", "master-imagen-propia");
-        img.alt = "Tu imagen de " + nombre;
+        img.alt = ocT("Tu imagen de {nombre}", { nombre: nombre });
         img.hidden = true;
         const subir = crear("input");
         subir.type = "file";
         subir.accept = "image/*";
         subir.hidden = true;
-        const poner = botonDe("oc-vida-accion", "🖼️ poner una imagen", () => subir.click(), "Poner una imagen de " + nombre
-            + " (de tu dispositivo)");
-        const grande = botonDe("oc-vida-accion", "🔍 en grande", () => {
+        const poner = botonDe("oc-vida-accion", ocT("🖼️ poner una imagen"), () => subir.click(), ocT("Poner una imagen de {nombre} (de tu dispositivo)", { nombre: nombre }));
+        const grande = botonDe("oc-vida-accion", ocT("🔍 en grande"), () => {
             const g = crear("img", "master-imagen-grande");
             g.alt = img.alt;
             ponerImagenGuardada(g, leerImagenes()[clave]);
             window.ocVentana.abrir({ titulo: nombre, cuerpo: g, vuelta: grande, clase: "es-ancha" });
-        }, "Ver tu imagen de " + nombre + " en grande");
-        const quitar = botonDe("oc-vida-accion", "✕ quitar", () => {
+        }, ocT("Ver tu imagen de {nombre} en grande", { nombre: nombre }));
+        const quitar = botonDe("oc-vida-accion", ocT("✕ quitar"), () => {
             const todas = leerImagenes();
             const v = String(todas[clave] || "");
             if (v.indexOf("archivo:") === 0) {
@@ -841,12 +836,12 @@
             delete todas[clave];
             guardarImagenes(todas);
             pintar();
-            avisar("Imagen quitada.");
+            avisar(ocT("Imagen quitada."));
             poner.focus();
-        }, "Quitar tu imagen de " + nombre);
+        }, ocT("Quitar tu imagen de {nombre}", { nombre: nombre }));
         const botones = crear("div", "master-imagen-botones");
         botones.append(poner, grande, quitar);
-        const nota = crear("p", "oc-hoja-nota", "Una imagen de tu dispositivo: se queda sólo en él (⚙ → exportar para llevarla).");
+        const nota = crear("p", "oc-hoja-nota", ocT("Una imagen de tu dispositivo: se queda sólo en él (⚙ → exportar para llevarla)."));
         function pintar() {
             const v = leerImagenes()[clave];
             img.removeAttribute("src");
@@ -866,7 +861,7 @@
             const f = subir.files && subir.files[0];
             subir.value = "";
             if (!f || !/^image\//.test(f.type) || f.size > MAX_ARCHIVO) {
-                avisar("Sólo imágenes de hasta 50 MB.");
+                avisar(ocT("Sólo imágenes de hasta 50 MB."));
                 return;
             }
             const id = idDoc("a");
@@ -879,8 +874,8 @@
                 todas[clave] = "archivo:" + id;
                 guardarImagenes(todas);
                 pintar();
-                avisar("Imagen puesta.");
-            }).catch(() => avisar("No se ha podido guardar la imagen."));
+                avisar(ocT("Imagen puesta."));
+            }).catch(() => avisar(ocT("No se ha podido guardar la imagen.")));
         });
         caja.append(img, botones, subir, nota);
         pintar();
@@ -896,15 +891,15 @@
                 dl.append(crear("dt", "", que), crear("dd", "", String(valor)));
             }
         };
-        fila("Categoría", o.cat);
-        fila("Rareza", o.rareza);
-        fila("Sintonía", o.sint ? "la requiere" : "");
-        fila("Detalles", o.det);
-        fila("Peso", o.peso);
-        fila("Nota", o.nota);
-        fila("Precio", o.cp ? moneda(o.cp) : "");
-        fila("Se vende en", (o.tiendas || []).join(", ").toLowerCase());
-        fila("En inglés", o.en);
+        fila(ocT("Categoría"), o.cat);
+        fila(ocT("Rareza"), o.rareza);
+        fila(ocT("Sintonía"), o.sint ? ocT("la requiere") : "");
+        fila(ocT("Detalles"), o.det);
+        fila(ocT("Peso"), o.peso);
+        fila(ocT("Nota"), o.nota);
+        fila(ocT("Precio"), o.cp ? moneda(o.cp) : "");
+        fila(ocT("Se vende en"), (o.tiendas || []).join(", ").toLowerCase());
+        fila(ocT("En inglés"), o.en);
         cuerpo.appendChild(dl);
         if (o.texto) {
             const que = markdown(o.texto);
@@ -915,7 +910,7 @@
             }
             enlazarConjuros(que);
         }
-        cuerpo.append(crear("h3", "master-imagen-titulo", "🖼️ imagen"), panelImagen("objeto:" + o.en, o.nombre));
+        cuerpo.append(crear("h3", "master-imagen-titulo", ocT("🖼️ imagen")), panelImagen("objeto:" + o.en, o.nombre));
         return cuerpo;
     }
 
@@ -925,10 +920,10 @@
         if (fuente) {
             cuerpo.appendChild(crear("p", "oc-hoja-nota master-fuente", fuente));
         }
-        cuerpo.appendChild(botonDe("oc-vida-accion", "📌 al tablero", () => {
+        cuerpo.appendChild(botonDe("oc-vida-accion", ocT("📌 al tablero"), () => {
             cerrar();
             anadir("ficha", { titulo: o.nombre, datos: { que: "objeto", id: o.en } });
-        }, "Poner " + o.nombre + " en el tablero"));
+        }, ocT("Poner {nombre} en el tablero", { nombre: o.nombre })));
         const cerrar = window.ocVentana.abrir({ titulo: o.nombre, cuerpo, vuelta, clase: "es-regla" });
     }
 
@@ -938,8 +933,8 @@
         m.datos = m.datos || {};
         const que = m.datos.que;
         const id = m.datos.id;
-        const poner = (x) => dentro.replaceChildren(x || crear("p", "oc-vacio", "Ya no está."));
-        dentro.appendChild(crear("p", "oc-hoja-nota", "Cargando…"));
+        const poner = (x) => dentro.replaceChildren(x || crear("p", "oc-vacio", ocT("Ya no está.")));
+        dentro.appendChild(crear("p", "oc-hoja-nota", ocT("Cargando…")));
         if (que === "propia") {
             const pintar = () => {
                 const r = leerHomebrew().find((x) => x.id === id);
@@ -992,7 +987,7 @@
                 const o = (datos.objetos || []).find((x) => x.en === id);
                 poner(o ? datosObjeto(o) : null);
             }
-        }).catch(() => poner(crear("p", "oc-vacio", "No he podido cargarlo.")));
+        }).catch(() => poner(crear("p", "oc-vacio", ocT("No he podido cargarlo."))));
     }
 
     // Un botón con el nombre de un conjuro que abre su ventana.
@@ -1028,7 +1023,7 @@
     // («- **Furia** (Bárbaro)») se abre con su texto. ----
     const RASGOS_SRD = "datos/personajes/compendio/rasgos-srd.json";
     const idRasgo = (r) => (r.propio ? r.id : r.en + "|" + r.de);
-    const datosRasgo = (r) => [r.tipo, r.de && r.de !== "dote" ? r.de : "", r.nivel ? "nivel " + r.nivel : ""].filter(Boolean);
+    const datosRasgo = (r) => [r.tipo, r.de && r.de !== "dote" ? r.de : "", r.nivel ? ocT("nivel {nivel}", { nivel: r.nivel }) : ""].filter(Boolean);
 
     function cuerpoRasgo(r, fuenteSrd) {
         const cuerpo = crear("div", "oc-regla-ventana");
@@ -1046,10 +1041,10 @@
 
     function abrirRasgo(r, vuelta, fuente) {
         const cuerpo = cuerpoRasgo(r, fuente);
-        cuerpo.appendChild(botonDe("oc-vida-accion", "📌 al tablero", () => {
+        cuerpo.appendChild(botonDe("oc-vida-accion", ocT("📌 al tablero"), () => {
             cerrar();
             anadir("ficha", { titulo: r.nombre, datos: { que: "rasgo", id: idRasgo(r) } });
-        }, "Poner " + r.nombre + " en el tablero"));
+        }, ocT("Poner {nombre} en el tablero", { nombre: r.nombre })));
         const cerrar = window.ocVentana.abrir({ titulo: r.nombre, cuerpo, vuelta, clase: "es-regla" });
     }
 
@@ -1090,7 +1085,7 @@
 
     // El buscador de rasgos y dotes (un widget, como el de conjuros).
     function montarRasgos(dentro, m) {
-        dentro.appendChild(crear("p", "oc-hoja-nota", "Cargando los rasgos…"));
+        dentro.appendChild(crear("p", "oc-hoja-nota", ocT("Cargando los rasgos…")));
         const pintarTodo = () => pedir(RASGOS_SRD).then((datos) => {
             const todos = (datos.rasgos || []).map((r) => ({ r, buscar: llano(r.nombre + " " + r.en + " " + (r.de || "") + " " + r.tipo) }));
             const fila = crear("div", "master-tienda-campos");
@@ -1113,17 +1108,17 @@
                 return sel;
             };
             const tipos = Array.from(new Set(todos.map((x) => x.r.tipo))).sort();
-            const tipo = campo(elegir([["", "todos"]].concat(tipos.map((t) => [t, t]))), "qué", "master-rasgos-tipo-");
+            const tipo = campo(elegir([["", ocT("todos")]].concat(tipos.map((t) => [t, t]))), ocT("qué"), "master-rasgos-tipo-");
             const des = Array.from(new Set(todos.filter((x) => x.r.tipo !== "rasgo de clase" || !/\(/.test(x.r.de))
                 .flatMap((x) => String(x.r.de || "").replace(/ \(.*$/, "").split(/,\s*/)).filter((d) => d && d !== "dote"))).sort((a, b) =>
                 a.localeCompare(b, "es"));
-            const de = campo(elegir([["", "todas"]].concat(des.map((t) => [t, t]))), "clase o especie", "master-rasgos-de-");
-            const input = campo(Object.assign(crear("input", "oc-dados-texto"), { type: "search", placeholder: "furia, alerta, sneak attack…" }),
-                "buscar", "master-rasgos-");
+            const de = campo(elegir([["", ocT("todas")]].concat(des.map((t) => [t, t]))), ocT("clase o especie"), "master-rasgos-de-");
+            const input = campo(Object.assign(crear("input", "oc-dados-texto"), { type: "search", placeholder: ocT("furia, alerta, sneak attack…") }),
+                ocT("buscar"), "master-rasgos-");
             const cuantos = crear("p", "oc-hoja-nota");
             cuantos.setAttribute("role", "status");
             const lista = crear("ul", "master-conjuros");
-            lista.setAttribute("aria-label", "Rasgos y dotes");
+            lista.setAttribute("aria-label", ocT("Rasgos y dotes"));
             const pintar = () => {
                 const q = llano(input.value.trim());
                 const d = llano(de.value);
@@ -1134,12 +1129,12 @@
                     const b = botonDe("master-conjuro", "", () => abrirRasgo(x.r, b, datos.fuente));
                     b.setAttribute("aria-haspopup", "dialog");
                     b.append(crear("span", "master-conjuro-nombre", x.r.nombre), crear("span", "master-conjuro-datos",
-                        datosRasgo(x.r).join(" · ") + (x.r.propio ? " · 🛠️ tuyo" : "")));
+                        datosRasgo(x.r).join(" · ") + (x.r.propio ? ocT(" · 🛠️ tuyo") : "")));
                     li.appendChild(b);
                     return li;
                 }));
-                cuantos.textContent = salen.length ? salen.length + (salen.length === 1 ? " resultado" : " resultados")
-                    + (salen.length > 80 ? " (salen los 80 primeros)" : "") : "Nada con eso.";
+                cuantos.textContent = salen.length ? salen.length + (salen.length === 1 ? ocT(" resultado") : ocT(" resultados"))
+                    + (salen.length > 80 ? ocT(" (salen los 80 primeros)") : "") : ocT("Nada con eso.");
             };
             let espera = 0;
             input.addEventListener("input", () => {
@@ -1150,7 +1145,7 @@
             dentro.replaceChildren(fila, cuantos, lista, crear("p", "oc-hoja-nota master-fuente", datos.fuente || ""));
             pintar();
         }).catch(() => {
-            dentro.replaceChildren(crear("p", "oc-vacio", "No he podido cargar los rasgos."));
+            dentro.replaceChildren(crear("p", "oc-vacio", ocT("No he podido cargar los rasgos.")));
         });
         pintarTodo();
         mientrasEste(dentro, "master:propios", () => {
@@ -1161,7 +1156,7 @@
     }
 
     function montarConjuros(dentro, m) {
-        dentro.appendChild(crear("p", "oc-hoja-nota", "Cargando los conjuros…"));
+        dentro.appendChild(crear("p", "oc-hoja-nota", ocT("Cargando los conjuros…")));
         pedir(CONJUROS_SRD).then((datos) => {
             const conjuros = (datos.conjuros || []).map((c) => ({ c, buscar: llano(c.nombre + " " + c.en + " " + c.escuela) }));
             const fila = crear("div", "master-tienda-campos");
@@ -1185,14 +1180,14 @@
             };
             const input = crear("input", "oc-dados-texto");
             input.type = "search";
-            input.placeholder = "bola de fuego, fireball…";
-            const nivel = campo(elegir([["", "todos"], ["0", "trucos"]].concat([1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => [String(n), "nivel " + n]))),
-                "nivel", "master-conjuros-nivel-");
+            input.placeholder = ocT("bola de fuego, fireball…");
+            const nivel = campo(elegir([["", ocT("todos")], ["0", ocT("trucos")]].concat([1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => [String(n), ocT("nivel {n}", { n: n })]))),
+                ocT("nivel"), "master-conjuros-nivel-");
             const escuelas = Array.from(new Set(conjuros.map((x) => x.c.escuela))).sort();
-            const escuela = campo(elegir([["", "todas"]].concat(escuelas.map((e) => [e, e]))), "escuela", "master-conjuros-escuela-");
+            const escuela = campo(elegir([["", ocT("todas")]].concat(escuelas.map((e) => [e, e]))), ocT("escuela"), "master-conjuros-escuela-");
             const clases = Array.from(new Set(conjuros.flatMap((x) => x.c.clases || []))).sort();
-            const clase = campo(elegir([["", "todas"]].concat(clases.map((e) => [e, e]))), "clase", "master-conjuros-clase-");
-            campo(input, "buscar", "master-conjuros-");
+            const clase = campo(elegir([["", ocT("todas")]].concat(clases.map((e) => [e, e]))), ocT("clase"), "master-conjuros-clase-");
+            campo(input, ocT("buscar"), "master-conjuros-");
             const cuantos = crear("p", "oc-hoja-nota");
             cuantos.setAttribute("role", "status");
             const lista = crear("ul", "master-conjuros");
@@ -1207,12 +1202,12 @@
                     b.setAttribute("aria-haspopup", "dialog");
                     b.append(crear("span", "master-conjuro-nombre", x.c.nombre),
                         crear("span", "master-conjuro-datos", [nivelDe(x.c), x.c.escuela, x.c.tiempo].join(" · ")
-                            + (x.c.ingles ? " · (en inglés)" : "")));
+                            + (x.c.ingles ? ocT(" · (en inglés)") : "")));
                     li.appendChild(b);
                     return li;
                 }));
-                cuantos.textContent = salen.length ? salen.length + (salen.length === 1 ? " conjuro" : " conjuros")
-                    + (salen.length > 80 ? " (salen los 80 primeros)" : "") : "Ningún conjuro con eso.";
+                cuantos.textContent = salen.length ? salen.length + (salen.length === 1 ? ocT(" conjuro") : ocT(" conjuros"))
+                    + (salen.length > 80 ? ocT(" (salen los 80 primeros)") : "") : ocT("Ningún conjuro con eso.");
             };
             let espera = 0;
             input.addEventListener("input", () => {
@@ -1223,7 +1218,7 @@
             dentro.replaceChildren(fila, cuantos, lista, crear("p", "oc-hoja-nota master-fuente", datos.fuente || ""));
             pintar();
         }).catch(() => {
-            dentro.replaceChildren(crear("p", "oc-vacio", "No he podido cargar los conjuros."));
+            dentro.replaceChildren(crear("p", "oc-vacio", ocT("No he podido cargar los conjuros.")));
         });
     }
 
@@ -1237,6 +1232,9 @@
         ["Medicina", "sab"], ["Naturaleza", "int"], ["Percepción", "sab"], ["Perspicacia", "sab"], ["Persuasión", "car"],
         ["Religión", "int"], ["Sigilo", "des"], ["Supervivencia", "sab"], ["Trato con animales", "sab"]];
     const NOMBRES_CAR = { fue: "Fuerza", des: "Destreza", con: "Constitución", int: "Inteligencia", sab: "Sabiduría", car: "Carisma" };
+    // Lo mismo para enseñar (traducido); NOMBRES_CAR es para leer fichas en castellano.
+    const CAR_VER = { fue: ocT("Fuerza"), des: ocT("Destreza"), con: ocT("Constitución"), int: ocT("Inteligencia"), sab: ocT("Sabiduría"),
+        car: ocT("Carisma") };
 
     function nuevoIdPj() {
         const u = new Uint32Array(2);
@@ -1439,7 +1437,7 @@
         : document.createTextNode(signo(n)));
 
     function nuevoPj(datos) {
-        const pj = normalizarPj(Object.assign({ nombre: "Personaje nuevo", nivel: 1, fue: 10, des: 10, con: 10, int: 10, sab: 10,
+        const pj = normalizarPj(Object.assign({ nombre: ocT("Personaje nuevo"), nivel: 1, fue: 10, des: 10, con: 10, int: 10, sab: 10,
             car: 10 }, datos || {}));
         todo.pjs = todo.pjs || [];
         todo.pjs.push(pj);
@@ -1475,8 +1473,7 @@
             const nuevos = rasgosDeNivel(datos.rasgos || [], pj.clase, nuevo).filter((r) => !llano(pj.rasgos || "")
                 .includes("**" + llano(r.nombre) + "**"));
             if (nuevos.length) {
-                pj.rasgos = (String(pj.rasgos || "").replace(/\s+$/, "") + "\n" + nuevos.map((r) => "- **" + r.nombre + "** (" + r.de
-                    + ", nivel " + nuevo + ")").join("\n")).trim();
+                pj.rasgos = (String(pj.rasgos || "").replace(/\s+$/, "") + "\n" + nuevos.map((r) => ocT("- **{nombre}** ({de}, nivel {nuevo})", { nombre: r.nombre, de: r.de, nuevo: nuevo })).join("\n")).trim();
             }
             guardar();
             avisarPjs("");
@@ -1496,37 +1493,34 @@
         guardar();
         avisarPjs("");
         const suben = pjs.filter(puedeSubir);
-        avisar(cada.toLocaleString("es-ES") + " PX para cada uno (" + pjs.length + ")." + (suben.length ? " Pueden subir de nivel: "
-            + suben.map((pj) => pj.nombre).join(", ") + "." : ""));
+        avisar(ocT("{toLocaleString} PX para cada uno ({n}).{n2}", { toLocaleString: cada.toLocaleString("es-ES"), n: pjs.length, n2: suben.length ? ocT(" Pueden subir de nivel: {join}.", { join: suben.map((pj) => pj.nombre).join(", ") }) : "" }));
         if (suben.length && vuelta) {
             verSubidas(suben, vuelta);
         }
     }
     function verSubidas(suben, vuelta) {
         const cuerpo = crear("div", "master-subidas");
-        cuerpo.appendChild(crear("p", "", "Tienen PX para subir de nivel:"));
+        cuerpo.appendChild(crear("p", "", ocT("Tienen PX para subir de nivel:")));
         const ul = crear("ul", "master-subidas-lista");
         suben.forEach((pj) => {
             const li = crear("li");
-            const que = crear("span", "", (pj.nombre || "Sin nombre") + ": nivel " + (numPj(pj.nivel) || 1) + " → "
-                + ((numPj(pj.nivel) || 1) + 1) + " ");
-            const b = botonDe("oc-vida-accion es-principal", "⬆ subir", () => {
+            const que = crear("span", "", ocT("{n}: nivel {n2} → {n3} ", { n: pj.nombre || ocT("Sin nombre"), n2: numPj(pj.nivel) || 1, n3: (numPj(pj.nivel) || 1) + 1 }));
+            const b = botonDe("oc-vida-accion es-principal", ocT("⬆ subir"), () => {
                 b.disabled = true;
                 subirNivel(pj).then((nuevos) => {
-                    que.textContent = (pj.nombre || "Sin nombre") + ": ya es nivel " + pj.nivel + ". ";
+                    que.textContent = ocT("{n}: ya es nivel {nivel}. ", { n: pj.nombre || ocT("Sin nombre"), nivel: pj.nivel });
                     b.remove();
-                    li.appendChild(crear("span", "oc-hoja-nota", nuevos.length ? "Rasgos nuevos: " + nuevos.map((r) => r.nombre).join(", ")
-                        + ". Súbele los PG máximos a mano (✎ editar ficha)." : "Súbele los PG máximos a mano (✎ editar ficha)."));
-                    avisar((pj.nombre || "") + " sube a nivel " + pj.nivel + ".");
+                    li.appendChild(crear("span", "oc-hoja-nota", nuevos.length ? ocT("Rasgos nuevos: {join}. Súbele los PG máximos a mano (✎ editar ficha).", { join: nuevos.map((r) => r.nombre).join(", ") }) : ocT("Súbele los PG máximos a mano (✎ editar ficha).")));
+                    avisar(ocT("{n} sube a nivel {nivel}.", { n: pj.nombre || "", nivel: pj.nivel }));
                     li.tabIndex = -1;
                     li.focus();
                 });
-            }, "Subir a " + (pj.nombre || "este personaje") + " a nivel " + ((numPj(pj.nivel) || 1) + 1));
+            }, ocT("Subir a {n} a nivel {n2}", { n: pj.nombre || ocT("este personaje"), n2: (numPj(pj.nivel) || 1) + 1 }));
             li.append(que, b);
             ul.appendChild(li);
         });
         cuerpo.appendChild(ul);
-        window.ocVentana.abrir({ titulo: "subir de nivel", cuerpo, vuelta });
+        window.ocVentana.abrir({ titulo: ocT("subir de nivel"), cuerpo, vuelta });
     }
 
     // LA FOTO de un personaje: la suya (guardada en este dispositivo) o,
@@ -1598,7 +1592,7 @@
         const visor = !!(op && op.visor);
         const pj = (todo.pjs || []).find((x) => x.id === m.datos.pj);
         if (!pj) {
-            dentro.appendChild(crear("p", "oc-vacio", "Este personaje ya no está en la party de esta campaña."));
+            dentro.appendChild(crear("p", "oc-vacio", ocT("Este personaje ya no está en la party de esta campaña.")));
             return;
         }
         normalizarPj(pj);
@@ -1617,7 +1611,7 @@
             editarPj(dentro, m, pj, repintar);
             return;
         }
-        dentro.appendChild(crear("p", "oc-hoja-nota", "Cargando…"));
+        dentro.appendChild(crear("p", "oc-hoja-nota", ocT("Cargando…")));
         Promise.all([pedir(CONJUROS_SRD), pedir(TIENDA).catch(() => ({ objetos: [] })),
             pedir(BESTIARIO).catch(() => ({ monstruos: [] }))]).then(([conj, tienda, bestiario]) => {
             const srd = {};
@@ -1693,30 +1687,30 @@
             const foto = fotoPj(pj, "master-pj-foto", "");
             if (foto) {
                 const verFoto = botonDe("master-pj-foto-boton", "", () => {
-                    const grande = fotoPj(pj, "master-pj-foto-grande", "Retrato de " + quien);
+                    const grande = fotoPj(pj, "master-pj-foto-grande", ocT("Retrato de {quien}", { quien: quien }));
                     window.ocVentana.abrir({ titulo: quien, cuerpo: grande, vuelta: verFoto });
-                }, "Ver la foto de " + quien);
+                }, ocT("Ver la foto de {quien}", { quien: quien }));
                 verFoto.appendChild(foto);
                 cabeza.appendChild(verFoto);
             }
-            const queEs = [pj.raza, pj.clase, numPj(pj.nivel) ? "nivel " + numPj(pj.nivel) : "", pj.trasfondoNombre, pj.alineamiento]
+            const queEs = [pj.raza, pj.clase, numPj(pj.nivel) ? ocT("nivel {numPj}", { numPj: numPj(pj.nivel) }) : "", pj.trasfondoNombre, pj.alineamiento]
                 .filter(Boolean).join(" · ");
-            cabeza.appendChild(crear("p", "master-pj-que", queEs || "Sin raza ni clase todavía: pulsa «✎ editar ficha»."));
+            cabeza.appendChild(crear("p", "master-pj-que", queEs || ocT("Sin raza ni clase todavía: pulsa «✎ editar ficha».")));
             const botones = crear("div", "master-creador-barra");
-            const editarB = botonDe("oc-vida-accion es-principal", "✎ editar ficha", () => editarPj(dentro, m, pj, repintar),
-                "Editar la ficha de " + quien);
-            const ddb = botonDe("oc-vida-accion", "📥 actualizar", () => abrirImportarPj(ddb, pj),
-                "Actualizar a " + quien + " desde D&D Beyond, Nivel20 o Foundry VTT");
+            const editarB = botonDe("oc-vida-accion es-principal", ocT("✎ editar ficha"), () => editarPj(dentro, m, pj, repintar),
+                ocT("Editar la ficha de {quien}", { quien: quien }));
+            const ddb = botonDe("oc-vida-accion", ocT("📥 actualizar"), () => abrirImportarPj(ddb, pj),
+                ocT("Actualizar a {quien} desde D&D Beyond, Nivel20 o Foundry VTT", { quien: quien }));
             ddb.setAttribute("aria-haspopup", "dialog");
-            const ini = botonDe("oc-vida-accion", "＋ iniciativa", () => {
+            const ini = botonDe("oc-vida-accion", ocT("＋ iniciativa"), () => {
                 const n = meterEnIniciativa(iniDePj(pj, quien));
-                avisar(n ? "A la iniciativa: " + n + "." : quien + " ya está en la iniciativa.");
-            }, "Poner a " + quien + " en la iniciativa (tira su iniciativa)");
+                avisar(n ? ocT("A la iniciativa: {n}.", { n: n }) : ocT("{quien} ya está en la iniciativa.", { quien: quien }));
+            }, ocT("Poner a {quien} en la iniciativa (tira su iniciativa)", { quien: quien }));
             botones.append(editarB, ddb, ini);
             cabeza.appendChild(botones);
             const recordar = crear("p", "master-pj-recordar");
             const pintarRecordar = () => {
-                recordar.replaceChildren(crear("strong", "", "😨 Miedos: "), document.createTextNode(apuntes.miedos || ""));
+                recordar.replaceChildren(crear("strong", "", ocT("😨 Miedos: ")), document.createTextNode(apuntes.miedos || ""));
                 recordar.hidden = !(apuntes.miedos || "").trim();
             };
             pintarRecordar();
@@ -1730,18 +1724,18 @@
             pgInput.type = "number";
             pgInput.inputMode = "numeric";
             pgInput.value = numPj(pj.pg) === null ? (numPj(pj.pgmax) === null ? "" : numPj(pj.pgmax)) : numPj(pj.pg);
-            pgInput.setAttribute("aria-label", "Puntos de golpe actuales de " + quien);
+            pgInput.setAttribute("aria-label", ocT("Puntos de golpe actuales de {quien}", { quien: quien }));
             pgInput.addEventListener("change", () => {
                 pj.pg = numPj(pgInput.value);
                 cambiado();
             });
             pgCaja.append(pgInput, document.createTextNode(numPj(pj.pgmax) !== null ? " / " + numPj(pj.pgmax) : ""));
             const d = car("des");
-            panelFicha.appendChild(datosDe([["CA", pj.ca], ["PG", visor ? null : pgCaja], ["PG temporales", numPj(pj.pgtemp) || ""],
-                ["Iniciativa", d !== null ? dadoPj(modDe(d), "Iniciativa de " + quien) : ""], ["Velocidad", pj.velocidad],
-                ["Competencia", signo(prof)], ["Dados de golpe", pj.dadosGolpe]]));
+            panelFicha.appendChild(datosDe([["CA", pj.ca], ["PG", visor ? null : pgCaja], [ocT("PG temporales"), numPj(pj.pgtemp) || ""],
+                [ocT("Iniciativa"), d !== null ? dadoPj(modDe(d), ocT("Iniciativa de {quien}", { quien: quien })) : ""], [ocT("Velocidad"), pj.velocidad],
+                [ocT("Competencia"), signo(prof)], [ocT("Dados de golpe"), pj.dadosGolpe]]));
             const cars = crear("ul", "master-pj-caracteristicas");
-            cars.setAttribute("aria-label", "Características y salvaciones de " + quien);
+            cars.setAttribute("aria-label", ocT("Características y salvaciones de {quien}", { quien: quien }));
             SALVACIONES_PJ.forEach((k) => {
                 const n = car(k);
                 if (n === null) {
@@ -1749,13 +1743,13 @@
                 }
                 const comp = pj.salvaciones.includes(k);
                 const li = crear("li", "master-pj-c" + (comp ? " es-competente" : ""));
-                li.append(crear("span", "master-party-et", NOMBRES_CAR[k]), crear("span", "master-party-valor", String(n)),
-                    dadoPj(modDe(n), NOMBRES_CAR[k] + " de " + quien));
+                li.append(crear("span", "master-party-et", CAR_VER[k]), crear("span", "master-party-valor", String(n)),
+                    dadoPj(modDe(n), ocT("{n} de {quien}", { n: CAR_VER[k], quien: quien })));
                 const s = crear("span", "master-pj-salv");
-                s.append(crear("span", "", (comp ? "● " : "○ ") + "salvación "), dadoPj(modDe(n) + (comp ? prof : 0),
-                    "Salvación de " + NOMBRES_CAR[k] + " de " + quien));
+                s.append(crear("span", "", ocT("{n}salvación ", { n: comp ? "● " : "○ " })), dadoPj(modDe(n) + (comp ? prof : 0),
+                    ocT("Salvación de {n} de {quien}", { n: CAR_VER[k], quien: quien })));
                 if (comp) {
-                    s.title = "Competente en la salvación";
+                    s.title = ocT("Competente en la salvación");
                 }
                 li.appendChild(s);
                 cars.appendChild(li);
@@ -1763,23 +1757,23 @@
             panelFicha.appendChild(cars);
             // En el visor, las habilidades van en su sección.
             const panelHab = visor ? crear("div") : panelFicha;
-            titulo(panelHab, "🎯 Habilidades");
+            titulo(panelHab, ocT("🎯 Habilidades"));
             panelHab.appendChild(listaDe(HABILIDADES_PJ.filter(([, k]) => car(k) !== null).map(([nombre, k]) => {
                 const nv = pj.habilidades[nombre] || 0;
                 return [crear("span", "master-pj-marca-comp", nv === 2 ? "◆" : nv === 1 ? "●" : "○"),
                     crear("span", "", nombre + " (" + k.toUpperCase() + ")" + (nv ? " · " + NIVELES_COMP[nv] : "")),
-                    dadoPj(bonoHabPj(pj, nombre), nombre + " de " + quien)];
-            }), "Habilidades de " + quien));
-            panelHab.appendChild(datosDe([["👁️ Percepción pasiva", pasivaPj(pj, "per")], ["🔍 Investigación pasiva",
-                pasivaPj(pj, "inv")], ["💭 Perspicacia pasiva", pasivaPj(pj, "persp")], ["Sentidos", pj.sentidos],
-                ["Defensas", pj.defensas]]));
+                    dadoPj(bonoHabPj(pj, nombre), ocT("{nombre} de {quien}", { nombre: nombre, quien: quien }))];
+            }), ocT("Habilidades de {quien}", { quien: quien })));
+            panelHab.appendChild(datosDe([[ocT("👁️ Percepción pasiva"), pasivaPj(pj, "per")], [ocT("🔍 Investigación pasiva"),
+                pasivaPj(pj, "inv")], [ocT("💭 Perspicacia pasiva"), pasivaPj(pj, "persp")], [ocT("Sentidos"), pj.sentidos],
+                [ocT("Defensas"), pj.defensas]]));
 
             // 2. COMBATE: los ataques (bono y daño, con sus dados) y las
             // acciones.
             const panelCombate = crear("div");
             if (pj.ataques.length) {
                 const tabla = crear("table", "master-informe-tabla master-pj-ataques");
-                tabla.appendChild(crear("caption", "visually-hidden", "Ataques de " + quien));
+                tabla.appendChild(crear("caption", "visually-hidden", ocT("Ataques de {quien}", { quien: quien })));
                 const cab = crear("tr");
                 ["Ataque", "Bono", "Daño"].forEach((t) => {
                     const th = crear("th", "", t);
@@ -1795,11 +1789,11 @@
                     th.scope = "row";
                     const b = numPj(String(a.bono || "").replace("−", "-"));
                     const tdB = crear("td");
-                    tdB.appendChild(b === null ? document.createTextNode(a.bono || "") : dadoPj(b, a.nombre + " · ataque"));
+                    tdB.appendChild(b === null ? document.createTextNode(a.bono || "") : dadoPj(b, ocT("{nombre} · ataque", { nombre: a.nombre })));
                     const tdD = crear("td");
                     const dm = /^(\d+d\d+(?:\s*[+−-]\s*\d+)?)\s*(.*)$/.exec(String(a.dano || "").trim());
                     if (dm && window.ocDadoBoton) {
-                        tdD.append(window.ocDadoBoton(dm[1], dm[1].replace(/\s+/g, "").replace("−", "-"), a.nombre + " · daño"),
+                        tdD.append(window.ocDadoBoton(dm[1], dm[1].replace(/\s+/g, "").replace("−", "-"), ocT("{nombre} · daño", { nombre: a.nombre })),
                             document.createTextNode(dm[2] ? " " + dm[2] : ""));
                     } else {
                         tdD.textContent = a.dano || "";
@@ -1810,14 +1804,14 @@
                 tabla.append(thead, tbody);
                 panelCombate.appendChild(tabla);
             } else {
-                panelCombate.appendChild(crear("p", "oc-vacio", "Sin ataques apuntados (se ponen en «✎ editar ficha»)."));
+                panelCombate.appendChild(crear("p", "oc-vacio", ocT("Sin ataques apuntados (se ponen en «✎ editar ficha»).")));
             }
             if (pj.acciones.length) {
-                titulo(panelCombate, "🌀 Acciones");
-                panelCombate.appendChild(listaDe(pj.acciones.map((a) => a), "Acciones de " + quien));
+                titulo(panelCombate, ocT("🌀 Acciones"));
+                panelCombate.appendChild(listaDe(pj.acciones.map((a) => a), ocT("Acciones de {quien}", { quien: quien })));
             }
             if ((pj.armasTxt || "").trim()) {
-                panelCombate.appendChild(area(pj, "armasTxt", "apuntes de armas (de antes)", 3));
+                panelCombate.appendChild(area(pj, "armasTxt", ocT("apuntes de armas (de antes)"), 3));
             }
 
             // 3. CONJUROS: aptitud, CD y ataque; los espacios (casillas que
@@ -1826,36 +1820,36 @@
             const aptitud = pj.aptitud;
             if (aptitud && car(aptitud) !== null) {
                 const bono = modDe(car(aptitud)) + prof;
-                panelConj.appendChild(datosDe([["Aptitud", NOMBRES_CAR[aptitud] || aptitud], ["CD de salvación", 8 + bono],
-                    ["Ataque de conjuro", dadoPj(bono, "Ataque de conjuro de " + quien)]]));
+                panelConj.appendChild(datosDe([[ocT("Aptitud"), CAR_VER[aptitud] || aptitud], [ocT("CD de salvación"), 8 + bono],
+                    [ocT("Ataque de conjuro"), dadoPj(bono, ocT("Ataque de conjuro de {quien}", { quien: quien }))]]));
             }
             const niveles = Object.keys(pj.espacios).filter((n) => (numPj(pj.espacios[n].max) || 0) > 0).sort((a, b) => a - b);
             if (niveles.length) {
-                titulo(panelConj, "🔮 Espacios de conjuro");
+                titulo(panelConj, ocT("🔮 Espacios de conjuro"));
                 const ul = crear("ul", "master-pj-espacios");
-                ul.setAttribute("aria-label", "Espacios de conjuro de " + quien);
+                ul.setAttribute("aria-label", ocT("Espacios de conjuro de {quien}", { quien: quien }));
                 niveles.forEach((n) => {
                     const e = pj.espacios[n];
                     const li = crear("li");
                     const grupo = crear("span", "master-pj-casillas");
                     grupo.setAttribute("role", "group");
-                    grupo.setAttribute("aria-label", "Nivel " + n);
+                    grupo.setAttribute("aria-label", ocT("Nivel {n}", { n: n }));
                     for (let i = 0; i < numPj(e.max); i++) {
                         const c = crear("input");
                         c.type = "checkbox";
                         c.checked = i < (numPj(e.usados) || 0);
-                        c.setAttribute("aria-label", "Espacio " + (i + 1) + " de nivel " + n + (c.checked ? ", gastado" : ""));
+                        c.setAttribute("aria-label", ocT("Espacio {n} de nivel {n2}{n3}", { n: i + 1, n2: n, n3: c.checked ? ocT(", gastado") : "" }));
                         c.addEventListener("change", () => {
                             e.usados = Array.from(grupo.querySelectorAll("input")).filter((x) => x.checked).length;
-                            c.setAttribute("aria-label", "Espacio " + (i + 1) + " de nivel " + n + (c.checked ? ", gastado" : ""));
+                            c.setAttribute("aria-label", ocT("Espacio {n} de nivel {n2}{n3}", { n: i + 1, n2: n, n3: c.checked ? ocT(", gastado") : "" }));
                             guardar();
                         });
                         grupo.appendChild(c);
                     }
-                    li.append(crear("span", "master-pj-marca", "nivel " + n), grupo);
+                    li.append(crear("span", "master-pj-marca", ocT("nivel {n}", { n: n })), grupo);
                     ul.appendChild(li);
                 });
-                const descanso = botonDe("oc-vida-accion", "↺ descanso largo", () => {
+                const descanso = botonDe("oc-vida-accion", ocT("↺ descanso largo"), () => {
                     niveles.forEach((n) => {
                         pj.espacios[n].usados = 0;
                     });
@@ -1863,8 +1857,8 @@
                     ul.querySelectorAll("input").forEach((c) => {
                         c.checked = false;
                     });
-                    avisar("Espacios de conjuro recuperados.");
-                }, "Recuperar todos los espacios de conjuro de " + quien);
+                    avisar(ocT("Espacios de conjuro recuperados."));
+                }, ocT("Recuperar todos los espacios de conjuro de {quien}", { quien: quien }));
                 panelConj.append(ul, descanso);
             }
             const listaConj = crear("div");
@@ -1873,24 +1867,23 @@
                 listaConj.replaceChildren();
                 const todos = conjurosPj(pj, srd);
                 if (!todos.length) {
-                    listaConj.appendChild(crear("p", "oc-vacio", "No tiene conjuros apuntados."));
+                    listaConj.appendChild(crear("p", "oc-vacio", ocT("No tiene conjuros apuntados.")));
                 }
                 const nvs = Array.from(new Set(todos.map((c) => c.nivel))).sort((a, b) => (a === null) - (b === null) || a - b);
                 nvs.forEach((n) => {
-                    titulo(listaConj, n === null ? "Otros" : n === 0 ? "Trucos" : "Nivel " + n);
+                    titulo(listaConj, n === null ? "Otros" : n === 0 ? "Trucos" : ocT("Nivel {n}", { n: n }));
                     listaConj.appendChild(listaDe(todos.filter((c) => c.nivel === n).map((c) => [conjuroPj(c.nombre, srd, conj.fuente),
                         botonDe("master-party-quitar", "✕", () => {
                             pj.conjuros = pj.conjuros.filter((x) => x !== c.nombre);
                             guardar();
                             pintarConj();
-                            avisar("Quitado: " + c.nombre + ".");
+                            avisar(ocT("Quitado: {nombre}.", { nombre: c.nombre }));
                             nuevoConj.focus();
-                        }, "Quitar " + c.nombre)]), (n === null ? "Otros conjuros" : n === 0 ? "Trucos" : "Conjuros de nivel " + n)
-                        + " de " + quien));
+                        }, ocT("Quitar {nombre}", { nombre: c.nombre }))]), ocT("{n} de {quien}", { n: n === null ? ocT("Otros conjuros") : n === 0 ? "Trucos" : ocT("Conjuros de nivel {n}", { n: n }), quien: quien })));
                 });
             };
             const form = crear("form", "master-pj-anadir");
-            const et = crear("label", "oc-dados-etiqueta", "añadir un conjuro (los del SRD y los tuyos salen solos)");
+            const et = crear("label", "oc-dados-etiqueta", ocT("añadir un conjuro (los del SRD y los tuyos salen solos)"));
             nuevoConj.id = uid + "-conj";
             et.htmlFor = nuevoConj.id;
             nuevoConj.autocomplete = "off";
@@ -1902,7 +1895,7 @@
                 dl.appendChild(o);
             });
             nuevoConj.setAttribute("list", dl.id);
-            const anadirB = crear("button", "oc-vida-accion", "＋ añadir");
+            const anadirB = crear("button", "oc-vida-accion", ocT("＋ añadir"));
             anadirB.type = "submit";
             form.append(et, nuevoConj, dl, anadirB);
             form.addEventListener("submit", (e) => {
@@ -1916,7 +1909,7 @@
                 nuevoConj.value = "";
                 guardar();
                 pintarConj();
-                avisar("Añadido: " + (c ? c.nombre : v) + ".");
+                avisar(ocT("Añadido: {n}.", { n: c ? c.nombre : v }));
             });
             panelConj.append(form, listaConj);
             pintarConj();
@@ -1925,15 +1918,15 @@
             // cosa se puede pasar al inventario común de la party.
             const panelInv = crear("div");
             const listaInv = crear("ul", "master-pj-lista");
-            listaInv.setAttribute("aria-label", "Inventario de " + quien);
+            listaInv.setAttribute("aria-label", ocT("Inventario de {quien}", { quien: quien }));
             const pintarInv = () => {
                 listaInv.replaceChildren(...pj.objetos.map((o, i) => {
                     const li = crear("li");
                     const srdO = objetosSrd[llano(o.nombre)];
                     const nombre = srdO ? botonDe("master-conjuro-boton", o.nombre, () => abrirObjeto(srdO, li.firstChild, tienda.fuente))
                         : crear("span", "", o.nombre);
-                    li.append(nombre, crear("span", "master-pj-marca", "×" + (numPj(o.cant) || 1) + (o.equipado ? " · equipado" : "")));
-                    li.appendChild(botonDe("master-party-quitar", "→ party", () => {
+                    li.append(nombre, crear("span", "master-pj-marca", ocT("×{n}{n2}", { n: numPj(o.cant) || 1, n2: o.equipado ? ocT(" · equipado") : "" })));
+                    li.appendChild(botonDe("master-party-quitar", ocT("→ party"), () => {
                         const inv = inventarioParty();
                         const ya = inv.objetos.find((x) => llano(x.nombre) === llano(o.nombre));
                         if (ya) {
@@ -1944,24 +1937,24 @@
                         pj.objetos.splice(i, 1);
                         guardar();
                         avisarPjs("");
-                        avisar(o.nombre + ": al inventario de la party.");
-                    }, "Pasar " + o.nombre + " al inventario común de la party"));
+                        avisar(o.nombre + ocT(": al inventario de la party."));
+                    }, ocT("Pasar {nombre} al inventario común de la party", { nombre: o.nombre })));
                     return li;
                 }));
                 if (!pj.objetos.length) {
-                    listaInv.appendChild(crear("li", "oc-vacio", "Sin objetos apuntados (se ponen en «✎ editar ficha»)."));
+                    listaInv.appendChild(crear("li", "oc-vacio", ocT("Sin objetos apuntados (se ponen en «✎ editar ficha»).")));
                 }
             };
             pintarInv();
             const monedas = MONEDAS_PJ.filter(([k]) => numPj(pj.dinero[k])).map(([k, abr]) => numPj(pj.dinero[k]) + " " + abr);
-            panelInv.append(listaInv, datosDe([["💰 Dinero", monedas.join(", ") || "nada"]]));
+            panelInv.append(listaInv, datosDe([[ocT("💰 Dinero"), monedas.join(", ") || "nada"]]));
             if ((pj.objetosTxt || "").trim()) {
-                panelInv.appendChild(area(pj, "objetosTxt", "apuntes de objetos (de antes)", 3));
+                panelInv.appendChild(area(pj, "objetosTxt", ocT("apuntes de objetos (de antes)"), 3));
             }
 
             // 5. RASGOS: rasgos y dotes, competencias e idiomas.
             const panelRasgos = crear("div");
-            const exportarR = botonDe("oc-vida-accion", "⬇ exportar rasgos (.json)", () => {
+            const exportarR = botonDe("oc-vida-accion", ocT("⬇ exportar rasgos (.json)"), () => {
                 pedir(RASGOS_SRD).catch(() => ({ rasgos: [] })).then((datos) => {
                     const pista = (pj.clase || "") + " " + (pj.raza || "");
                     const lineas = String(pj.rasgos || "").split("\n").map((l) => l.trim()).filter(Boolean);
@@ -1971,40 +1964,40 @@
                         const r = rasgoDe(datos.rasgos || [], nombre, pista);
                         const o = { nombre, de: (m2[3] || "").trim() };
                         if (r) {
-                            Object.assign(o, { tipo: r.tipo, en: r.en, texto: r.texto, fuente: r.propio ? fuenteDe(r) : "SRD 5.2 (CC BY 4.0)" });
+                            Object.assign(o, { tipo: r.tipo, en: r.en, texto: r.texto, fuente: r.propio ? fuenteDe(r) : ocT("SRD 5.2 (CC BY 4.0)") });
                         }
                         return o;
                     });
                     bajarJson({ personaje: pj.nombreCompleto || pj.nombre, clase: pj.clase || "", especie: pj.raza || "",
                         nivel: numPj(pj.nivel), rasgos, competencias: pj.competencias || "", idiomas: pj.idiomas || "" },
                     "rasgos-" + llano(pj.nombre || "pj").replace(/[^a-z0-9]+/g, "-") + ".json");
-                    avisar("Bajados los rasgos de " + quien + " (" + rasgos.length + ").");
+                    avisar(ocT("Bajados los rasgos de {quien} ({n}).", { quien: quien, n: rasgos.length }));
                 });
-            }, "Bajar los rasgos y dotes de " + quien + " a un archivo .json");
+            }, ocT("Bajar los rasgos y dotes de {quien} a un archivo .json", { quien: quien }));
             const barraR = crear("div", "master-creador-barra");
             barraR.appendChild(exportarR);
             if ((pj.rasgos || "").trim()) {
                 const tr = texto(pj.rasgos);
                 enlazarRasgos(tr, (pj.clase || "") + " " + (pj.raza || ""));
-                panelRasgos.append(crear("p", "oc-hoja-nota", "Pulsa un rasgo para leerlo (los del SRD y los tuyos)."), tr, barraR);
+                panelRasgos.append(crear("p", "oc-hoja-nota", ocT("Pulsa un rasgo para leerlo (los del SRD y los tuyos).")), tr, barraR);
             } else {
-                panelRasgos.appendChild(crear("p", "oc-vacio", "Sin rasgos apuntados."));
+                panelRasgos.appendChild(crear("p", "oc-vacio", ocT("Sin rasgos apuntados.")));
             }
-            panelRasgos.appendChild(datosDe([["Competencias", pj.competencias], ["Idiomas", pj.idiomas]]));
+            panelRasgos.appendChild(datosDe([[ocT("Competencias"), pj.competencias], [ocT("Idiomas"), pj.idiomas]]));
 
             // 6. HISTORIA: cómo es y de dónde viene (se escribe aquí mismo).
             const panelHist = crear("div");
-            panelHist.append(area(pj, "aspecto", "aspecto (cómo es)", 3), area(pj, "personalidad", "personalidad", 2),
-                area(pj, "ideales", "ideales", 2), area(pj, "vinculos", "vínculos", 2), area(pj, "defectos", "defectos", 2),
-                area(pj, "historia", "su historia", 8));
+            panelHist.append(area(pj, "aspecto", ocT("aspecto (cómo es)"), 3), area(pj, "personalidad", ocT("personalidad"), 2),
+                area(pj, "ideales", ocT("ideales"), 2), area(pj, "vinculos", ocT("vínculos"), 2), area(pj, "defectos", ocT("defectos"), 2),
+                area(pj, "historia", ocT("su historia"), 8));
             if ((pj.trasfondo || "").trim()) {
-                panelHist.appendChild(area(pj, "trasfondo", "trasfondo (de antes)", 3));
+                panelHist.appendChild(area(pj, "trasfondo", ocT("trasfondo (de antes)"), 3));
             }
 
             // 7. PNJ Y NOTAS: la gente que conoce y lo que apunta el jugador.
             const panelPnj = crear("div");
             const listaPnj = crear("ul", "master-pj-pnjs");
-            listaPnj.setAttribute("aria-label", "PNJ que conoce " + quien);
+            listaPnj.setAttribute("aria-label", ocT("PNJ que conoce {quien}", { quien: quien }));
             const formPnj = crear("form", "master-pj-anadir");
             const pnjNombre = crear("input", "oc-dados-texto");
             const pnjRel = crear("input", "oc-dados-texto");
@@ -2016,7 +2009,7 @@
                     const nota = crear("textarea", "oc-notas-texto es-corta");
                     nota.rows = 2;
                     nota.value = p.nota || "";
-                    nota.setAttribute("aria-label", "Nota sobre " + p.nombre);
+                    nota.setAttribute("aria-label", ocT("Nota sobre {nombre}", { nombre: p.nombre }));
                     nota.addEventListener("input", () => {
                         p.nota = nota.value;
                         clearTimeout(espera);
@@ -2027,21 +2020,21 @@
                         guardar();
                         pintarPnj();
                         pnjNombre.focus();
-                        avisar("Quitado: " + p.nombre + ".");
-                    }, "Quitar a " + p.nombre);
+                        avisar(ocT("Quitado: {nombre}.", { nombre: p.nombre }));
+                    }, ocT("Quitar a {nombre}", { nombre: p.nombre }));
                     cab2.appendChild(q);
                     li.append(cab2, nota);
                     return li;
                 }));
             };
-            [[pnjNombre, "nombre del PNJ"], [pnjRel, "quién es para él (amigo, rival, deudor…)"]].forEach(([x, t], i) => {
+            [[pnjNombre, ocT("nombre del PNJ")], [pnjRel, ocT("quién es para él (amigo, rival, deudor…)")]].forEach(([x, t], i) => {
                 x.id = uid + "-pnj" + i;
                 x.autocomplete = "off";
                 const e2 = crear("label", "oc-dados-etiqueta", t);
                 e2.htmlFor = x.id;
                 formPnj.append(e2, x);
             });
-            const pnjB = crear("button", "oc-vida-accion", "＋ PNJ");
+            const pnjB = crear("button", "oc-vida-accion", ocT("＋ PNJ"));
             pnjB.type = "submit";
             formPnj.appendChild(pnjB);
             formPnj.addEventListener("submit", (e) => {
@@ -2058,17 +2051,17 @@
                 pnjNombre.focus();
             });
             pintarPnj();
-            titulo(panelPnj, "👥 PNJ que conoce");
+            titulo(panelPnj, ocT("👥 PNJ que conoce"));
             panelPnj.append(listaPnj, formPnj);
-            titulo(panelPnj, "📝 Notas");
-            panelPnj.appendChild(area(pj, "notas", "notas del personaje (misiones, pistas, lo que recuerda…)", 6));
+            titulo(panelPnj, ocT("📝 Notas"));
+            panelPnj.appendChild(area(pj, "notas", ocT("notas del personaje (misiones, pistas, lo que recuerda…)"), 6));
 
             // 8. MÁSTER: lo que sólo ve el máster.
             const panelMaster = crear("div");
-            panelMaster.append(area(apuntes, "miedos", "miedos (salen arriba, en todas las pestañas)", 2, pintarRecordar),
-                area(apuntes, "secretos", "secretos (sólo para el máster)", 3), area(apuntes, "ganchos", "ganchos para la historia", 3),
-                area(apuntes, "relaciones", "relaciones (con otros PJ, facciones…)", 3), area(apuntes, "deudas",
-                    "deudas, promesas y rencores", 2), area(apuntes, "notas", "otras notas", 3));
+            panelMaster.append(area(apuntes, "miedos", ocT("miedos (salen arriba, en todas las pestañas)"), 2, pintarRecordar),
+                area(apuntes, "secretos", ocT("secretos (sólo para el máster)"), 3), area(apuntes, "ganchos", ocT("ganchos para la historia"), 3),
+                area(apuntes, "relaciones", ocT("relaciones (con otros PJ, facciones…)"), 3), area(apuntes, "deudas",
+                    ocT("deudas, promesas y rencores"), 2), area(apuntes, "notas", ocT("otras notas"), 3));
 
             // 9. CRIATURAS: sus familiares, compañeros animales, monturas…
             // Con un monstruo del bestiario, su perfil; si no, su nombre y
@@ -2095,19 +2088,19 @@
                         } };
                         caja.appendChild(perfil(b, bestiario.fuente, null, guardado));
                     }
-                    caja.appendChild(area(cr, "notas", "notas sobre " + (cr.nombre || "la criatura") + (b ? "" : " (su perfil, si no está en el bestiario)"),
+                    caja.appendChild(area(cr, "notas", ocT("notas sobre {n}{n2}", { n: cr.nombre || ocT("la criatura"), n2: b ? "" : ocT(" (su perfil, si no está en el bestiario)") }),
                         b ? 2 : 5));
-                    caja.appendChild(botonDe("oc-vida-accion", "✕ quitar", () => {
+                    caja.appendChild(botonDe("oc-vida-accion", ocT("✕ quitar"), () => {
                         pj.criaturas.splice(i, 1);
                         guardar();
                         pintarCri();
                         criNombre.focus();
-                        avisar("Quitada: " + (cr.nombre || "la criatura") + ".");
-                    }, "Quitar a " + (cr.nombre || "la criatura")));
+                        avisar(ocT("Quitada: {n}.", { n: cr.nombre || ocT("la criatura") }));
+                    }, ocT("Quitar a {n}", { n: cr.nombre || ocT("la criatura") })));
                     return caja;
                 }));
                 if (!pj.criaturas.length) {
-                    listaCri.appendChild(crear("p", "oc-vacio", "Sin criaturas (familiares, compañeros animales, monturas…)."));
+                    listaCri.appendChild(crear("p", "oc-vacio", ocT("Sin criaturas (familiares, compañeros animales, monturas…).")));
                 }
             };
             const formCri = crear("form", "master-pj-anadir");
@@ -2121,7 +2114,7 @@
                 dlBichos.appendChild(o);
             });
             criBicho.setAttribute("list", dlBichos.id);
-            [[criNombre, "nombre (Mita, Relámpago…)"], [criBicho, "qué es, del bestiario (lechuza, caballo de monta…; si no está, vacío)"]]
+            [[criNombre, ocT("nombre (Mita, Relámpago…)")], [criBicho, ocT("qué es, del bestiario (lechuza, caballo de monta…; si no está, vacío)")]]
                 .forEach(([x, t], i) => {
                     x.id = uid + "-cri" + i;
                     x.autocomplete = "off";
@@ -2129,7 +2122,7 @@
                     e2.htmlFor = x.id;
                     formCri.append(e2, x);
                 });
-            const criB = crear("button", "oc-vida-accion", "＋ criatura");
+            const criB = crear("button", "oc-vida-accion", ocT("＋ criatura"));
             criB.type = "submit";
             formCri.append(dlBichos, criB);
             formCri.addEventListener("submit", (e) => {
@@ -2146,7 +2139,7 @@
                 criBicho.value = "";
                 guardar();
                 pintarCri();
-                avisar("Añadida: " + nombre + (b ? " (" + b.nombre + ")." : "."));
+                avisar(ocT("Añadida: {nombre}{n}", { nombre: nombre, n: b ? " (" + b.nombre + ")." : "." }));
             });
             panelCriaturas.append(listaCri, formCri);
             pintarCri();
@@ -2155,7 +2148,7 @@
             // documentos), cada una con su descripción.
             const panelImg = crear("div");
             const listaImg = crear("ul", "master-pj-imagenes");
-            listaImg.setAttribute("aria-label", "Imágenes de " + quien);
+            listaImg.setAttribute("aria-label", ocT("Imágenes de {quien}", { quien: quien }));
             const subirImg = crear("input");
             subirImg.type = "file";
             subirImg.accept = "image/*";
@@ -2177,12 +2170,12 @@
                         grande.alt = im.titulo || "";
                         grande.src = img.src;
                         window.ocVentana.abrir({ titulo: im.titulo || "imagen", cuerpo: grande, vuelta: ver });
-                    }, "Ver en grande: " + (im.titulo || "imagen " + (i + 1)));
+                    }, ocT("Ver en grande: {n}", { n: im.titulo || ocT("imagen {n}", { n: i + 1 }) }));
                     ver.appendChild(img);
                     const desc = crear("input", "oc-dados-texto");
                     desc.value = im.titulo || "";
-                    desc.placeholder = "qué se ve";
-                    desc.setAttribute("aria-label", "Descripción de la imagen " + (i + 1));
+                    desc.placeholder = ocT("qué se ve");
+                    desc.setAttribute("aria-label", ocT("Descripción de la imagen {n}", { n: i + 1 }));
                     desc.addEventListener("input", () => {
                         im.titulo = desc.value;
                         img.alt = desc.value;
@@ -2194,23 +2187,23 @@
                         archivoBorrar(im.archivo);
                         guardar();
                         pintarImg();
-                        avisar("Imagen quitada.");
+                        avisar(ocT("Imagen quitada."));
                         botonImg.focus();
-                    }, "Quitar la imagen " + (im.titulo || i + 1));
+                    }, ocT("Quitar la imagen {n}", { n: im.titulo || i + 1 }));
                     li.append(ver, desc, q);
                     return li;
                 }));
                 if (!pj.imagenes.length) {
-                    listaImg.appendChild(crear("li", "oc-vacio", "Todavía no hay imágenes."));
+                    listaImg.appendChild(crear("li", "oc-vacio", ocT("Todavía no hay imágenes.")));
                 }
             };
-            const botonImg = botonDe("oc-vida-accion", "＋ imágenes", () => subirImg.click(), "Subir imágenes de " + quien);
+            const botonImg = botonDe("oc-vida-accion", ocT("＋ imágenes"), () => subirImg.click(), ocT("Subir imágenes de {quien}", { quien: quien }));
             subirImg.addEventListener("change", () => {
                 const fs = Array.from(subirImg.files || []);
                 subirImg.value = "";
                 const buenas = fs.filter((f) => /^image\//.test(f.type) && f.size <= MAX_ARCHIVO);
                 if (buenas.length < fs.length) {
-                    avisar("Sólo imágenes de hasta 50 MB.");
+                    avisar(ocT("Sólo imágenes de hasta 50 MB."));
                 }
                 Promise.all(buenas.map((f) => {
                     const id = idDoc("a");
@@ -2221,22 +2214,22 @@
                     if (buenas.length) {
                         guardar();
                         pintarImg();
-                        avisar("Subidas " + buenas.length + (buenas.length === 1 ? " imagen" : " imágenes") + ": ponles una descripción.");
+                        avisar(ocT("Subidas {n}{n2}: ponles una descripción.", { n: buenas.length, n2: buenas.length === 1 ? ocT(" imagen") : ocT(" imágenes") }));
                     }
-                }).catch(() => avisar("No se han podido guardar (¿no queda sitio?)."));
+                }).catch(() => avisar(ocT("No se han podido guardar (¿no queda sitio?).")));
             });
             panelImg.append(listaImg, botonImg, subirImg);
             pintarImg();
 
             // 11. EXTRA: lo que no cabe en lo demás.
             const panelExtra = crear("div");
-            panelExtra.appendChild(area(pj, "extra", "extra: lugares, su gente, ganchos, lo que quieras", 12));
+            panelExtra.appendChild(area(pj, "extra", ocT("extra: lugares, su gente, ganchos, lo que quieras"), 12));
 
             if (!visor) {
-                const paneles = [["📋 ficha", panelFicha], ["⚔️ combate", panelCombate], ["✨ conjuros", panelConj],
-                    ["🎒 inventario", panelInv], ["⭐ rasgos", panelRasgos], ["📜 historia", panelHist], ["👥 PNJ y notas", panelPnj],
-                    ["🐾 criaturas", panelCriaturas], ["🖼️ imágenes", panelImg], ["📎 extra", panelExtra], ["🎭 máster", panelMaster]];
-                const { lista, elegir } = pestanasDe(paneles, "Ficha de " + quien, uid, (i) => {
+                const paneles = [[ocT("📋 ficha"), panelFicha], [ocT("⚔️ combate"), panelCombate], [ocT("✨ conjuros"), panelConj],
+                    [ocT("🎒 inventario"), panelInv], [ocT("⭐ rasgos"), panelRasgos], [ocT("📜 historia"), panelHist], [ocT("👥 PNJ y notas"), panelPnj],
+                    [ocT("🐾 criaturas"), panelCriaturas], [ocT("🖼️ imágenes"), panelImg], [ocT("📎 extra"), panelExtra], [ocT("🎭 máster"), panelMaster]];
+                const { lista, elegir } = pestanasDe(paneles, ocT("Ficha de {quien}", { quien: quien }), uid, (i) => {
                     m.datos.pestana = i;
                     guardar();
                 });
@@ -2256,7 +2249,7 @@
                 nombreV.appendChild(crear("span", "master-visor-clase", pj.clase));
             }
             const pgV = crear("div", "master-visor-pg");
-            const pgEt = crear("label", "master-visor-et", "❤️ PG");
+            const pgEt = crear("label", "master-visor-et", ocT("❤️ PG"));
             pgInput.id = uid + "-pg";
             pgEt.htmlFor = pgInput.id;
             const pasoPg = (n) => {
@@ -2265,15 +2258,15 @@
                 pgInput.value = Math.max(0, max === null ? ahora + n : Math.min(max, ahora + n));
                 pj.pg = numPj(pgInput.value);
                 cambiado();
-                avisar(quien + ": " + pj.pg + " PG.");
+                avisar(ocT("{quien}: {pg} PG.", { quien: quien, pg: pj.pg }));
             };
-            pgV.append(pgEt, botonDe("master-pestana-mando", "−", () => pasoPg(-1), "Quitar 1 PG a " + quien), pgInput,
+            pgV.append(pgEt, botonDe("master-pestana-mando", "−", () => pasoPg(-1), ocT("Quitar 1 PG a {quien}", { quien: quien })), pgInput,
                 crear("span", "master-visor-max", numPj(pj.pgmax) !== null ? "/ " + numPj(pj.pgmax) : ""),
-                botonDe("master-pestana-mando", "+", () => pasoPg(1), "Sumar 1 PG a " + quien));
+                botonDe("master-pestana-mando", "+", () => pasoPg(1), ocT("Sumar 1 PG a {quien}", { quien: quien })));
             const caV = crear("div", "master-visor-fila");
             const caCaja = crear("p", "master-visor-ca");
-            caCaja.append(crear("span", "master-visor-et", "🛡️ CA"), crear("strong", "", pj.ca === undefined || pj.ca === "" ? "—" : String(pj.ca)));
-            const descansar = botonDe("oc-vida-accion", "🛏️ descansar", () => {
+            caCaja.append(crear("span", "master-visor-et", ocT("🛡️ CA")), crear("strong", "", pj.ca === undefined || pj.ca === "" ? "—" : String(pj.ca)));
+            const descansar = botonDe("oc-vida-accion", ocT("🛏️ descansar"), () => {
                 if (numPj(pj.pgmax) !== null) {
                     pj.pg = numPj(pj.pgmax);
                 }
@@ -2283,11 +2276,11 @@
                 });
                 cambiado();
                 repintar();
-                avisar(quien + " descansa: PG al máximo y espacios de conjuro recuperados.");
-            }, "Descanso largo de " + quien + ": PG al máximo y espacios de conjuro recuperados");
+                avisar(ocT("{quien} descansa: PG al máximo y espacios de conjuro recuperados.", { quien: quien }));
+            }, ocT("Descanso largo de {quien}: PG al máximo y espacios de conjuro recuperados", { quien: quien }));
             caV.append(caCaja, descansar);
             const retrato = crear("div", "master-visor-retrato");
-            const fotoV = fotoPj(pj, "master-visor-foto", "Retrato de " + quien);
+            const fotoV = fotoPj(pj, "master-visor-foto", ocT("Retrato de {quien}", { quien: quien }));
             if (fotoV) {
                 retrato.appendChild(fotoV);
             } else {
@@ -2296,11 +2289,11 @@
                 retrato.appendChild(ini);
             }
             if (numPj(pj.nivel)) {
-                retrato.appendChild(crear("span", "master-visor-clase", "nivel " + numPj(pj.nivel)));
+                retrato.appendChild(crear("span", "master-visor-clase", ocT("nivel {numPj}", { numPj: numPj(pj.nivel) })));
             }
             const especie = [pj.raza, pj.subclase].filter(Boolean).join(" · ");
             const carsV = crear("ul", "master-visor-cars");
-            carsV.setAttribute("aria-label", "Características de " + quien);
+            carsV.setAttribute("aria-label", ocT("Características de {quien}", { quien: quien }));
             SALVACIONES_PJ.forEach((k) => {
                 const n = car(k);
                 if (n === null) {
@@ -2308,21 +2301,21 @@
                 }
                 const li = crear("li");
                 const abr = crear("abbr", "master-visor-et", k.toUpperCase());
-                abr.title = NOMBRES_CAR[k];
-                li.append(abr, dadoPj(modDe(n), NOMBRES_CAR[k] + " de " + quien), crear("span", "master-visor-max", String(n)));
+                abr.title = CAR_VER[k];
+                li.append(abr, dadoPj(modDe(n), ocT("{n} de {quien}", { n: CAR_VER[k], quien: quien })), crear("span", "master-visor-max", String(n)));
                 carsV.appendChild(li);
             });
             tarjeta.append(nombreV, pgV, caV, retrato);
             if (especie) {
                 tarjeta.appendChild(crear("p", "master-visor-especie", especie));
             }
-            tarjeta.append(crear("p", "master-visor-et", "características"), carsV, botones, recordar);
+            tarjeta.append(crear("p", "master-visor-et", ocT("características")), carsV, botones, recordar);
 
             // …el menú de secciones y la sección elegida.
-            const secciones = [["📖", "historia", panelHist], ["📋", "ficha", null, [["📊", "combate", panelFicha],
-                ["🎯", "habilidades", panelHab], ["⚔️", "acciones", panelCombate], ["✨", "conjuros", panelConj],
-                ["🎒", "inventario", panelInv], ["⭐", "rasgos y competencias", panelRasgos]]], ["🐾", "criaturas", panelCriaturas],
-                ["👥", "PNJ y notas", panelPnj], ["🖼️", "imágenes", panelImg], ["📎", "extra", panelExtra], ["🎭", "máster", panelMaster]];
+            const secciones = [["📖", ocT("historia"), panelHist], ["📋", ocT("ficha"), null, [["📊", ocT("combate"), panelFicha],
+                ["🎯", ocT("habilidades"), panelHab], ["⚔️", ocT("acciones"), panelCombate], ["✨", ocT("conjuros"), panelConj],
+                ["🎒", ocT("inventario"), panelInv], ["⭐", ocT("rasgos y competencias"), panelRasgos]]], ["🐾", ocT("criaturas"), panelCriaturas],
+                ["👥", ocT("PNJ y notas"), panelPnj], ["🖼️", ocT("imágenes"), panelImg], ["📎", ocT("extra"), panelExtra], ["🎭", ocT("máster"), panelMaster]];
             // (Un div con su papel, no un <section>: la base de la web le da
             // a todos alto, relleno y centrado.)
             const contenido = crear("div", "master-visor-contenido");
@@ -2332,7 +2325,7 @@
             contenido.setAttribute("aria-labelledby", tituloSec.id);
             contenido.appendChild(tituloSec);
             const menu = crear("nav", "master-visor-menu");
-            menu.setAttribute("aria-label", "Secciones de la ficha de " + quien);
+            menu.setAttribute("aria-label", ocT("Secciones de la ficha de {quien}", { quien: quien }));
             const botonesSec = [];
             let fichaB = null;
             let subLista = null;
@@ -2412,7 +2405,7 @@
             dentro.replaceChildren(libro);
             elegirSec(m.datos.seccion || "historia", false);
         }).catch(() => {
-            dentro.replaceChildren(crear("p", "oc-vacio", "No he podido cargar su ficha."));
+            dentro.replaceChildren(crear("p", "oc-vacio", ocT("No he podido cargar su ficha.")));
         });
     }
 
@@ -2422,25 +2415,25 @@
         m.datos = m.datos || {};
         const elegir = crear("div", "master-visor-elegir");
         elegir.setAttribute("role", "group");
-        elegir.setAttribute("aria-label", "Personajes de la party");
+        elegir.setAttribute("aria-label", ocT("Personajes de la party"));
         const ficha = crear("div", "master-visor-ficha");
         let pintadoDe = null;
         function pintar() {
             const pjs = todo.pjs || [];
             if (!pjs.length) {
                 pintadoDe = null;
-                const importar = botonDe("oc-vida-accion", "📥 importar", () => abrirImportarPj(importar),
-                    "Traer un personaje de D&D Beyond, Nivel20 o Foundry VTT");
+                const importar = botonDe("oc-vida-accion", ocT("📥 importar"), () => abrirImportarPj(importar),
+                    ocT("Traer un personaje de D&D Beyond, Nivel20 o Foundry VTT"));
                 importar.setAttribute("aria-haspopup", "dialog");
                 const otras = crear("div", "master-anadir-otras");
-                otras.append(botonDe("oc-vida-accion es-principal", "＋ personaje", () => {
+                otras.append(botonDe("oc-vida-accion es-principal", ocT("＋ personaje"), () => {
                     const pj = nuevoPj({ nombre: "" });
                     m.datos.pj = pj.id;
                     m.datos.editar = true;
                     guardar();
                     pintar();
-                }, "Añadir un personaje a la party"), importar);
-                dentro.replaceChildren(crear("p", "oc-vacio", "Todavía no hay personajes en la party."), otras);
+                }, ocT("Añadir un personaje a la party")), importar);
+                dentro.replaceChildren(crear("p", "oc-vacio", ocT("Todavía no hay personajes en la party.")), otras);
                 return;
             }
             pjs.forEach(normalizarPj);
@@ -2448,7 +2441,7 @@
             m.datos.pj = pj.id;
             const foco = elegir.contains(document.activeElement);
             elegir.replaceChildren(...pjs.map((x, i) => {
-                const quien = x.nombre || "jugador " + (i + 1);
+                const quien = x.nombre || ocT("jugador {n}", { n: i + 1 });
                 const b = botonDe("master-visor-pj", "", () => {
                     if (m.datos.pj === x.id) {
                         return;
@@ -2456,7 +2449,7 @@
                     m.datos.pj = x.id;
                     guardar();
                     pintar();
-                    avisar("Ficha de " + quien + ".");
+                    avisar(ocT("Ficha de {quien}.", { quien: quien }));
                 });
                 const foto = fotoPj(x, "master-visor-mini", "");
                 const ini = crear("span", "master-visor-mini", (quien.trim()[0] || "?").toUpperCase());
@@ -2577,7 +2570,7 @@
                     filas.splice(filas.indexOf(reg), 1);
                     li.remove();
                     mas.focus();
-                }, "Quitar esta fila de " + titulo.toLowerCase());
+                }, ocT("Quitar esta fila de {toLowerCase}", { toLowerCase: titulo.toLowerCase() }));
                 li.appendChild(q);
                 filas.push(reg);
                 ol.appendChild(li);
@@ -2586,7 +2579,7 @@
                 }
             };
             lista.forEach((x) => fila(x));
-            const mas = botonDe("oc-vida-accion", "＋ añadir", () => fila(nueva(), true), "Añadir a " + titulo.toLowerCase());
+            const mas = botonDe("oc-vida-accion", ocT("＋ añadir"), () => fila(nueva(), true), ocT("Añadir a {toLowerCase}", { toLowerCase: titulo.toLowerCase() }));
             fs.append(ol, mas);
             destino.appendChild(fs);
             return () => filas.map((r) => {
@@ -2599,7 +2592,7 @@
         }
         // La foto: la suya, una nueva o ninguna (se guarda al guardar).
         const fsFoto = crear("fieldset", "master-creador-grupo master-pjf-foto");
-        fsFoto.appendChild(crear("legend", "", "Foto"));
+        fsFoto.appendChild(crear("legend", "", ocT("Foto")));
         const vistaFoto = crear("div", "master-pjf-foto-vista");
         let fotoNueva = null;
         let sinFoto = false;
@@ -2608,13 +2601,13 @@
             vistaFoto.replaceChildren();
             if (fotoNueva) {
                 const img = crear("img", "master-pj-foto");
-                img.alt = "La foto nueva";
+                img.alt = ocT("La foto nueva");
                 img.src = urlNueva;
                 vistaFoto.appendChild(img);
             } else if (!sinFoto && (pj.foto || pj.fotoUrl)) {
-                vistaFoto.appendChild(fotoPj(pj, "master-pj-foto", "La foto de ahora"));
+                vistaFoto.appendChild(fotoPj(pj, "master-pj-foto", ocT("La foto de ahora")));
             } else {
-                vistaFoto.appendChild(crear("p", "oc-hoja-nota", "Sin foto."));
+                vistaFoto.appendChild(crear("p", "oc-hoja-nota", ocT("Sin foto.")));
             }
             quitarFoto.hidden = !(fotoNueva || (!sinFoto && (pj.foto || pj.fotoUrl)));
         };
@@ -2629,7 +2622,7 @@
                 return;
             }
             if (!/^image\//.test(f.type) || f.size > 10 * 1024 * 1024) {
-                avisar("Tiene que ser una imagen de hasta 10 MB.");
+                avisar(ocT("Tiene que ser una imagen de hasta 10 MB."));
                 return;
             }
             if (urlNueva) {
@@ -2639,98 +2632,98 @@
             urlNueva = URL.createObjectURL(f);
             sinFoto = false;
             pintarFoto();
-            avisar("Foto elegida: se guarda al pulsar «✓ guardar».");
+            avisar(ocT("Foto elegida: se guarda al pulsar «✓ guardar»."));
         });
-        const elegirFoto = botonDe("oc-vida-accion", "📷 elegir foto", () => subirFoto.click(), "Elegir una foto de " + (pj.nombre
-            || "este personaje") + " (de tu dispositivo)");
-        const quitarFoto = botonDe("oc-vida-accion", "✕ quitar", () => {
+        const elegirFoto = botonDe("oc-vida-accion", ocT("📷 elegir foto"), () => subirFoto.click(), ocT("Elegir una foto de {n} (de tu dispositivo)", { n: pj.nombre
+            || ocT("este personaje") }));
+        const quitarFoto = botonDe("oc-vida-accion", ocT("✕ quitar"), () => {
             fotoNueva = null;
             sinFoto = true;
             pintarFoto();
             elegirFoto.focus();
-        }, "Quitar la foto");
+        }, ocT("Quitar la foto"));
         const botonesFoto = crear("div", "master-creador-barra");
         botonesFoto.append(elegirFoto, quitarFoto);
         fsFoto.append(vistaFoto, botonesFoto, subirFoto);
         pintarFoto();
         pF.appendChild(fsFoto);
-        const b = grupo("Quién es");
-        const nombre = campo(b, "nombre", pj.nombre);
-        const completo = campo(b, "nombre completo", pj.nombreCompleto, { ayuda: "opcional" });
-        const jugador = campo(b, "jugador", pj.jugador, { ayuda: "quién lo lleva" });
-        const raza = campo(b, "especie", pj.raza);
-        const clase = campo(b, "clase (y subclase)", pj.clase);
-        const nivel = campo(b, "nivel", pj.nivel, { tipo: "number", min: 1, max: 20 });
-        const fondo = campo(b, "trasfondo", pj.trasfondoNombre);
-        const alin = campo(b, "alineamiento", pj.alineamiento);
-        const pxC = campo(b, "PX (experiencia)", pj.px, { tipo: "number", min: 0 });
+        const b = grupo(ocT("Quién es"));
+        const nombre = campo(b, ocT("nombre"), pj.nombre);
+        const completo = campo(b, ocT("nombre completo"), pj.nombreCompleto, { ayuda: ocT("opcional") });
+        const jugador = campo(b, ocT("jugador"), pj.jugador, { ayuda: ocT("quién lo lleva") });
+        const raza = campo(b, ocT("especie"), pj.raza);
+        const clase = campo(b, ocT("clase (y subclase)"), pj.clase);
+        const nivel = campo(b, ocT("nivel"), pj.nivel, { tipo: "number", min: 1, max: 20 });
+        const fondo = campo(b, ocT("trasfondo"), pj.trasfondoNombre);
+        const alin = campo(b, ocT("alineamiento"), pj.alineamiento);
+        const pxC = campo(b, ocT("PX (experiencia)"), pj.px, { tipo: "number", min: 0 });
         destino = pC;
-        const c = grupo("Combate");
-        const ca = campo(c, "CA", pj.ca);
-        const pgmax = campo(c, "PG máximos", pj.pgmax, { tipo: "number" });
-        const pg = campo(c, "PG actuales", pj.pg, { tipo: "number" });
-        const pgtemp = campo(c, "PG temporales", pj.pgtemp, { tipo: "number" });
-        const vel = campo(c, "velocidad", pj.velocidad, { ayuda: "30 pies" });
-        const dg = campo(c, "dados de golpe", pj.dadosGolpe, { ayuda: "3d8" });
+        const c = grupo(ocT("Combate"));
+        const ca = campo(c, ocT("CA"), pj.ca);
+        const pgmax = campo(c, ocT("PG máximos"), pj.pgmax, { tipo: "number" });
+        const pg = campo(c, ocT("PG actuales"), pj.pg, { tipo: "number" });
+        const pgtemp = campo(c, ocT("PG temporales"), pj.pgtemp, { tipo: "number" });
+        const vel = campo(c, ocT("velocidad"), pj.velocidad, { ayuda: ocT("30 pies") });
+        const dg = campo(c, ocT("dados de golpe"), pj.dadosGolpe, { ayuda: "3d8" });
         destino = pF;
-        const cs = grupo("Características");
+        const cs = grupo(ocT("Características"));
         const cars = {};
         SALVACIONES_PJ.forEach((k) => {
-            cars[k] = campo(cs, NOMBRES_CAR[k], pj[k], { tipo: "number", min: 1, max: 30 });
+            cars[k] = campo(cs, CAR_VER[k], pj[k], { tipo: "number", min: 1, max: 30 });
         });
         const fsS = crear("fieldset", "master-creador-grupo");
-        fsS.appendChild(crear("legend", "", "Salvaciones con competencia"));
+        fsS.appendChild(crear("legend", "", ocT("Salvaciones con competencia")));
         const cajaS = crear("div", "master-creador-casillas");
         const salv = SALVACIONES_PJ.map((k) => {
             const lab = crear("label", "master-creador-check");
             const x = crear("input");
             x.type = "checkbox";
             x.checked = pj.salvaciones.includes(k);
-            lab.append(x, " " + NOMBRES_CAR[k]);
+            lab.append(x, " " + CAR_VER[k]);
             cajaS.appendChild(lab);
             return [k, x];
         });
         fsS.appendChild(cajaS);
         pF.appendChild(fsS);
-        const hs = grupo("Habilidades");
+        const hs = grupo(ocT("Habilidades"));
         destino = pC;
         const habs = HABILIDADES_PJ.map(([nom, k]) => [nom, campo(hs, nom + " (" + k.toUpperCase() + ")", pj.habilidades[nom] || 0,
             { opciones: [["0", "—"], ["1", "competente"], ["2", "pericia"]] })]);
-        const leerAtaques = filasDe("Ataques", pj.ataques, [["nombre", "arma o ataque"], ["bono", "bono", { ayuda: "+5" }],
-            ["dano", "daño", { ayuda: "1d8+3 cortante" }]], () => ({ nombre: "", bono: "", dano: "" }));
-        const acc = campo(grupo("Acciones especiales"), "una por línea", pj.acciones.join("\n"), { filas: 3, ancho: true,
-            ayuda: "Acción adicional: Forma salvaje (2 usos, descanso corto)" });
+        const leerAtaques = filasDe(ocT("Ataques"), pj.ataques, [["nombre", ocT("arma o ataque")], ["bono", "bono", { ayuda: "+5" }],
+            ["dano", "daño", { ayuda: ocT("1d8+3 cortante") }]], () => ({ nombre: "", bono: "", dano: "" }));
+        const acc = campo(grupo(ocT("Acciones especiales")), ocT("una por línea"), pj.acciones.join("\n"), { filas: 3, ancho: true,
+            ayuda: ocT("Acción adicional: Forma salvaje (2 usos, descanso corto)") });
         destino = pM;
-        const mg = grupo("Magia");
-        const apt = campo(mg, "aptitud mágica", pj.aptitud || "", { opciones: [["", "ninguna"]].concat(SALVACIONES_PJ.map((k) =>
-            [k, NOMBRES_CAR[k]])) });
+        const mg = grupo(ocT("Magia"));
+        const apt = campo(mg, ocT("aptitud mágica"), pj.aptitud || "", { opciones: [["", ocT("ninguna")]].concat(SALVACIONES_PJ.map((k) =>
+            [k, CAR_VER[k]])) });
         const espacios = {};
         for (let i = 1; i <= 9; i++) {
-            espacios[i] = campo(mg, "espacios de nivel " + i, (pj.espacios[i] || {}).max || "", { tipo: "number", max: 9 });
+            espacios[i] = campo(mg, ocT("espacios de nivel {i}", { i: i }), (pj.espacios[i] || {}).max || "", { tipo: "number", max: 9 });
         }
-        const conjs = campo(grupo("Conjuros"), "uno por línea (los del SRD se enlazan solos)", pj.conjuros.join("\n"),
+        const conjs = campo(grupo(ocT("Conjuros")), ocT("uno por línea (los del SRD se enlazan solos)"), pj.conjuros.join("\n"),
             { filas: 6, ancho: true });
         destino = pI;
-        const leerObjetos = filasDe("Inventario", pj.objetos, [["nombre", "objeto"], ["cant", "cantidad", { tipo: "number" }],
+        const leerObjetos = filasDe(ocT("Inventario"), pj.objetos, [["nombre", "objeto"], ["cant", "cantidad", { tipo: "number" }],
             ["equipado", "equipado", { casilla: true }]], () => ({ nombre: "", cant: 1, equipado: false }));
-        const din = grupo("Dinero");
+        const din = grupo(ocT("Dinero"));
         const monedas = {};
         MONEDAS_PJ.forEach(([k, abr, nom]) => {
             monedas[k] = campo(din, nom + " (" + abr + ")", pj.dinero[k] || "", { tipo: "number", max: 9999999 });
         });
         destino = pR;
-        const ot = grupo("Rasgos y competencias");
-        const rasgos = campo(ot, "rasgos y dotes", pj.rasgos, { filas: 6, ancho: true,
-            ayuda: "- **Visión en la oscuridad** (especie)\n- **Ataque furtivo** (Pícaro, nivel 1)" });
+        const ot = grupo(ocT("Rasgos y competencias"));
+        const rasgos = campo(ot, ocT("rasgos y dotes"), pj.rasgos, { filas: 6, ancho: true,
+            ayuda: ocT("- **Visión en la oscuridad** (especie)\n- **Ataque furtivo** (Pícaro, nivel 1)") });
         // Añadirlos del SRD (o de los tuyos): uno a uno, o todos los de su
         // clase (hasta su nivel) y su especie.
         const cajaSrd = crear("div", "master-pjf-srd");
-        const etSrd = crear("label", "oc-dados-etiqueta", "añadir uno del SRD o de los tuyos");
+        const etSrd = crear("label", "oc-dados-etiqueta", ocT("añadir uno del SRD o de los tuyos"));
         const buscaSrd = crear("input", "oc-dados-texto");
         buscaSrd.id = uid + "-srd";
         buscaSrd.setAttribute("list", uid + "-srd-lista");
         buscaSrd.autocomplete = "off";
-        buscaSrd.placeholder = "Furia, Alerta, Linaje feérico…";
+        buscaSrd.placeholder = ocT("Furia, Alerta, Linaje feérico…");
         etSrd.htmlFor = buscaSrd.id;
         const listaSrd = crear("datalist");
         listaSrd.id = uid + "-srd-lista";
@@ -2749,7 +2742,7 @@
                 return o;
             }));
         }).catch(() => null);
-        const lineaDe = (r) => "- **" + r.nombre + "** (" + (r.tipo === "rasgo de clase" ? r.de + (r.nivel ? ", nivel " + r.nivel : "")
+        const lineaDe = (r) => "- **" + r.nombre + "** (" + (r.tipo === "rasgo de clase" ? r.de + (r.nivel ? ocT(", nivel {nivel}", { nivel: r.nivel }) : "")
             : r.tipo === "rasgo de especie" ? (r.de.split(/,\s*/).find((d) => llano(raza.value).includes(llano(d))) || r.de.split(",")[0])
                 : r.tipo) + ")";
         const yaEsta = (r) => String(rasgos.value).split("\n").some((l) => llano(l).includes("**" + llano(r.nombre) + "**"));
@@ -2760,26 +2753,26 @@
             }
             return nuevas.length;
         };
-        const anadirUno = botonDe("oc-vida-accion", "＋ añadir", () => {
+        const anadirUno = botonDe("oc-vida-accion", ocT("＋ añadir"), () => {
             const [n, de] = buscaSrd.value.split(" — ");
             const r = todosRasgos.find((x) => llano(x.nombre) === llano(n || "") && (!de || x.de === de.trim()))
                 || rasgoDe(todosRasgos, n || "", clase.value + " " + raza.value);
             if (!r) {
-                avisar("No encuentro «" + buscaSrd.value + "» entre los rasgos y dotes.");
+                avisar(ocT("No encuentro «{value}» entre los rasgos y dotes.", { value: buscaSrd.value }));
                 buscaSrd.focus();
                 return;
             }
-            avisar(poner([r]) ? "Añadido: " + r.nombre + "." : r.nombre + " ya estaba.");
+            avisar(poner([r]) ? ocT("Añadido: {nombre}.", { nombre: r.nombre }) : ocT("{nombre} ya estaba.", { nombre: r.nombre }));
             buscaSrd.value = "";
             buscaSrd.focus();
-        }, "Añadir a la lista de rasgos el que has escrito");
+        }, ocT("Añadir a la lista de rasgos el que has escrito"));
         buscaSrd.addEventListener("keydown", (e) => {
             if (e.key === "Enter") {
                 e.preventDefault();
                 anadirUno.click();
             }
         });
-        const deSuClase = botonDe("oc-vida-accion", "＋ los de su clase y especie", () => {
+        const deSuClase = botonDe("oc-vida-accion", ocT("＋ los de su clase y especie"), () => {
             const cl = llano(clase.value);
             const base = cl.split(/[ (/]+/)[0];
             const nv = Number(nivel.value) || 1;
@@ -2802,28 +2795,27 @@
                 return false;
             }).sort((a, b) => (a.tipo === b.tipo ? (a.nivel || 0) - (b.nivel || 0) : a.tipo === "rasgo de especie" ? -1 : 1));
             if (!elegidos.length) {
-                avisar("No encuentro rasgos del SRD para «" + (clase.value || "sin clase") + "» y «" + (raza.value || "sin especie")
-                    + "». Mira la clase y la especie (en 📋 ficha).");
+                avisar(ocT("No encuentro rasgos del SRD para «{n}» y «{n2}». Mira la clase y la especie (en 📋 ficha).", { n: clase.value || ocT("sin clase"), n2: raza.value || ocT("sin especie") }));
                 return;
             }
             const n = poner(elegidos);
-            avisar(n ? "Añadidos " + n + " rasgos (repásalos: los de elegir una opción, como el linaje, van todos)." : "Ya estaban todos.");
-        }, "Añadir los rasgos del SRD de su clase (hasta su nivel) y de su especie");
+            avisar(n ? ocT("Añadidos {n} rasgos (repásalos: los de elegir una opción, como el linaje, van todos).", { n: n }) : ocT("Ya estaban todos."));
+        }, ocT("Añadir los rasgos del SRD de su clase (hasta su nivel) y de su especie"));
         const filaSrd = crear("div", "master-creador-barra");
         filaSrd.append(anadirUno, deSuClase);
         cajaSrd.append(etSrd, buscaSrd, listaSrd, filaSrd);
         ot.appendChild(cajaSrd);
-        const comp = campo(ot, "competencias (armas, armaduras, herramientas)", pj.competencias, { ancho: true });
-        const idiomas = campo(ot, "idiomas", pj.idiomas, { ancho: true });
-        const sentidos = campo(ot, "sentidos", pj.sentidos, { ancho: true, ayuda: "Visión en la oscuridad 60 pies" });
-        const defensas = campo(ot, "resistencias e inmunidades", pj.defensas, { ancho: true });
+        const comp = campo(ot, ocT("competencias (armas, armaduras, herramientas)"), pj.competencias, { ancho: true });
+        const idiomas = campo(ot, ocT("idiomas"), pj.idiomas, { ancho: true });
+        const sentidos = campo(ot, ocT("sentidos"), pj.sentidos, { ancho: true, ayuda: ocT("Visión en la oscuridad 60 pies") });
+        const defensas = campo(ot, ocT("resistencias e inmunidades"), pj.defensas, { ancho: true });
         const final = crear("div", "master-creador-barra master-creador-final");
-        const ok = crear("button", "oc-vida-accion es-principal", "✓ guardar");
+        const ok = crear("button", "oc-vida-accion es-principal", ocT("✓ guardar"));
         ok.type = "submit";
-        const no = botonDe("oc-vida-accion", "cancelar", () => alTerminar());
+        const no = botonDe("oc-vida-accion", ocT("cancelar"), () => alTerminar());
         final.append(ok, no);
-        const paneles = [["📋 ficha", pF], ["⚔️ combate", pC], ["✨ conjuros", pM], ["🎒 inventario", pI], ["⭐ rasgos", pR]];
-        const { lista: pestanas, elegir } = pestanasDe(paneles, "Editar la ficha de " + (pj.nombre || "personaje"), uid + "-tab",
+        const paneles = [[ocT("📋 ficha"), pF], [ocT("⚔️ combate"), pC], [ocT("✨ conjuros"), pM], [ocT("🎒 inventario"), pI], [ocT("⭐ rasgos"), pR]];
+        const { lista: pestanas, elegir } = pestanasDe(paneles, ocT("Editar la ficha de {n}", { n: pj.nombre || "personaje" }), uid + "-tab",
             (i) => {
                 m.datos.pestana = i;
             });
@@ -2847,11 +2839,11 @@
                 guardarFicha();
             }).catch(() => {
                 ok.disabled = false;
-                avisar("No se ha podido guardar la foto (¿no queda sitio?).");
+                avisar(ocT("No se ha podido guardar la foto (¿no queda sitio?)."));
             });
         });
         function guardarFicha() {
-            pj.nombre = nombre.value.trim() || pj.nombre || "Sin nombre";
+            pj.nombre = nombre.value.trim() || pj.nombre || ocT("Sin nombre");
             pj.nombreCompleto = completo.value.trim();
             pj.jugador = jugador.value.trim();
             pj.raza = raza.value.trim();
@@ -2905,7 +2897,7 @@
             ponerTitulo(m);
             guardar();
             avisarPjs(m.id);
-            avisar("Ficha guardada: " + pj.nombre + ".");
+            avisar(ocT("Ficha guardada: {nombre}.", { nombre: pj.nombre }));
             alTerminar();
         }
         form.addEventListener("keydown", (e) => {
@@ -2988,7 +2980,7 @@
     function deDdb(crudo, t) {
         const d = crudo && crudo.data && crudo.data.stats ? crudo.data : crudo;
         if (!d || !Array.isArray(d.stats)) {
-            throw new Error("Eso no parece la ficha de un personaje de D&D Beyond.");
+            throw new Error(ocT("Eso no parece la ficha de un personaje de D&D Beyond."));
         }
         const avisos = [];
         const inventario = Array.isArray(d.inventory) ? d.inventory : [];
@@ -3039,7 +3031,7 @@
         const nivel = clases.reduce((s, c) => s + (Number(c.level) || 0), 0) || 1;
         const comp = 2 + Math.floor((Math.min(nivel, 20) - 1) / 4);
         pj.nombreCompleto = String(d.name || "").trim();
-        pj.nombre = pj.nombreCompleto.split(" ")[0] || "Sin nombre";
+        pj.nombre = pj.nombreCompleto.split(" ")[0] || ocT("Sin nombre");
         const raza = (d.race || {}).fullName || (d.race || {}).baseName || "";
         pj.raza = t(raza);
         pj.clase = clases.map((c) => {
@@ -3080,7 +3072,7 @@
         ca += escudo + cuentan.filter((mm) => mm.type === "bonus" && mm.subType === "armor-class").reduce((s, mm) => s + (mm.value || 0), 0);
         pj.ca = String(ca);
         if (!armadura && clases.some((c) => /barbarian|monk/i.test((c.definition || {}).name || ""))) {
-            avisos.push("La CA puede ser otra: «Defensa sin armadura» no la cuento. Repásala.");
+            avisos.push(ocT("La CA puede ser otra: «Defensa sin armadura» no la cuento. Repásala."));
         }
         let pies = ((((d.race || {}).weightSpeeds || {}).normal || {}).walk) || 30;
         cuentan.forEach((mm) => {
@@ -3093,7 +3085,7 @@
                 pies += mm.value;
             }
         });
-        pj.velocidad = pies + " pies";
+        pj.velocidad = ocT("{pies} pies", { pies: pies });
         pj.dadosGolpe = clases.filter((c) => (c.definition || {}).hitDice).map((c) => (c.level || 0) + "d" + c.definition.hitDice).join(" + ");
         // Competencias.
         pj.salvaciones = [];
@@ -3139,7 +3131,7 @@
                     }
                 });
             } else if (clases.length > 1) {
-                avisos.push("Lleva varias clases: los espacios de conjuro los tienes que poner tú.");
+                avisos.push(ocT("Lleva varias clases: los espacios de conjuro los tienes que poner tú."));
             }
             (d.spellSlots || []).forEach((s) => {
                 if (pj.espacios[s.level] && s.used) {
@@ -3183,20 +3175,20 @@
         (((d.race || {}).racialTraits) || []).forEach((r) => {
             const nm = ((r || {}).definition || {}).name;
             if (nm && !SOBRAN_DDB.includes(nm.toLowerCase())) {
-                rasgos.push("- **" + t(nm) + "** (especie)");
+                rasgos.push(ocT("- **{t}** (especie)", { t: t(nm) }));
             }
         });
         clases.forEach((c) => (c.classFeatures || []).forEach((f) => {
             const df = (f || {}).definition || {};
             if (df.name && (Number(df.requiredLevel) || 1) <= (Number(c.level) || 0) && !SOBRAN_DDB.includes(df.name.toLowerCase())
                 && df.name !== "TBD" && !/^core .* traits$| subclass$|ability score improvement/i.test(df.name)) {
-                rasgos.push("- **" + t(df.name) + "** (" + t((c.definition || {}).name) + ", nivel " + (df.requiredLevel || 1) + ")");
+                rasgos.push(ocT("- **{t}** ({t2}, nivel {n})", { t: t(df.name), t2: t((c.definition || {}).name), n: df.requiredLevel || 1 }));
             }
         }));
         (d.feats || []).forEach((f) => {
             const nm = ((f || {}).definition || {}).name;
             if (nm) {
-                rasgos.push("- **" + t(nm) + "** (dote)");
+                rasgos.push(ocT("- **{t}** (dote)", { t: t(nm) }));
             }
         });
         pj.rasgos = Array.from(new Set(rasgos)).join("\n");
@@ -3210,7 +3202,7 @@
             const usos = (a.limitedUse || {}).maxUses;
             const rec = RECARGA_DDB[(a.limitedUse || {}).resetType] || "";
             const x = (ACCION_DDB[(a.activation || {}).activationType] || "Otras") + ": " + t(nm)
-                + (usos ? " (" + usos + (usos === 1 ? " uso" : " usos") + (rec ? ", " + rec : "") + ")" : "");
+                + (usos ? " (" + usos + (usos === 1 ? ocT(" uso") : ocT(" usos")) + (rec ? ", " + rec : "") + ")" : "");
             if (!pj.acciones.includes(x)) {
                 pj.acciones.push(x);
             }
@@ -3224,7 +3216,7 @@
         cuentan.forEach((mm) => {
             const sub = String(mm.subType || "");
             if ((mm.type === "set-base" || mm.type === "sense") && SENT[sub] && mm.value) {
-                const x = SENT[sub] + " " + mm.value + " pies";
+                const x = ocT("{n} {value} pies", { n: SENT[sub], value: mm.value });
                 if (!sentidos.includes(x)) {
                     sentidos.push(x);
                 }
@@ -3254,7 +3246,7 @@
         pj.fotoUrl = String(((d.decorations || {}).avatarUrl) || d.avatarUrl || "");
         pj.dndbeyond = d.readonlyUrl || (d.id ? "https://www.dndbeyond.com/characters/" + d.id : "");
         if (t.sin.length) {
-            avisos.push("Sin traducir (cámbialo a mano si quieres): " + t.sin.slice(0, 30).join("; ") + (t.sin.length > 30 ? "…" : ""));
+            avisos.push(ocT("Sin traducir (cámbialo a mano si quieres): {join}{n}", { join: t.sin.slice(0, 30).join("; "), n: t.sin.length > 30 ? "…" : "" }));
         }
         return { pj, avisos };
     }
@@ -3272,12 +3264,12 @@
         const desc = doc.querySelector(".character-desc");
         const info = doc.querySelector("#panel-info");
         if (!desc || !info) {
-            throw new Error("Eso no parece la página de un personaje de Nivel20.");
+            throw new Error(ocT("Eso no parece la página de un personaje de Nivel20."));
         }
         const avisos = [];
         const pj = {};
         const filas = desc.querySelectorAll(".col-12");
-        pj.nombreCompleto = txt(desc.querySelector("h4")) || "Sin nombre";
+        pj.nombreCompleto = txt(desc.querySelector("h4")) || ocT("Sin nombre");
         pj.nombre = pj.nombreCompleto.split(" ")[0];
         const razaEl = desc.querySelector("a[href*='field=race']");
         pj.raza = txt(razaEl);
@@ -3303,7 +3295,7 @@
                 pj.ca = String(num(txt(v)) || "");
             } else if (nombre.startsWith("velocidad")) {
                 const d = v && v.querySelector("[data-value]");
-                pj.velocidad = (d ? parseFloat(d.getAttribute("data-value")) : num(txt(v))) + " pies";
+                pj.velocidad = ocT("{n} pies", { n: d ? parseFloat(d.getAttribute("data-value")) : num(txt(v)) });
             }
         });
         const comp = 2 + Math.floor((Math.min(pj.nivel, 20) - 1) / 4);
@@ -3395,7 +3387,7 @@
         pj.clase = claseTxt.replace(/\s+\d+\s*$/, "") + (subclase ? " (" + subclase + ")" : "");
         if (/\//.test(claseTxt)) {
             pj.clase = claseTxt;
-            avisos.push("Lleva varias clases: repasa los espacios de conjuro.");
+            avisos.push(ocT("Lleva varias clases: repasa los espacios de conjuro."));
         }
         // Objetos: los equipados y los demás.
         pj.objetos = [];
@@ -3447,7 +3439,7 @@
             });
             pj.conjuros = vistos.sort((a, b) => a[0] - b[0] || a[1].localeCompare(b[1], "es")).map((x) => x[1]);
             if (magia.querySelector(".load-more-container button")) {
-                avisos.push("Nivel20 enseña los conjuros por partes: si te falta alguno, añádelo a mano.");
+                avisos.push(ocT("Nivel20 enseña los conjuros por partes: si te falta alguno, añádelo a mano."));
             }
         }
         const og = doc.querySelector("meta[property='og:image']");
@@ -3526,10 +3518,10 @@
     function deFoundry(actor, t) {
         const s = actor && actor.system;
         if (!s || !s.abilities || !Array.isArray(actor.items)) {
-            throw new Error("Eso no parece un personaje exportado de Foundry VTT.");
+            throw new Error(ocT("Eso no parece un personaje exportado de Foundry VTT."));
         }
         if (actor.type && actor.type !== "character" && actor.type !== "npc") {
-            throw new Error("Ese JSON de Foundry no es un personaje.");
+            throw new Error(ocT("Ese JSON de Foundry no es un personaje."));
         }
         const avisos = [];
         const items = actor.items;
@@ -3568,7 +3560,7 @@
         const subclases = de("subclass");
         const nivel = clases.reduce((n, c) => n + (Number(sis(c).levels) || 0), 0) || Number((s.details || {}).level) || 1;
         const comp = 2 + Math.floor((Math.min(nivel, 20) - 1) / 4);
-        pj.nombreCompleto = String(actor.name || "").trim() || "Sin nombre";
+        pj.nombreCompleto = String(actor.name || "").trim() || ocT("Sin nombre");
         pj.nombre = pj.nombreCompleto.split(" ")[0];
         pj.nivel = nivel;
         pj.clase = clases.map((c) => {
@@ -3635,13 +3627,13 @@
         const mov = at.movement || {};
         const pies = Number(mov.walk) || Number((mov.speeds || {}).walk) || Number(((sis(raza || {}).movement || {}).walk))
             || Number((((sis(raza || {}).movement || {}).speeds || {}).walk)) || 30;
-        pj.velocidad = pies + " pies";
+        pj.velocidad = ocT("{pies} pies", { pies: pies });
         const SENT = { darkvision: "Visión en la oscuridad", blindsight: "Vista ciega", tremorsense: "Sentido de la vibración",
             truesight: "Visión verdadera" };
         const sentidos = [];
         [(at.senses || {}), (at.senses || {}).ranges || {}, (sis(raza || {}).senses || {}), ((sis(raza || {}).senses || {}).ranges || {})]
             .forEach((o) => Object.keys(SENT).forEach((k) => {
-                const x = SENT[k] + " " + o[k] + " pies";
+                const x = ocT("{n} {n2} pies", { n: SENT[k], n2: o[k] });
                 if (Number(o[k]) && !sentidos.some((y) => y.startsWith(SENT[k]))) {
                     sentidos.push(x);
                 }
@@ -3663,7 +3655,7 @@
         const otras = lista(tr.armorProf, COMP_FVTT).concat(lista(tr.weaponProf, COMP_FVTT))
             .concat(de("tool").filter((i) => Number(sis(i).proficient) >= 1 || sis(i).proficient === undefined).map((i) => t(i.name)));
         pj.competencias = Array.from(new Set(otras)).join(", ");
-        const DEF = [["dr", "Resistencia"], ["di", "Inmunidad"], ["dv", "Vulnerabilidad"], ["ci", "Inmune a"]];
+        const DEF = [["dr", "Resistencia"], ["di", "Inmunidad"], ["dv", "Vulnerabilidad"], ["ci", ocT("Inmune a")]];
         pj.defensas = DEF.map(([k, n]) => [n, lista(tr[k], DANO_FVTT)]).filter(([, l]) => l.length).map(([n, l]) => n + ": " + l.join(", "))
             .join("; ");
         // Magia: aptitud, espacios (los suyos o los de su clase) y conjuros.
@@ -3689,7 +3681,7 @@
         }
         const pacto = sp.pact || {};
         if (Number(pacto.max) || Number(pacto.override)) {
-            avisos.push("Tiene espacios de pacto (" + (pacto.override || pacto.max) + "): apúntalos tú si los quieres en la ficha.");
+            avisos.push(ocT("Tiene espacios de pacto ({n}): apúntalos tú si los quieres en la ficha.", { n: pacto.override || pacto.max }));
         }
         const conjuros = [];
         de("spell").forEach((i) => {
@@ -3722,7 +3714,7 @@
             const dado = base.custom && base.custom.enabled ? String(base.custom.formula || "") : base.denomination
                 ? (base.number || 1) + "d" + base.denomination : "";
             const extra = mods[k] + magia;
-            const tiposD = (base.types || []).map((d) => DANO_FVTT[d] || t(d)).join(" o ");
+            const tiposD = (base.types || []).map((d) => DANO_FVTT[d] || t(d)).join(ocT(" o "));
             return { nombre: t(i.name), bono: signo((competente ? comp : 0) + mods[k] + magia),
                 dano: (dado || "1") + (extra ? signo(extra).replace("−", "-") : "") + (tiposD ? " " + tiposD : "") };
         });
@@ -3761,10 +3753,10 @@
         const img = String(actor.img || "");
         pj.fotoUrl = /^(https:\/\/|data:image\/)/.test(img) ? img : "";
         if (img && !pj.fotoUrl && !/mystery-man|systems\/dnd5e\/|icons\//.test(img)) {
-            avisos.push("Su foto se queda en tu Foundry: ponla con «✎ editar ficha» → 📷.");
+            avisos.push(ocT("Su foto se queda en tu Foundry: ponla con «✎ editar ficha» → 📷."));
         }
         if (t.sin.length) {
-            avisos.push("Sin traducir (cámbialo a mano si quieres): " + t.sin.slice(0, 30).join("; ") + (t.sin.length > 30 ? "…" : ""));
+            avisos.push(ocT("Sin traducir (cámbialo a mano si quieres): {join}{n}", { join: t.sin.slice(0, 30).join("; "), n: t.sin.length > 30 ? "…" : "" }));
         }
         return { pj, avisos };
     }
@@ -3779,10 +3771,10 @@
     function traerDeNivel20(ruta) {
         return fetch("__nivel20?ruta=" + encodeURIComponent(ruta), { cache: "no-store" }).then((r) => {
             if (r.status === 404 || r.status === 403 || r.status === 401) {
-                throw new Error("Nivel20 no me deja verla (" + r.status + "). ¿Es pública la ficha?");
+                throw new Error(ocT("Nivel20 no me deja verla ({status}). ¿Es pública la ficha?", { status: r.status }));
             }
             if (!r.ok) {
-                throw new Error("No he podido hablar con Nivel20 (" + r.status + "). Prueba con su página guardada.");
+                throw new Error(ocT("No he podido hablar con Nivel20 ({status}). Prueba con su página guardada.", { status: r.status }));
             }
             return r.text();
         });
@@ -3823,7 +3815,7 @@
             try {
                 datos = JSON.parse(v);
             } catch (e) {
-                return Promise.reject(new Error("Eso no se puede leer: ¿está entero el JSON?"));
+                return Promise.reject(new Error(ocT("Eso no se puede leer: ¿está entero el JSON?")));
             }
             if (datos && datos.system && datos.system.abilities) {
                 return Promise.resolve(Object.assign(deFoundry(datos, t), { origen: "foundry" }));
@@ -3835,13 +3827,12 @@
             const canon = doc.querySelector("link[rel=canonical], meta[property='og:url']");
             const url = canon ? canon.getAttribute("href") || canon.getAttribute("content") : "";
             const r = deNivel20(doc, url);
-            r.avisos = r.avisos.map((a) => (/por partes/.test(a) ? a + " (con el programa o la app de Android, pegando el enlace, se traen todos)" : a));
+            r.avisos = r.avisos.map((a) => (/por partes/.test(a) ? ocT("{a} (con el programa o la app de Android, pegando el enlace, se traen todos)", { a: a }) : a));
             return Promise.resolve(Object.assign(r, { origen: "nivel20" }));
         }
         if (n20) {
             if (!CON_RED) {
-                return Promise.reject(new Error("Desde el navegador no puedo preguntar a Nivel20: guarda su página (Ctrl+S) y elígela"
-                    + " con «📄 desde un archivo», o usa el programa o la app de Android."));
+                return Promise.reject(new Error(ocT("Desde el navegador no puedo preguntar a Nivel20: guarda su página (Ctrl+S) y elígela con «📄 desde un archivo», o usa el programa o la app de Android.")));
             }
             const ruta = n20[1].toLowerCase();
             return traerDeNivel20(ruta).then((html) => {
@@ -3852,57 +3843,56 @@
         }
         if (ddbNum) {
             if (!CON_RED) {
-                return Promise.reject(new Error("Desde el navegador no puedo preguntar a D&D Beyond: pega el JSON."));
+                return Promise.reject(new Error(ocT("Desde el navegador no puedo preguntar a D&D Beyond: pega el JSON.")));
             }
             return fetch("__ddb?id=" + (ddbNum[1] || ddbNum[2]), { cache: "no-store" }).then((r) => {
                 if (r.status === 403 || r.status === 404 || r.status === 401) {
-                    throw new Error("D&D Beyond no me deja verla (" + r.status + "). ¿Es pública la ficha?");
+                    throw new Error(ocT("D&D Beyond no me deja verla ({status}). ¿Es pública la ficha?", { status: r.status }));
                 }
                 if (!r.ok) {
-                    throw new Error("No he podido hablar con D&D Beyond (" + r.status + "). Prueba a pegar el JSON.");
+                    throw new Error(ocT("No he podido hablar con D&D Beyond ({status}). Prueba a pegar el JSON.", { status: r.status }));
                 }
                 return r.json();
             }).then((datos) => Object.assign(deDdb(datos, t), { origen: "ddb" }));
         }
-        return Promise.reject(new Error("No reconozco eso: pega el enlace de la ficha, su JSON o la página de Nivel20."));
+        return Promise.reject(new Error(ocT("No reconozco eso: pega el enlace de la ficha, su JSON o la página de Nivel20.")));
     }
 
     function abrirImportarPj(vuelta, pj) {
         const cuerpo = crear("form", "master-pegar");
         const ayuda = crear("ul", "master-importar-de");
-        [["D&D Beyond", CON_RED ? "el enlace de la ficha (tiene que ser pública) o su JSON"
-            : "el JSON de character-service.dndbeyond.com/character/v5/character/ + su número (ficha pública)"],
-        ["Nivel20", CON_RED ? "el enlace de la ficha (pública)" : "su página guardada (Ctrl+S → «sólo HTML») con «📄 desde un archivo»"],
-        ["Foundry VTT", "el JSON del personaje (clic derecho en el actor → «Exportar datos»), con «📄 desde un archivo»"]]
+        [[ocT("D&D Beyond"), CON_RED ? ocT("el enlace de la ficha (tiene que ser pública) o su JSON")
+            : ocT("el JSON de character-service.dndbeyond.com/character/v5/character/ + su número (ficha pública)")],
+        ["Nivel20", CON_RED ? ocT("el enlace de la ficha (pública)") : ocT("su página guardada (Ctrl+S → «sólo HTML») con «📄 desde un archivo»")],
+        [ocT("Foundry VTT"), ocT("el JSON del personaje (clic derecho en el actor → «Exportar datos»), con «📄 desde un archivo»")]]
             .forEach(([de, como]) => {
                 const li = crear("li");
                 li.append(crear("strong", "", de + ": "), document.createTextNode(como + "."));
                 ayuda.appendChild(li);
             });
-        cuerpo.append(crear("p", "oc-hoja-nota", "Puedes traerlo de:"), ayuda);
-        const et = crear("label", "oc-dados-etiqueta", "enlace, JSON o página");
+        cuerpo.append(crear("p", "oc-hoja-nota", ocT("Puedes traerlo de:")), ayuda);
+        const et = crear("label", "oc-dados-etiqueta", ocT("enlace, JSON o página"));
         const area = crear("textarea", "oc-dados-texto master-pegar-area");
         area.id = "master-importar-texto";
         area.rows = 4;
         et.htmlFor = area.id;
         const estado = crear("p", "oc-hoja-nota");
         estado.setAttribute("role", "status");
-        const ok = crear("button", "oc-vida-accion es-principal", "📥 traer");
+        const ok = crear("button", "oc-vida-accion es-principal", ocT("📥 traer"));
         ok.type = "submit";
         const archivo = crear("input");
         archivo.type = "file";
         archivo.accept = ".json,.html,.htm,application/json,text/html";
         archivo.hidden = true;
-        const elegir = botonDe("oc-vida-accion", "📄 desde un archivo", () => archivo.click(),
-            "Elegir un archivo: el JSON de Foundry o de D&D Beyond, o la página guardada de Nivel20");
+        const elegir = botonDe("oc-vida-accion", ocT("📄 desde un archivo"), () => archivo.click(),
+            ocT("Elegir un archivo: el JSON de Foundry o de D&D Beyond, o la página guardada de Nivel20"));
         const fila = crear("div", "master-creador-barra");
         fila.append(ok, elegir);
-        cuerpo.append(et, area, fila, archivo, estado, crear("p", "oc-hoja-nota", "Se traen sus números, competencias, conjuros,"
-            + " objetos, dinero e historia, y los rasgos por su nombre (no sus textos). Se queda en este dispositivo."));
+        cuerpo.append(et, area, fila, archivo, estado, crear("p", "oc-hoja-nota", ocT("Se traen sus números, competencias, conjuros, objetos, dinero e historia, y los rasgos por su nombre (no sus textos). Se queda en este dispositivo.")));
         const traer = (texto) => {
             ok.disabled = true;
             elegir.disabled = true;
-            estado.textContent = "Trayendo…";
+            estado.textContent = ocT("Trayendo…");
             traductorDdb().then((t) => leerPjDe(texto, t)).then((r) => {
                 if (pj && (pj.foto || pj.fotoUrl)) {
                     delete r.pj.fotoUrl;
@@ -3928,12 +3918,12 @@
                 if (!pj) {
                     abrirFichaPj(quien, quien.nombre);
                 }
-                avisar("Traído de " + ORIGENES_PJ[origen] + ": " + quien.nombre + "." + (avisos.length ? " " + avisos.join(" ") : ""));
+                avisar(ocT("Traído de {n}: {nombre}.{n2}", { n: ORIGENES_PJ[origen], nombre: quien.nombre, n2: avisos.length ? " " + avisos.join(" ") : "" }));
             }).catch((err) => {
                 ok.disabled = false;
                 elegir.disabled = false;
                 estado.textContent = "⚠️ " + (err && err.message && !/JSON/.test(err.name) ? err.message
-                    : "Eso no se puede leer: ¿está entero?");
+                    : ocT("Eso no se puede leer: ¿está entero?"));
             });
         };
         cuerpo.addEventListener("submit", (e) => {
@@ -3951,12 +3941,12 @@
                 return;
             }
             if (f.size > 30 * 1024 * 1024) {
-                estado.textContent = "⚠️ Ese archivo es demasiado grande.";
+                estado.textContent = ocT("⚠️ Ese archivo es demasiado grande.");
                 return;
             }
             f.text().then(traer);
         });
-        const cerrar = window.ocVentana.abrir({ titulo: pj ? "actualizar la ficha" : "traer un personaje", cuerpo, vuelta, foco: area });
+        const cerrar = window.ocVentana.abrir({ titulo: pj ? ocT("actualizar la ficha") : ocT("traer un personaje"), cuerpo, vuelta, foco: area });
     }
 
     // ---- EL INVENTARIO COMÚN DE LA PARTY (todo.inventario): lo que llevan
@@ -3971,7 +3961,7 @@
     function montarInventario(dentro, m) {
         const uid = "master-inv-" + m.id;
         const pintar = () => {
-            dentro.replaceChildren(crear("p", "oc-hoja-nota", "Cargando…"));
+            dentro.replaceChildren(crear("p", "oc-hoja-nota", ocT("Cargando…")));
             pedir(TIENDA).catch(() => ({ objetos: [] })).then((tienda) => {
                 const inv = inventarioParty();
                 const objetosSrd = {};
@@ -3980,12 +3970,12 @@
                 });
                 // El dinero: cinco casillas y el total en oro.
                 const din = crear("fieldset", "master-creador-grupo");
-                din.appendChild(crear("legend", "", "💰 Dinero de la party"));
+                din.appendChild(crear("legend", "", ocT("💰 Dinero de la party")));
                 const fila = crear("div", "master-inv-monedas");
                 const total = crear("p", "oc-hoja-nota");
                 const pintarTotal = () => {
                     const po = MONEDAS_PJ.reduce((s, [k]) => s + (numPj(inv.dinero[k]) || 0) * ORO_DE_MONEDA[k], 0);
-                    total.textContent = "En total: " + (Math.round(po * 100) / 100).toLocaleString("es-ES") + " po";
+                    total.textContent = ocT("En total: {toLocaleString} po", { toLocaleString: (Math.round(po * 100) / 100).toLocaleString("es-ES") });
                 };
                 MONEDAS_PJ.forEach(([k, abr, nom]) => {
                     const lab = crear("label", "master-inv-moneda");
@@ -3994,7 +3984,7 @@
                     x.min = 0;
                     x.inputMode = "numeric";
                     x.value = numPj(inv.dinero[k]) || "";
-                    x.setAttribute("aria-label", "Monedas de " + nom);
+                    x.setAttribute("aria-label", ocT("Monedas de {nom}", { nom: nom }));
                     x.addEventListener("change", () => {
                         inv.dinero[k] = numPj(x.value) || 0;
                         guardar();
@@ -4018,16 +4008,16 @@
                     dl.appendChild(op);
                 });
                 nom.setAttribute("list", dl.id);
-                const etN = crear("label", "oc-dados-etiqueta", "añadir un objeto");
+                const etN = crear("label", "oc-dados-etiqueta", ocT("añadir un objeto"));
                 etN.htmlFor = nom.id;
                 const cant = crear("input", "master-party-input");
                 cant.type = "number";
                 cant.min = 1;
                 cant.value = 1;
                 cant.id = uid + "-cant";
-                const etC = crear("label", "oc-dados-etiqueta", "cuántos");
+                const etC = crear("label", "oc-dados-etiqueta", ocT("cuántos"));
                 etC.htmlFor = cant.id;
-                const ok = crear("button", "oc-vida-accion", "＋ añadir");
+                const ok = crear("button", "oc-vida-accion", ocT("＋ añadir"));
                 ok.type = "submit";
                 form.append(etN, nom, dl, etC, cant, ok);
                 form.addEventListener("submit", (e) => {
@@ -4048,7 +4038,7 @@
                     guardar();
                     avisarPjs(m.id);
                     pintar();
-                    avisar("Añadido: " + (s ? s.nombre : v) + " ×" + n2 + ".");
+                    avisar(ocT("Añadido: {n} ×{n2}.", { n: s ? s.nombre : v, n2: n2 }));
                     const nuevoNom = document.getElementById(uid + "-nombre");
                     if (nuevoNom) {
                         nuevoNom.focus();
@@ -4056,7 +4046,7 @@
                 });
                 // La lista.
                 const ul = crear("ul", "master-inv-lista");
-                ul.setAttribute("aria-label", "Inventario común de la party");
+                ul.setAttribute("aria-label", ocT("Inventario común de la party"));
                 inv.objetos.forEach((o) => {
                     const li = crear("li", "master-inv-objeto");
                     const s = objetosSrd[llano(o.nombre)];
@@ -4066,20 +4056,20 @@
                         o.cant = Math.max(0, (numPj(o.cant) || 1) - 1);
                         if (!o.cant) {
                             inv.objetos.splice(inv.objetos.indexOf(o), 1);
-                            avisar("Gastado: " + o.nombre + ".");
+                            avisar(ocT("Gastado: {nombre}.", { nombre: o.nombre }));
                         }
                         guardar();
                         pintar();
-                    }, "Uno menos de " + o.nombre);
-                    const cuantos = crear("span", "master-inv-cant", "×" + (numPj(o.cant) || 1));
+                    }, ocT("Uno menos de {nombre}", { nombre: o.nombre }));
+                    const cuantos = crear("span", "master-inv-cant", ocT("×{n}", { n: numPj(o.cant) || 1 }));
                     const mas = botonDe("master-docs-mando", "＋", () => {
                         o.cant = (numPj(o.cant) || 1) + 1;
                         guardar();
-                        cuantos.textContent = "×" + o.cant;
-                    }, "Uno más de " + o.nombre);
+                        cuantos.textContent = ocT("×{cant}", { cant: o.cant });
+                    }, ocT("Uno más de {nombre}", { nombre: o.nombre }));
                     const dar = crear("select", "master-elegir master-inv-dar");
-                    dar.setAttribute("aria-label", "Dar " + o.nombre + " a…");
-                    [["", "dar a…"]].concat((todo.pjs || []).map((p) => [p.id, p.nombre || "sin nombre"])).forEach(([v, tx]) => {
+                    dar.setAttribute("aria-label", ocT("Dar {nombre} a…", { nombre: o.nombre }));
+                    [["", ocT("dar a…")]].concat((todo.pjs || []).map((p) => [p.id, p.nombre || ocT("sin nombre")])).forEach(([v, tx]) => {
                         const op = crear("option", "", tx);
                         op.value = v;
                         dar.appendChild(op);
@@ -4098,7 +4088,7 @@
                         }
                         guardar();
                         avisarPjs(m.id);
-                        avisar(o.nombre + ": se lo queda " + p.nombre + ".");
+                        avisar(ocT("{nombre}: se lo queda {nombre2}.", { nombre: o.nombre, nombre2: p.nombre }));
                         pintar();
                     });
                     let seguro = false;
@@ -4106,24 +4096,24 @@
                         if (!seguro) {
                             seguro = true;
                             quitar.classList.add("es-seguro");
-                            avisar("Pulsa otra vez para quitar " + o.nombre + ".");
+                            avisar(ocT("Pulsa otra vez para quitar {nombre}.", { nombre: o.nombre }));
                             return;
                         }
                         inv.objetos.splice(inv.objetos.indexOf(o), 1);
                         guardar();
                         pintar();
-                        avisar("Quitado: " + o.nombre + ".");
-                    }, "Quitar " + o.nombre);
+                        avisar(ocT("Quitado: {nombre}.", { nombre: o.nombre }));
+                    }, ocT("Quitar {nombre}", { nombre: o.nombre }));
                     li.append(nombre, menos, cuantos, mas, dar, quitar);
                     ul.appendChild(li);
                 });
-                const vacio = crear("p", "oc-vacio", "La party no lleva nada en común todavía.");
+                const vacio = crear("p", "oc-vacio", ocT("La party no lleva nada en común todavía."));
                 vacio.hidden = !!inv.objetos.length;
                 const notas = crear("textarea", "oc-notas-texto es-corta");
                 notas.id = uid + "-notas";
                 notas.rows = 3;
                 notas.value = inv.notas || "";
-                const etNotas = crear("label", "oc-dados-etiqueta", "notas (dónde lo guardan, quién lo carga…)");
+                const etNotas = crear("label", "oc-dados-etiqueta", ocT("notas (dónde lo guardan, quién lo carga…)"));
                 etNotas.htmlFor = notas.id;
                 let espera = 0;
                 notas.addEventListener("input", () => {
@@ -4146,8 +4136,8 @@
     // CA, las seis características (su bono tira 1d20+bono) y las
     // pasivas (Percepción, Investigación y Perspicacia). ----
     const CARACTERISTICAS = ["FUE", "DES", "CON", "INT", "SAB", "CAR"];
-    const PASIVAS = [["per", "Percepción pasiva", "👁️"], ["inv", "Investigación pasiva", "🔍"],
-        ["persp", "Perspicacia pasiva", "💭"]];
+    const PASIVAS = [["per", ocT("Percepción pasiva"), "👁️"], ["inv", ocT("Investigación pasiva"), "🔍"],
+        ["persp", ocT("Perspicacia pasiva"), "💭"]];
 
     function montarParty(dentro, m) {
         m.datos = m.datos || {};
@@ -4156,7 +4146,7 @@
         const numero = (v) => (v === "" || v === undefined || v === null || isNaN(parseInt(v, 10)) ? "" : parseInt(v, 10));
         const mod = (n) => Math.floor((n - 10) / 2);
         const conSigno = (n) => (n >= 0 ? "+" : "−") + Math.abs(n);
-        const quienEs = (pj, i) => pj.nombre || "jugador " + (i + 1);
+        const quienEs = (pj, i) => pj.nombre || ocT("jugador {n}", { n: i + 1 });
         const uid = "master-party-" + m.id;
 
         pjsDe().forEach((pj) => {
@@ -4167,8 +4157,8 @@
         const panelLista = crear("div");
         const panelEditor = crear("div");
         const panelConjuros = crear("div");
-        const { lista: pestanas, elegir } = pestanasDe([["👥 la party", panelLista], ["✏️ editar", panelEditor],
-            ["✨ hechizos", panelConjuros]], "Party", uid, (i) => {
+        const { lista: pestanas, elegir } = pestanasDe([[ocT("👥 la party"), panelLista], [ocT("✏️ editar"), panelEditor],
+            [ocT("✨ hechizos"), panelConjuros]], ocT("Party"), uid, (i) => {
             m.datos.pestana = i;
             guardar();
             [pintarLista, pintarEditor, pintarConjuros][i]();
@@ -4176,7 +4166,7 @@
 
         // ---- LOS HECHIZOS DE TODOS: por jugador; cada uno se abre ----
         function pintarConjuros() {
-            panelConjuros.replaceChildren(crear("p", "oc-hoja-nota", "Cargando…"));
+            panelConjuros.replaceChildren(crear("p", "oc-hoja-nota", ocT("Cargando…")));
             pedir(CONJUROS_SRD).then((conj) => {
                 const srd = {};
                 (conj.conjuros || []).forEach((c) => {
@@ -4192,19 +4182,19 @@
                     alguno = true;
                     panelConjuros.appendChild(crear("h3", "master-pj-titulo", quienEs(pj, i)));
                     const ul = crear("ul", "master-pj-lista");
-                    ul.setAttribute("aria-label", "Hechizos de " + quienEs(pj, i));
+                    ul.setAttribute("aria-label", ocT("Hechizos de {quienEs}", { quienEs: quienEs(pj, i) }));
                     todos.forEach((c) => {
                         const li = crear("li");
-                        li.append(crear("span", "master-pj-marca", c.nivel === null ? "¿?" : c.nivel === 0 ? "truco" : "nv " + c.nivel),
+                        li.append(crear("span", "master-pj-marca", c.nivel === null ? "¿?" : c.nivel === 0 ? "truco" : ocT("nv {nivel}", { nivel: c.nivel })),
                             conjuroPj(c.nombre, srd, conj.fuente));
                         ul.appendChild(li);
                     });
                     panelConjuros.appendChild(ul);
                 });
                 if (!alguno) {
-                    panelConjuros.appendChild(crear("p", "oc-vacio", "Nadie tiene hechizos apuntados (se ponen en la ficha de cada uno)."));
+                    panelConjuros.appendChild(crear("p", "oc-vacio", ocT("Nadie tiene hechizos apuntados (se ponen en la ficha de cada uno).")));
                 }
-            }).catch(() => panelConjuros.replaceChildren(crear("p", "oc-vacio", "No he podido cargar los hechizos.")));
+            }).catch(() => panelConjuros.replaceChildren(crear("p", "oc-vacio", ocT("No he podido cargar los hechizos."))));
         }
 
         // ---- LA LISTA: de un vistazo, sin campos; con sus dados y «a la
@@ -4214,26 +4204,25 @@
         };
         // Crear (una ficha vacía, abierta para rellenar) o importar uno.
         const crearPj = crear("div", "master-creador-barra");
-        const nuevoB = botonDe("oc-vida-accion es-principal", "＋ personaje", () => {
+        const nuevoB = botonDe("oc-vida-accion es-principal", ocT("＋ personaje"), () => {
             const pj = nuevoPj();
             anadir("pj", { titulo: pj.nombre, datos: { pj: pj.id, editar: true } });
-        }, "Crear un personaje nuevo (con su ficha, para rellenar)");
-        const ddbB = botonDe("oc-vida-accion", "📥 importar", () => abrirImportarPj(ddbB),
-            "Importar un personaje de D&D Beyond, Nivel20 o Foundry VTT");
+        }, ocT("Crear un personaje nuevo (con su ficha, para rellenar)"));
+        const ddbB = botonDe("oc-vida-accion", ocT("📥 importar"), () => abrirImportarPj(ddbB),
+            ocT("Importar un personaje de D&D Beyond, Nivel20 o Foundry VTT"));
         ddbB.setAttribute("aria-haspopup", "dialog");
         crearPj.append(nuevoB, ddbB);
         function pintarLista() {
             const pjs = pjsDe();
             panelLista.replaceChildren(crearPj);
             if (!pjs.length) {
-                panelLista.appendChild(crear("p", "oc-vacio", "Todavía no hay personajes: crea uno o impórtalo (D&D Beyond,"
-                    + " Nivel20 o Foundry VTT)."));
+                panelLista.appendChild(crear("p", "oc-vacio", ocT("Todavía no hay personajes: crea uno o impórtalo (D&D Beyond, Nivel20 o Foundry VTT).")));
                 return;
             }
-            const todos = botonDe("oc-vida-accion es-principal", "⚔️ todos a la iniciativa", () => {
+            const todos = botonDe("oc-vida-accion es-principal", ocT("⚔️ todos a la iniciativa"), () => {
                 const entran = pjs.map((pj, i) => alIni(pj, i)).filter(Boolean);
-                avisar(entran.length ? "A la iniciativa: " + entran.join(", ") + "." : "Ya estaban todos en la iniciativa.");
-            }, "Poner a toda la party en la iniciativa (tira su iniciativa)");
+                avisar(entran.length ? ocT("A la iniciativa: {join}.", { join: entran.join(", ") }) : ocT("Ya estaban todos en la iniciativa."));
+            }, ocT("Poner a toda la party en la iniciativa (tira su iniciativa)"));
             const resumen = crear("p", "master-party-resumen");
             const trozos = PASIVAS.map(([k, texto]) => {
                 const con = pjs.filter((pj) => pasivaPj(normalizarPj(pj), k) !== null);
@@ -4241,13 +4230,13 @@
                     return "";
                 }
                 const mejor = con.reduce((a, b) => (pasivaPj(b, k) > pasivaPj(a, k) ? b : a));
-                return texto.replace(" pasiva", "") + " " + pasivaPj(mejor, k) + " (" + (mejor.nombre || "sin nombre") + ")";
+                return texto.replace(" pasiva", "") + " " + pasivaPj(mejor, k) + " (" + (mejor.nombre || ocT("sin nombre")) + ")";
             }).filter(Boolean);
-            resumen.textContent = trozos.length ? "La más alta: " + trozos.join(" · ") : "";
+            resumen.textContent = trozos.length ? ocT("La más alta: {join}", { join: trozos.join(" · ") }) : "";
             resumen.hidden = !trozos.length;
             const ul = crear("ul", "master-party es-lista");
             ul.dataset.queSolo = "si";
-            ul.setAttribute("aria-label", "Jugadores");
+            ul.setAttribute("aria-label", ocT("Jugadores"));
             pjs.forEach((pj, i) => {
                 const quien = quienEs(pj, i);
                 const li = crear("li", "master-party-pj es-lista");
@@ -4261,17 +4250,17 @@
                 if (pj.clase) {
                     nombre.appendChild(crear("span", "master-party-clase", pj.clase));
                 }
-                const ini = botonDe("oc-vida-accion", "＋ iniciativa", () => {
+                const ini = botonDe("oc-vida-accion", ocT("＋ iniciativa"), () => {
                     const n = alIni(pj, i);
-                    avisar(n ? "A la iniciativa: " + n + "." : quien + " ya está en la iniciativa.");
-                }, "Poner a " + quien + " en la iniciativa (tira su iniciativa)");
-                const ficha = botonDe("oc-vida-accion", "📖 ficha", () => abrirFichaPj(pj, quien),
-                    "Abrir la ficha de " + quien + " (habilidades, armas, hechizos, historia…)");
+                    avisar(n ? ocT("A la iniciativa: {n}.", { n: n }) : ocT("{quien} ya está en la iniciativa.", { quien: quien }));
+                }, ocT("Poner a {quien} en la iniciativa (tira su iniciativa)", { quien: quien }));
+                const ficha = botonDe("oc-vida-accion", ocT("📖 ficha"), () => abrirFichaPj(pj, quien),
+                    ocT("Abrir la ficha de {quien} (habilidades, armas, hechizos, historia…)", { quien: quien }));
                 const botones = crear("div", "master-pj-botones");
                 botones.append(ficha, ini);
                 if (puedeSubir(pj)) {
-                    const sube = botonDe("oc-vida-accion es-principal", "⬆ nivel " + ((numPj(pj.nivel) || 1) + 1), () => verSubidas([pj], sube),
-                        quien + " tiene PX para subir a nivel " + ((numPj(pj.nivel) || 1) + 1));
+                    const sube = botonDe("oc-vida-accion es-principal", ocT("⬆ nivel {n}", { n: (numPj(pj.nivel) || 1) + 1 }), () => verSubidas([pj], sube),
+                        ocT("{quien} tiene PX para subir a nivel {n}", { quien: quien, n: (numPj(pj.nivel) || 1) + 1 }));
                     sube.setAttribute("aria-haspopup", "dialog");
                     botones.prepend(sube);
                 }
@@ -4287,10 +4276,10 @@
                 };
                 const pgAhora = numero(pj.pg) !== "" ? numero(pj.pg) : numero(pj.pgmax);
                 vital("PG", pgAhora === "" ? "—" : pgAhora + (numero(pj.pgmax) !== "" ? " / " + numero(pj.pgmax) : "")
-                    + (numero(pj.pgtemp) ? " (+" + numero(pj.pgtemp) + " temp.)" : ""), "Puntos de golpe");
-                vital("CA", numero(pj.ca), "Clase de armadura");
+                    + (numero(pj.pgtemp) ? ocT(" (+{numero} temp.)", { numero: numero(pj.pgtemp) }) : ""), ocT("Puntos de golpe"));
+                vital("CA", numero(pj.ca), ocT("Clase de armadura"));
                 vital("PX", (numPj(pj.px) || 0).toLocaleString("es-ES") + ((numPj(pj.nivel) || 1) < 20 ? " / "
-                    + pxParaSubir(pj).toLocaleString("es-ES") : ""), "Puntos de experiencia (y los que necesita para subir)");
+                    + pxParaSubir(pj).toLocaleString("es-ES") : ""), ocT("Puntos de experiencia (y los que necesita para subir)"));
                 PASIVAS.forEach(([k, texto, emoji]) => vital(emoji, pasivaPj(pj, k) === null ? "" : pasivaPj(pj, k), texto));
                 vitales.querySelectorAll("dt").forEach((dt) => {
                     if (/\p{Extended_Pictographic}/u.test(dt.textContent)) {
@@ -4303,7 +4292,7 @@
                     }
                 });
                 const car = crear("ul", "master-party-caracteristicas");
-                car.setAttribute("aria-label", "Características de " + quien);
+                car.setAttribute("aria-label", ocT("Características de {quien}", { quien: quien }));
                 CARACTERISTICAS.forEach((k) => {
                     const n = numero(pj[k.toLowerCase()]);
                     if (n === "") {
@@ -4313,7 +4302,7 @@
                     c.appendChild(crear("span", "master-party-et", k));
                     c.appendChild(crear("span", "master-party-valor", String(n)));
                     c.appendChild(window.ocDadoBoton ? window.ocDadoBoton(conSigno(mod(n)), "1d20" + (mod(n) >= 0 ? "+" : "")
-                        + mod(n), k + " de " + quien) : document.createTextNode(conSigno(mod(n))));
+                        + mod(n), ocT("{k} de {quien}", { k: k, quien: quien })) : document.createTextNode(conSigno(mod(n))));
                     car.appendChild(c);
                 });
                 li.append(cabeza, vitales);
@@ -4325,7 +4314,7 @@
             // TIRADA DE GRUPO: una salvación, una habilidad o la iniciativa
             // de todos a la vez (por ejemplo, Percepción para ver quién lo nota).
             const grupo = crear("form", "master-party-grupo");
-            const etG = crear("label", "oc-dados-etiqueta", "🎲 tirada de grupo");
+            const etG = crear("label", "oc-dados-etiqueta", ocT("🎲 tirada de grupo"));
             const queG = crear("select", "oc-dados-elegir");
             queG.id = "master-party-grupo-" + m.id;
             etG.htmlFor = queG.id;
@@ -4335,20 +4324,20 @@
                 padre.appendChild(o);
             };
             const gS = crear("optgroup");
-            gS.label = "salvaciones";
-            Object.keys(NOMBRES_CAR).forEach((k) => opc("s:" + k, "salvación de " + NOMBRES_CAR[k], gS));
+            gS.label = ocT("salvaciones");
+            Object.keys(NOMBRES_CAR).forEach((k) => opc("s:" + k, ocT("salvación de {n}", { n: CAR_VER[k] }), gS));
             const gH = crear("optgroup");
-            gH.label = "habilidades";
+            gH.label = ocT("habilidades");
             HABILIDADES_PJ.forEach(([n]) => opc("h:" + n, n, gH));
             const gC = crear("optgroup");
-            gC.label = "características";
-            Object.keys(NOMBRES_CAR).forEach((k) => opc("c:" + k, NOMBRES_CAR[k], gC));
+            gC.label = ocT("características");
+            Object.keys(NOMBRES_CAR).forEach((k) => opc("c:" + k, CAR_VER[k], gC));
             queG.append(gS, gH, gC);
             queG.value = "h:Percepción";
-            const tirarG = crear("button", "oc-vida-accion es-principal", "tirar");
+            const tirarG = crear("button", "oc-vida-accion es-principal", ocT("tirar"));
             tirarG.type = "submit";
             const resultadoG = crear("ol", "master-party-grupo-resultado");
-            resultadoG.setAttribute("aria-label", "Resultados de la tirada de grupo");
+            resultadoG.setAttribute("aria-label", ocT("Resultados de la tirada de grupo"));
             resultadoG.hidden = true;
             const vivoG = crear("p", "visually-hidden");
             vivoG.setAttribute("aria-live", "polite");
@@ -4369,13 +4358,12 @@
                         bono = (n === null ? 0 : modDe(n)) + (tipo === "s" && (pj.salvaciones || []).includes(k) ? competenciaPj(pj) : 0);
                     }
                     bono = bono === null ? 0 : bono;
-                    const r = window.ocDados.tirar("1d20" + (bono ? (bono > 0 ? "+" : "") + bono : ""), textoQue + " de " + quienEs(pj, i));
+                    const r = window.ocDados.tirar("1d20" + (bono ? (bono > 0 ? "+" : "") + bono : ""), ocT("{textoQue} de {quienEs}", { textoQue: textoQue, quienEs: quienEs(pj, i) }));
                     return { quien: quienEs(pj, i), total: r ? r.total : 0, d20: r && r.d20 ? r.d20.queda : null, bono };
                 }).sort((a, b) => b.total - a.total);
                 resultadoG.replaceChildren(...filas.map((f) => {
                     const li = crear("li", f.d20 === 20 ? "es-critico" : f.d20 === 1 ? "es-pifia" : "");
-                    li.append(crear("strong", "", String(f.total)), document.createTextNode(" " + f.quien + " (d20"
-                        + (f.d20 !== null ? " " + f.d20 : "") + " " + signo(f.bono) + ")" + (f.d20 === 20 ? " ¡20!" : f.d20 === 1 ? " ¡1!" : "")));
+                    li.append(crear("strong", "", String(f.total)), document.createTextNode(ocT(" {quien} (d20{n} {signo}){n2}", { quien: f.quien, n: f.d20 !== null ? " " + f.d20 : "", signo: signo(f.bono), n2: f.d20 === 20 ? " ¡20!" : f.d20 === 1 ? " ¡1!" : "" })));
                     return li;
                 }));
                 resultadoG.hidden = false;
@@ -4383,15 +4371,15 @@
             });
             grupo.append(etG, queG, tirarG);
             const pxForm = crear("form", "master-party-grupo");
-            const etPx = crear("label", "oc-dados-etiqueta", "🏆 repartir PX (a partes iguales)");
+            const etPx = crear("label", "oc-dados-etiqueta", ocT("🏆 repartir PX (a partes iguales)"));
             const pxIn = crear("input", "oc-dados-texto");
             pxIn.type = "number";
             pxIn.min = "1";
             pxIn.inputMode = "numeric";
             pxIn.id = "master-party-px-" + m.id;
-            pxIn.placeholder = "PX en total";
+            pxIn.placeholder = ocT("PX en total");
             etPx.htmlFor = pxIn.id;
-            const darB = crear("button", "oc-vida-accion es-principal", "repartir");
+            const darB = crear("button", "oc-vida-accion es-principal", ocT("repartir"));
             darB.type = "submit";
             pxForm.append(etPx, pxIn, darB);
             pxForm.addEventListener("submit", (e) => {
@@ -4409,7 +4397,7 @@
 
         // ---- EL EDITOR: una tarjeta con campos por jugador ----
         const lista = crear("ul", "master-party");
-        lista.setAttribute("aria-label", "Jugadores (editar)");
+        lista.setAttribute("aria-label", ocT("Jugadores (editar)"));
         lista.dataset.queSolo = "si";
         const campo = (pj, i, clave, texto, tipo, clase) => {
             const et = crear("label", "master-party-campo" + (clase ? " " + clase : ""));
@@ -4432,13 +4420,13 @@
             et.appendChild(input);
             return et;
         };
-        const vacio = crear("p", "oc-vacio", "Todavía no hay jugadores.");
-        const nuevo = botonDe("oc-vida-accion es-principal", "＋ personaje", () => {
+        const vacio = crear("p", "oc-vacio", ocT("Todavía no hay jugadores."));
+        const nuevo = botonDe("oc-vida-accion es-principal", ocT("＋ personaje"), () => {
             nuevoPj({ nombre: "" });
             pintarEditor();
             const inputs = lista.querySelectorAll(".es-nombre input");
             inputs[inputs.length - 1].focus();
-        }, "Añadir un jugador");
+        }, ocT("Añadir un jugador"));
         function pintarEditor(foco) {
             lista.replaceChildren(...pjsDe().map((pj, i) => {
                 const li = crear("li", "master-party-pj");
@@ -4450,15 +4438,15 @@
                 const quitar = botonDe("master-party-quitar", "✕", () => {
                     if (!seguro) {
                         seguro = true;
-                        quitar.setAttribute("aria-label", "¿Seguro? Pulsa otra vez para quitar a " + quien);
-                        avisar("Pulsa otra vez para quitar a " + quien + ".");
+                        quitar.setAttribute("aria-label", ocT("¿Seguro? Pulsa otra vez para quitar a {quien}", { quien: quien }));
+                        avisar(ocT("Pulsa otra vez para quitar a {quien}.", { quien: quien }));
                         return;
                     }
                     pjsDe().splice(i, 1);
                     guardar();
                     pintarEditor(Math.min(i, pjsDe().length - 1));
-                    avisar("Quitado: " + quien + ".");
-                }, "Quitar a " + quien);
+                    avisar(ocT("Quitado: {quien}.", { quien: quien }));
+                }, ocT("Quitar a {quien}", { quien: quien }));
                 arriba.appendChild(quitar);
                 const car = crear("div", "master-party-fila");
                 CARACTERISTICAS.forEach((k) => {
@@ -4558,10 +4546,10 @@
         return caja.innerHTML;
     }
 
-    const COLORES_LETRA = [["", "la del tema"], ["#d23b3b", "rojo"], ["#e07a1f", "naranja"], ["#2f9e4f", "verde"],
-        ["#3b7ddd", "azul"], ["#8e5bd6", "morado"]];
-    const COLORES_RESALTE = [["", "sin resaltar"], ["#ffe873", "amarillo"], ["#8fe8a2", "verde"], ["#7fdcff", "celeste"],
-        ["#ffa6d5", "rosa"], ["#ffb870", "naranja"]];
+    const COLORES_LETRA = [["", ocT("la del tema")], ["#d23b3b", ocT("rojo")], ["#e07a1f", ocT("naranja")], ["#2f9e4f", ocT("verde")],
+        ["#3b7ddd", ocT("azul")], ["#8e5bd6", ocT("morado")]];
+    const COLORES_RESALTE = [["", ocT("sin resaltar")], ["#ffe873", ocT("amarillo")], ["#8fe8a2", ocT("verde")], ["#7fdcff", ocT("celeste")],
+        ["#ffa6d5", ocT("rosa")], ["#ffb870", ocT("naranja")]];
 
     // EL EDITOR CON FORMATO (como un procesador de textos), el de los
     // post-its y las notas: una barra de herramientas y un texto
@@ -4576,7 +4564,7 @@
         // ---- la barra de herramientas ----
         const barra = crear("div", "master-postit-barra");
         barra.setAttribute("role", "toolbar");
-        barra.setAttribute("aria-label", "Formato del texto");
+        barra.setAttribute("aria-label", ocT("Formato del texto"));
         const estados = [];
         const orden = (cmd, valor) => {
             area.focus();
@@ -4647,8 +4635,8 @@
             return sel;
         };
         const parrafo = crear("select", "master-postit-elegir");
-        parrafo.setAttribute("aria-label", "Tipo de párrafo");
-        parrafo.title = "Tipo de párrafo";
+        parrafo.setAttribute("aria-label", ocT("Tipo de párrafo"));
+        parrafo.title = ocT("Tipo de párrafo");
         [["P", "párrafo"], ["H3", "título"], ["H4", "subtítulo"], ["BLOCKQUOTE", "cita"]].forEach(([v, n]) => {
             const o = crear("option", "", n);
             o.value = v;
@@ -4656,9 +4644,9 @@
         });
         parrafo.addEventListener("change", () => orden("formatBlock", parrafo.value));
         const tamano = crear("select", "master-postit-elegir");
-        tamano.setAttribute("aria-label", "Tamaño de la letra");
-        tamano.title = "Tamaño de la letra";
-        [["-", "🗚 tamaño"], ["2", "pequeña"], ["3", "normal"], ["5", "grande"], ["6", "enorme"]].forEach(([v, n]) => {
+        tamano.setAttribute("aria-label", ocT("Tamaño de la letra"));
+        tamano.title = ocT("Tamaño de la letra");
+        [["-", ocT("🗚 tamaño")], ["2", "pequeña"], ["3", "normal"], ["5", "grande"], ["6", "enorme"]].forEach(([v, n]) => {
             const o = crear("option", "", n);
             o.value = v;
             tamano.appendChild(o);
@@ -4670,19 +4658,19 @@
             tamano.value = "-";
         });
         barra.append(
-            grupo(herramienta("B", "Negrita", "bold", null, "es-negrita", "Ctrl+B"),
-                herramienta("I", "Cursiva", "italic", null, "es-cursiva", "Ctrl+I"),
-                herramienta("U", "Subrayado", "underline", null, "es-subrayado", "Ctrl+U"),
-                herramienta("S", "Tachado", "strikeThrough", null, "es-tachado")),
+            grupo(herramienta("B", ocT("Negrita"), "bold", null, "es-negrita", "Ctrl+B"),
+                herramienta("I", ocT("Cursiva"), "italic", null, "es-cursiva", "Ctrl+I"),
+                herramienta("U", ocT("Subrayado"), "underline", null, "es-subrayado", "Ctrl+U"),
+                herramienta("S", ocT("Tachado"), "strikeThrough", null, "es-tachado")),
             grupo(parrafo),
             grupo(tamano),
-            grupo(herramienta("•", "Lista", "insertUnorderedList"), herramienta("1.", "Lista numerada", "insertOrderedList"),
-                herramienta("→", "Más sangría", "indent"), herramienta("←", "Menos sangría", "outdent")),
-            grupo(herramienta("⇤", "Alinear a la izquierda", "justifyLeft"), herramienta("↔", "Centrar", "justifyCenter"),
-                herramienta("⇥", "Alinear a la derecha", "justifyRight")),
-            grupo(elegir("🎨 letra", COLORES_LETRA, "foreColor", "Color de la letra"), elegir("🖍️ resaltar", COLORES_RESALTE, "hiliteColor", "Resaltar")),
-            grupo(herramienta("―", "Línea de separación", "insertHorizontalRule"), herramienta("⌫", "Quitar el formato", "removeFormat"), herramienta("↶", "Deshacer", "undo", null, "", "Ctrl+Z"),
-                herramienta("↷", "Rehacer", "redo", null, "", "Ctrl+Y")));
+            grupo(herramienta("•", ocT("Lista"), "insertUnorderedList"), herramienta("1.", ocT("Lista numerada"), "insertOrderedList"),
+                herramienta("→", ocT("Más sangría"), "indent"), herramienta("←", ocT("Menos sangría"), "outdent")),
+            grupo(herramienta("⇤", ocT("Alinear a la izquierda"), "justifyLeft"), herramienta("↔", ocT("Centrar"), "justifyCenter"),
+                herramienta("⇥", ocT("Alinear a la derecha"), "justifyRight")),
+            grupo(elegir(ocT("🎨 letra"), COLORES_LETRA, "foreColor", ocT("Color de la letra")), elegir(ocT("🖍️ resaltar"), COLORES_RESALTE, "hiliteColor", "Resaltar")),
+            grupo(herramienta("―", ocT("Línea de separación"), "insertHorizontalRule"), herramienta("⌫", ocT("Quitar el formato"), "removeFormat"), herramienta("↶", ocT("Deshacer"), "undo", null, "", "Ctrl+Z"),
+                herramienta("↷", ocT("Rehacer"), "redo", null, "", "Ctrl+Y")));
         // Las flechas mueven el foco por la barra (como en un procesador).
         barra.addEventListener("keydown", (e) => {
             if (e.key !== "ArrowRight" && e.key !== "ArrowLeft" || e.target.tagName === "SELECT") {
@@ -4746,7 +4734,7 @@
         }
         const ver = crear("div", "oc-texto master-postit");
         let espera = 0;
-        const { area, barra, leer } = editorRico("Texto del post-it", () => {
+        const { area, barra, leer } = editorRico(ocT("Texto del post-it"), () => {
             clearTimeout(espera);
             espera = setTimeout(() => {
                 m.datos.html = leer();
@@ -4759,19 +4747,19 @@
         const pintar = () => {
             ver.innerHTML = sanearHtml(m.datos.html || "");
             if (!ver.textContent.trim()) {
-                ver.replaceChildren(crear("p", "oc-vacio", "Vacío: pulsa «editar» y escribe lo que quieras tener a mano."));
+                ver.replaceChildren(crear("p", "oc-vacio", ocT("Vacío: pulsa «editar» y escribe lo que quieras tener a mano.")));
             } else if (window.ocDadosEnTexto) {
                 window.ocDadosEnTexto(ver);
             }
         };
-        const boton = botonDe("oc-vida-accion", "✏️ editar", () => {
+        const boton = botonDe("oc-vida-accion", ocT("✏️ editar"), () => {
             const editando = area.hidden;
             if (editando) {
                 area.innerHTML = sanearHtml(m.datos.html || "") || "<p><br></p>";
                 area.hidden = false;
                 barra.hidden = false;
                 ver.hidden = true;
-                boton.textContent = "✔ listo";
+                boton.textContent = ocT("✔ listo");
                 area.focus();
             } else {
                 clearTimeout(espera);
@@ -4781,7 +4769,7 @@
                 area.hidden = true;
                 barra.hidden = true;
                 ver.hidden = false;
-                boton.textContent = "✏️ editar";
+                boton.textContent = ocT("✏️ editar");
                 pintar();
                 boton.focus();
             }
@@ -4802,7 +4790,7 @@
             m.datos.html = antes ? sanearHtml(markdown(antes).innerHTML) : "";
         }
         let espera = 0;
-        const { area, barra, leer } = editorRico("Notas del máster (se guardan solas)", () => {
+        const { area, barra, leer } = editorRico(ocT("Notas del máster (se guardan solas)"), () => {
             clearTimeout(espera);
             espera = setTimeout(() => {
                 m.datos.html = leer();
@@ -4811,7 +4799,7 @@
         });
         area.classList.add("es-notas");
         area.innerHTML = sanearHtml(m.datos.html) || "<p><br></p>";
-        const fecha = botonDe("oc-vida-accion", "📅 poner la fecha", () => {
+        const fecha = botonDe("oc-vida-accion", ocT("📅 poner la fecha"), () => {
             const hoy = new Date().toLocaleDateString("es-ES", { day: "numeric", month: "long", year: "numeric" });
             const h = crear("h3", "", hoy);
             const p = crear("p");
@@ -4826,18 +4814,17 @@
             const sel = document.getSelection();
             sel.removeAllRanges();
             sel.addRange(rango);
-            avisar("Fecha puesta: " + hoy + ".");
+            avisar(ocT("Fecha puesta: {hoy}.", { hoy: hoy }));
         });
-        const aDocs = botonDe("oc-vida-accion", "📁 guardar en documentos", () => {
+        const aDocs = botonDe("oc-vida-accion", ocT("📁 guardar en documentos"), () => {
             m.datos.html = leer();
-            guardarEnDocumentos(aDocs, m.datos.doc, () => ({ tipo: "nota", titulo: "notas de la sesión", html: leer() }), (id) => {
+            guardarEnDocumentos(aDocs, m.datos.doc, () => ({ tipo: "nota", titulo: ocT("notas de la sesión"), html: leer() }), (id) => {
                 m.datos.doc = id;
             });
         });
         aDocs.setAttribute("aria-haspopup", "dialog");
-        const bajar = botonDe("oc-vida-accion", "💾 descargar", () => {
-            const pagina = "<!doctype html><html lang=\"es\"><head><meta charset=\"utf-8\"><title>Notas del máster</title></head><body>" +
-                leer() + "</body></html>";
+        const bajar = botonDe("oc-vida-accion", ocT("💾 descargar"), () => {
+            const pagina = ocT("<!doctype html><html lang=\"es\"><head><meta charset=\"utf-8\"><title>Notas del máster</title></head><body>{leer}</body></html>", { leer: leer() });
             const a = crear("a");
             // Una dirección blob: que hace el propio navegador con el archivo.
             const archivoBlob = URL.createObjectURL(new Blob([pagina], { type: "text/html;charset=utf-8" }));
@@ -4847,25 +4834,25 @@
             a.click();
             a.remove();
             setTimeout(() => URL.revokeObjectURL(archivoBlob), 1000);
-            avisar("Descargado: " + a.download + " (se abre con Word o el navegador).");
-        }, "Descargar las notas (.html, con su formato)");
+            avisar(ocT("Descargado: {download} (se abre con Word o el navegador).", { download: a.download }));
+        }, ocT("Descargar las notas (.html, con su formato)"));
         let seguro = false;
-        const borrar = botonDe("oc-vida-accion", "🗑️ borrar", () => {
+        const borrar = botonDe("oc-vida-accion", ocT("🗑️ borrar"), () => {
             if (!seguro) {
                 seguro = true;
-                borrar.textContent = "🗑️ ¿seguro? pulsa otra vez";
+                borrar.textContent = ocT("🗑️ ¿seguro? pulsa otra vez");
                 setTimeout(() => {
                     seguro = false;
-                    borrar.textContent = "🗑️ borrar";
+                    borrar.textContent = ocT("🗑️ borrar");
                 }, 4000);
                 return;
             }
             seguro = false;
-            borrar.textContent = "🗑️ borrar";
+            borrar.textContent = ocT("🗑️ borrar");
             area.innerHTML = "<p><br></p>";
             m.datos.html = "";
             guardar();
-            avisar("Notas borradas.");
+            avisar(ocT("Notas borradas."));
         });
         const botones = crear("div", "master-notas-botones");
         botones.append(fecha, aDocs, bajar, borrar);
@@ -4908,7 +4895,7 @@
         try {
             localStorage.setItem(CLAVE_NOMBRES, JSON.stringify(x));
         } catch (e) {
-            avisar("No se ha podido guardar.");
+            avisar(ocT("No se ha podido guardar."));
             return false;
         }
         document.dispatchEvent(new CustomEvent("master:nombres"));
@@ -4920,7 +4907,7 @@
                 if (!r.ok) {
                     throw new Error(r.status);
                 }
-                return r.json();
+                return r.json().then(window.ocIdioma.datos);
             });
         }
         return nombresCrudo.then((d) => {
@@ -5051,7 +5038,7 @@
 
     function copiarTexto(texto, aviso) {
         if (navigator.clipboard) {
-            navigator.clipboard.writeText(texto).then(() => avisar(aviso || "Copiado.")).catch(() => avisar("No se ha podido copiar."));
+            navigator.clipboard.writeText(texto).then(() => avisar(aviso || "Copiado.")).catch(() => avisar(ocT("No se ha podido copiar.")));
         }
     }
 
@@ -5072,7 +5059,7 @@
     function montarNombres(dentro, m) {
         m.datos = m.datos || {};
         const d = m.datos;
-        dentro.appendChild(crear("p", "oc-hoja-nota", "Cargando…"));
+        dentro.appendChild(crear("p", "oc-hoja-nota", ocT("Cargando…")));
         let lenguas = null;
         // Al guardar una tabla se vuelve a montar todo: el foco, a «generar».
         let alGenerar = false;
@@ -5080,7 +5067,7 @@
             lenguas = l;
             montar(datos);
         }).catch(() => {
-            dentro.replaceChildren(crear("p", "oc-vacio", "No he podido cargar los nombres."));
+            dentro.replaceChildren(crear("p", "oc-vacio", ocT("No he podido cargar los nombres.")));
         });
         function montar(datos) {
             const otras = lenguas.idiomas.filter((x) => x.id !== "comun");
@@ -5090,33 +5077,33 @@
             // Lo que sale y lo guardado: un texto, o {n, es, idioma} si es
             // un lugar en otro idioma.
             const nombreDe_ = (x) => (typeof x === "string" ? x : x.n);
-            const tipos = [["personaje", "👤 personaje"]].concat(Object.keys(datos.lugares)
+            const tipos = [["personaje", ocT("👤 personaje")]].concat(Object.keys(datos.lugares)
                 .map((k) => [k, ({ pueblo: "🏘️ ", taberna: "🍺 ", region: "🏔️ ", mazmorra: "🕳️ " }[k] || "") + datos.lugares[k].nombre]),
             conTuyas("lugar"));
             const vale = (lista, v) => (lista.some((x) => x[0] === v) ? v : lista[0][0]);
-            const que = elegirDe("master-nombres-que-" + m.id, "qué", tipos, vale(tipos, d.que || "personaje"));
+            const que = elegirDe("master-nombres-que-" + m.id, ocT("qué"), tipos, vale(tipos, d.que || "personaje"));
             const especies = Object.keys(datos.especies).map((k) => [k, datos.especies[k].nombre]).concat(conTuyas("personaje"));
-            const especie = elegirDe("master-nombres-especie-" + m.id, "especie (o tu tabla)", especies,
+            const especie = elegirDe("master-nombres-especie-" + m.id, ocT("especie (o tu tabla)"), especies,
                 vale(especies, d.especie || "humano"));
-            const genero = botonesDe("género", [["cualquiera", "cualquiera"], ["f", "♀ femenino"], ["m", "♂ masculino"],
-                ["n", "⚪ neutro"]], d.genero || "cualquiera", (v) => {
+            const genero = botonesDe(ocT("género"), [["cualquiera", ocT("cualquiera")], ["f", ocT("♀ femenino")], ["m", ocT("♂ masculino")],
+                ["n", ocT("⚪ neutro")]], d.genero || "cualquiera", (v) => {
                 d.genero = v;
                 guardar();
             });
-            const lengua = elegirDe("master-nombres-lengua-" + m.id, "en qué idioma",
-                [["", "común (en español)"]].concat(otras.map((x) => [x.id, x.nombre])), d.lengua || "");
+            const lengua = elegirDe("master-nombres-lengua-" + m.id, ocT("en qué idioma"),
+                [["", ocT("común (en español)")]].concat(otras.map((x) => [x.id, x.nombre])), d.lengua || "");
             const etAp = crear("label", "master-nombres-apellido");
             const ap = crear("input");
             ap.type = "checkbox";
             ap.checked = d.apellido !== false;
-            etAp.append(ap, document.createTextNode(" con apellido"));
+            etAp.append(ap, document.createTextNode(ocT(" con apellido")));
             const persona = crear("div", "master-nombres-persona");
-            const etGen = crear("p", "oc-dados-etiqueta", "género");
+            const etGen = crear("p", "oc-dados-etiqueta", ocT("género"));
             etGen.setAttribute("aria-hidden", "true");
             persona.append(especie, etAp, etGen, genero);
             const recordar = () => Object.assign(d, { que: que.elegir.value, especie: especie.elegir.value, genero: genero.valor(),
                 apellido: ap.checked, lengua: lengua.elegir.value });
-            const generar = botonDe("oc-vida-accion es-principal master-nombres-generar", "🎲 generar 8", () => {
+            const generar = botonDe("oc-vida-accion es-principal master-nombres-generar", ocT("🎲 generar 8"), () => {
                 recordar();
                 const salen = new Map();
                 const enOtra = d.que !== "personaje" && lenguaDe(d.lengua);
@@ -5132,13 +5119,13 @@
                 d.salen = Array.from(salen.values());
                 guardar();
                 pintar();
-                avisar(d.salen.length + " nombres nuevos.");
+                avisar(ocT("{n} nombres nuevos.", { n: d.salen.length }));
             });
             const lista = crear("ul", "master-nombres");
-            lista.setAttribute("aria-label", "Nombres que han salido");
-            const guardadosT = crear("h3", "master-nombres-titulo", "⭐ guardados");
+            lista.setAttribute("aria-label", ocT("Nombres que han salido"));
+            const guardadosT = crear("h3", "master-nombres-titulo", ocT("⭐ guardados"));
             const guardados = crear("ul", "master-nombres es-guardados");
-            guardados.setAttribute("aria-label", "Nombres guardados");
+            guardados.setAttribute("aria-label", ocT("Nombres guardados"));
             const fila = (x, guardado) => {
                 const n = nombreDe_(x);
                 const li = crear("li", "master-nombre");
@@ -5147,7 +5134,7 @@
                 if (otra) {
                     const glifos = crear("span", "master-nombre-glifos es-" + otra.id, aSuAlfabeto(n, otra));
                     glifos.setAttribute("aria-hidden", "true");
-                    texto.append(glifos, crear("span", "master-nombre-es", "«" + x.es + "» en " + otra.nombre.toLowerCase()));
+                    texto.append(glifos, crear("span", "master-nombre-es", ocT("«{es}» en {toLowerCase}", { es: x.es, toLowerCase: otra.nombre.toLowerCase() })));
                 }
                 li.appendChild(texto);
                 const marcar = botonDe("master-nombre-boton", guardado ? "✕" : "☆", () => {
@@ -5157,11 +5144,11 @@
                     }
                     guardar();
                     pintar();
-                    avisar(guardado ? "Quitado: " + n + "." : "Guardado: " + n + ".");
-                }, (guardado ? "Quitar de guardados: " : "Guardar: ") + n);
+                    avisar(guardado ? ocT("Quitado: {n}.", { n: n }) : ocT("Guardado: {n}.", { n: n }));
+                }, (guardado ? ocT("Quitar de guardados: ") : ocT("Guardar: ")) + n);
                 marcar.title = guardado ? "Quitar" : "Guardar";
-                const copiar = botonDe("master-nombre-boton", "⧉", () => copiarTexto(n, "Copiado: " + n + "."), "Copiar " + n);
-                copiar.title = "Copiar";
+                const copiar = botonDe("master-nombre-boton", "⧉", () => copiarTexto(n, ocT("Copiado: {n}.", { n: n })), ocT("Copiar {n}", { n: n }));
+                copiar.title = ocT("Copiar");
                 li.append(marcar, copiar);
                 return li;
             };
@@ -5169,7 +5156,7 @@
                 const ya = new Set((d.guardados || []).map(nombreDe_));
                 lista.replaceChildren(...(d.salen || []).filter((x) => !ya.has(nombreDe_(x))).map((x) => fila(x, false)));
                 if (!lista.children.length) {
-                    lista.appendChild(crear("li", "oc-vacio", d.salen ? "Todos guardados. Genera más." : "Pulsa «generar»."));
+                    lista.appendChild(crear("li", "oc-vacio", d.salen ? ocT("Todos guardados. Genera más.") : ocT("Pulsa «generar».")));
                 }
                 guardados.replaceChildren(...(d.guardados || []).map((n) => fila(n, true)));
                 guardadosT.hidden = guardados.hidden = !guardados.children.length;
@@ -5178,8 +5165,8 @@
             // ---- TUS TABLAS: crear una, cambiar la elegida (la tuya o una
             // de las de siempre) y quitar la tuya. ----
             const elegida = () => (que.elegir.value === "personaje" ? especie.elegir.value : que.elegir.value);
-            const nueva = botonDe("oc-vida-accion", "＋ tabla de nombres", () => editarTuya(null), "Crear una tabla de nombres tuya");
-            const cambiar = botonDe("oc-vida-accion", "✎ cambiar esta", () => {
+            const nueva = botonDe("oc-vida-accion", ocT("＋ tabla de nombres"), () => editarTuya(null), ocT("Crear una tabla de nombres tuya"));
+            const cambiar = botonDe("oc-vida-accion", ocT("✎ cambiar esta"), () => {
                 const k = elegida();
                 const tuya = propiaDe(datos, k);
                 if (tuya) {
@@ -5187,30 +5174,30 @@
                 } else {
                     editarDeSiempre(k);
                 }
-            }, "Cambiar la tabla elegida");
-            const original = botonDe("oc-vida-accion", "↺ como venía", () => {
+            }, ocT("Cambiar la tabla elegida"));
+            const original = botonDe("oc-vida-accion", ocT("↺ como venía"), () => {
                 const tuyo = leerNombresTuyos();
                 claves(elegida()).forEach((c) => delete tuyo.cambios[c]);
                 alGenerar = true;
                 guardarNombresTuyos(tuyo);
-                avisar("Otra vez como venía.");
-            }, "Dejar la tabla elegida como venía");
-            const quitar = botonDe("oc-vida-accion", "🗑️ quitar", () => {
+                avisar(ocT("Otra vez como venía."));
+            }, ocT("Dejar la tabla elegida como venía"));
+            const quitar = botonDe("oc-vida-accion", ocT("🗑️ quitar"), () => {
                 const tuya = propiaDe(datos, elegida());
                 if (!tuya) {
                     return;
                 }
                 if (quitar.dataset.seguro !== "1") {
                     quitar.dataset.seguro = "1";
-                    quitar.textContent = "🗑️ ¿seguro? pulsa otra vez";
+                    quitar.textContent = ocT("🗑️ ¿seguro? pulsa otra vez");
                     return;
                 }
                 const tuyo = leerNombresTuyos();
                 tuyo.propias = tuyo.propias.filter((x) => x.id !== tuya.id);
                 alGenerar = true;
                 guardarNombresTuyos(tuyo);
-                avisar("Quitada la tabla «" + tuya.nombre + "».");
-            }, "Quitar tu tabla elegida");
+                avisar(ocT("Quitada la tabla «{nombre}».", { nombre: tuya.nombre }));
+            }, ocT("Quitar tu tabla elegida"));
             const barra = crear("div", "master-creador-barra");
             barra.append(nueva, cambiar, original, quitar);
             const form = crear("form", "master-tablas-editar");
@@ -5228,7 +5215,7 @@
                 const tuya = !!propiaDe(datos, k);
                 quitar.hidden = !tuya;
                 delete quitar.dataset.seguro;
-                quitar.textContent = "🗑️ quitar";
+                quitar.textContent = ocT("🗑️ quitar");
                 original.hidden = tuya || !claves(k).some((c) => datos.cambiadas && datos.cambiadas[c]);
             };
             // Un textarea (una cosa por línea) con su etiqueta.
@@ -5248,34 +5235,34 @@
                 (vuelta || cambiar).focus();
             };
             const botonesForm = (vuelta) => {
-                const ok = crear("button", "oc-vida-accion es-principal", "✓ guardar");
+                const ok = crear("button", "oc-vida-accion es-principal", ocT("✓ guardar"));
                 ok.type = "submit";
                 const b = crear("div", "master-creador-barra");
-                b.append(ok, botonDe("oc-vida-accion", "cancelar", () => cerrarForm(vuelta)));
+                b.append(ok, botonDe("oc-vida-accion", ocT("cancelar"), () => cerrarForm(vuelta)));
                 form.appendChild(b);
             };
             function editarTuya(t) {
-                form.replaceChildren(crear("h3", "master-nombres-titulo", t ? "✎ " + t.nombre : "＋ tabla de nombres"));
-                const etN = crear("label", "oc-dados-etiqueta", "nombre de la tabla");
+                form.replaceChildren(crear("h3", "master-nombres-titulo", t ? "✎ " + t.nombre : ocT("＋ tabla de nombres")));
+                const etN = crear("label", "oc-dados-etiqueta", ocT("nombre de la tabla"));
                 const nombre = crear("input", "oc-dados-texto");
                 nombre.id = "master-nombres-tnombre-" + m.id;
                 nombre.maxLength = 60;
-                nombre.placeholder = "Nobles de Cralea";
+                nombre.placeholder = ocT("Nobles de Cralea");
                 nombre.value = t ? t.nombre : "";
                 etN.htmlFor = nombre.id;
                 let tipo = t ? t.tipo : (que.elegir.value === "personaje" ? "personaje" : "lugar");
-                const tipoB = botonesDe("de qué es", [["personaje", "👤 personas"], ["lugar", "🏘️ lugares"]], tipo, (v) => {
+                const tipoB = botonesDe(ocT("de qué es"), [["personaje", ocT("👤 personas")], ["lugar", ocT("🏘️ lugares")]], tipo, (v) => {
                     tipo = v;
                     ajustarTipo();
                 });
                 form.append(etN, nombre, tipoB);
                 const j = (k) => (t && t[k] ? t[k].join("\n") : "");
-                const persona = [area("delante", "delante, si quieres (títulos: «Sir | Lady» = masculino | femenino; «-» = sin título)",
+                const persona = [area("delante", ocT("delante, si quieres (títulos: «Sir | Lady» = masculino | femenino; «-» = sin título)"),
                     j("delante"), 3),
-                    area("f", "nombres femeninos (uno por línea)", j("f")), area("m", "nombres masculinos", j("m")),
-                    area("n", "nombres neutros (si quieres)", j("n"), 3), area("apellidos", "apellidos o casas (si quieres)", j("apellidos"))];
-                const lugar = [area("primera", "nombres o primera parte (uno por línea)", j("primera")),
-                    area("segunda", "segunda parte, si quieres (se pone detrás: «del Norte»)", j("segunda"))];
+                    area("f", ocT("nombres femeninos (uno por línea)"), j("f")), area("m", ocT("nombres masculinos"), j("m")),
+                    area("n", ocT("nombres neutros (si quieres)"), j("n"), 3), area("apellidos", ocT("apellidos o casas (si quieres)"), j("apellidos"))];
+                const lugar = [area("primera", ocT("nombres o primera parte (uno por línea)"), j("primera")),
+                    area("segunda", ocT("segunda parte, si quieres (se pone detrás: «del Norte»)"), j("segunda"))];
                 // Cada textarea va con su etiqueta justo delante.
                 const ajustarTipo = () => {
                     persona.forEach((x) => {
@@ -5298,8 +5285,8 @@
                     });
                     const hay = tipo === "personaje" ? x.f.length + x.m.length + x.n.length : x.primera.length;
                     if (!n || !hay) {
-                        avisar(n ? (tipo === "personaje" ? "Pon al menos un nombre." : "Pon al menos un nombre o una primera parte.")
-                            : "Ponle nombre a la tabla.");
+                        avisar(n ? (tipo === "personaje" ? ocT("Pon al menos un nombre.") : ocT("Pon al menos un nombre o una primera parte."))
+                            : ocT("Ponle nombre a la tabla."));
                         (n ? (tipo === "personaje" ? persona[1] : lugar[0]) : nombre).focus();
                         return;
                     }
@@ -5319,7 +5306,7 @@
                     guardar();
                     alGenerar = true;
                     if (guardarNombresTuyos(tuyo)) {
-                        avisar("Tabla guardada: " + n + ".");
+                        avisar(ocT("Tabla guardada: {n}.", { n: n }));
                     }
                 };
                 form.hidden = false;
@@ -5334,10 +5321,8 @@
                     return { c, g, actual: datos[g][kk], orig: datos.original[g][kk] };
                 }).filter((x) => x.actual);
                 const titulo = esPersona ? datos.especies[k].nombre : datos.lugares[k].nombre;
-                form.replaceChildren(crear("h3", "master-nombres-titulo", "✎ " + titulo + " (la de siempre)"),
-                    crear("p", "oc-hoja-nota", "Una cosa por línea. Lo cambiado se guarda con tus cosas y lo usan también los PNJ,"
-                        + " los negocios y los dungeons; «↺ como venía» lo deshace."
-                        + (esPersona ? " Los apellidos son de todas las especies que los comparten." : "")));
+                form.replaceChildren(crear("h3", "master-nombres-titulo", ocT("✎ {titulo} (la de siempre)", { titulo: titulo })),
+                    crear("p", "oc-hoja-nota", ocT("Una cosa por línea. Lo cambiado se guarda con tus cosas y lo usan también los PNJ, los negocios y los dungeons; «↺ como venía» lo deshace.{n}", { n: esPersona ? ocT(" Los apellidos son de todas las especies que los comparten.") : "" })));
                 const campos = [];
                 partes.forEach((p) => {
                     Object.keys(p.actual).forEach((campo) => {
@@ -5347,7 +5332,7 @@
                         }
                         const pares = v.some(Array.isArray);
                         const etiqueta = (p.g === "apellidos" ? "apellido: " : "") + ((k === "taberna" && CAMPOS_TABERNA[campo])
-                            || (p.g === "apellidos" && campo === "ini" ? "primera parte" : CAMPOS_NOMBRES[campo]) || campo);
+                            || (p.g === "apellidos" && campo === "ini" ? ocT("primera parte") : CAMPOS_NOMBRES[campo]) || campo);
                         const x = area(p.c.replace("/", "-") + "-" + campo, etiqueta,
                             v.map((e) => (Array.isArray(e) ? e.join(" | ") : e)).join("\n"), Math.round(Math.min(6, Math.max(3, v.length / 4))));
                         campos.push({ p, campo, pares, x });
@@ -5360,8 +5345,8 @@
                     for (const f of campos) {
                         const lista = listaDe(f.x.value).map((l) => (f.pares ? l.split("|").map((s) => s.trim()) : l));
                         if (!lista.length || (f.pares && lista.some((x) => x.length < 2))) {
-                            avisar(lista.length ? "En «" + f.x.previousSibling.textContent + "», cada línea con sus dos partes: «a | b»."
-                                : "«" + f.x.previousSibling.textContent + "» no puede quedarse vacío.");
+                            avisar(lista.length ? ocT("En «{textContent}», cada línea con sus dos partes: «a | b».", { textContent: f.x.previousSibling.textContent })
+                                : ocT("«{textContent}» no puede quedarse vacío.", { textContent: f.x.previousSibling.textContent }));
                             f.x.focus();
                             return;
                         }
@@ -5380,7 +5365,7 @@
                     });
                     alGenerar = true;
                     if (guardarNombresTuyos(tuyo)) {
-                        avisar("Guardado: " + titulo + ".");
+                        avisar(ocT("Guardado: {titulo}.", { titulo: titulo }));
                     }
                 };
                 form.hidden = false;
@@ -5563,7 +5548,7 @@
             a.click();
             a.remove();
             setTimeout(() => URL.revokeObjectURL(archivoBlob), 1000);
-            avisar("Descargada la imagen: " + a.download + ".");
+            avisar(ocT("Descargada la imagen: {download}.", { download: a.download }));
         });
     }
 
@@ -5572,7 +5557,7 @@
     // letra, no.
     function claveDe(idioma, clase) {
         const lista = crear("ul", "master-idioma-clave " + clase + " es-" + idioma.id);
-        lista.setAttribute("aria-label", "Alfabeto " + idioma.nombre.toLowerCase());
+        lista.setAttribute("aria-label", ocT("Alfabeto {toLowerCase}", { toLowerCase: idioma.nombre.toLowerCase() }));
         const glifos = Array.from(idioma.glifos || "");
         "abcdefghijklmnopqrstuvwxyzñ".split("").forEach((letra, i) => {
             const li = crear("li", "master-idioma-letra");
@@ -5586,31 +5571,31 @@
 
     function montarIdiomas(dentro, m) {
         m.datos = m.datos || {};
-        dentro.appendChild(crear("p", "oc-hoja-nota", "Cargando…"));
+        dentro.appendChild(crear("p", "oc-hoja-nota", ocT("Cargando…")));
         Promise.all([pedir(IDIOMAS), pedir(NOMBRES)]).then(([datos, nombres]) => {
             const d = m.datos;
             const de = (id) => datos.idiomas.find((x) => x.id === id) || datos.idiomas[1];
-            const idioma = elegirDe("master-idioma-que-" + m.id, "idioma",
+            const idioma = elegirDe("master-idioma-que-" + m.id, ocT("idioma"),
                 datos.idiomas.map((x) => [x.id, x.nombre + " (" + x.alfabeto + ")"]), de(d.idioma).id);
-            const como = botonesDe("cómo se escribe", [["letras", "🔤 letra a letra"], ["inventado", "🗣️ palabras inventadas"]],
+            const como = botonesDe(ocT("cómo se escribe"), [["letras", ocT("🔤 letra a letra")], ["inventado", ocT("🗣️ palabras inventadas")]],
                 d.como || "letras", (v) => {
                     d.como = v;
                     guardar();
                     pintar();
                 });
-            como.title = "Letra a letra: se puede descifrar. Palabras inventadas: cada palabra pasa a una de ese idioma.";
-            const etT = crear("label", "oc-dados-etiqueta", "lo que pone");
+            como.title = ocT("Letra a letra: se puede descifrar. Palabras inventadas: cada palabra pasa a una de ese idioma.");
+            const etT = crear("label", "oc-dados-etiqueta", ocT("lo que pone"));
             const texto = crear("textarea", "oc-notas-texto es-corta");
             texto.id = "master-idioma-texto-" + m.id;
             texto.rows = 3;
             texto.value = d.texto || "";
             etT.htmlFor = texto.id;
-            const azar = botonDe("oc-vida-accion", "🎲 nota al azar", () => {
+            const azar = botonDe("oc-vida-accion", ocT("🎲 nota al azar"), () => {
                 texto.value = notaAlAzar(nombres);
                 d.texto = texto.value;
                 guardar();
                 pintar();
-                avisar("Nota nueva: " + texto.value);
+                avisar(ocT("Nota nueva: {value}", { value: texto.value }));
             });
             const hoja = crear("div", "master-idioma-hoja");
             hoja.setAttribute("role", "img");
@@ -5619,45 +5604,45 @@
             const verCaja = crear("input");
             verCaja.type = "checkbox";
             verCaja.checked = d.ver !== false;
-            ver.append(verCaja, document.createTextNode(" ver lo que pone debajo"));
+            ver.append(verCaja, document.createTextNode(ocT(" ver lo que pone debajo")));
             const tam = d.tam || 2;
             hoja.style.setProperty("--tam", tam + "rem");
             const cambiaTam = (mas) => {
                 d.tam = Math.min(4, Math.max(1, (d.tam || 2) + mas));
                 hoja.style.setProperty("--tam", d.tam + "rem");
                 guardar();
-                avisar("Tamaño " + Math.round(d.tam * 50) + " %.");
+                avisar(ocT("Tamaño {round} %.", { round: Math.round(d.tam * 50) }));
             };
-            const menos = botonDe("master-nombre-boton", "A−", () => cambiaTam(-0.25), "Letra más pequeña");
-            const mas = botonDe("master-nombre-boton", "A+", () => cambiaTam(0.25), "Letra más grande");
+            const menos = botonDe("master-nombre-boton", ocT("A−"), () => cambiaTam(-0.25), ocT("Letra más pequeña"));
+            const mas = botonDe("master-nombre-boton", ocT("A+"), () => cambiaTam(0.25), ocT("Letra más grande"));
             const escrito = () => {
                 const id = de(idioma.elegir.value);
                 const palabras = (d.como || "letras") === "inventado" ? inventar(texto.value, id) : texto.value;
                 return { id, palabras, letras: aSuAlfabeto(palabras, id) };
             };
-            const ensenar = botonDe("oc-vida-accion es-principal", "👁️ enseñar", () => {
+            const ensenar = botonDe("oc-vida-accion es-principal", ocT("👁️ enseñar"), () => {
                 const e = escrito();
                 const grande = crear("div", "master-idioma-hoja es-grande es-" + e.id.id);
                 grande.textContent = e.letras;
                 grande.setAttribute("role", "img");
-                grande.setAttribute("aria-label", "Nota en " + e.id.nombre + ". Pone: " + texto.value);
-                window.ocVentana.abrir({ titulo: "Nota en " + e.id.nombre.toLowerCase(), cuerpo: grande, vuelta: ensenar,
+                grande.setAttribute("aria-label", ocT("Nota en {nombre}. Pone: {value}", { nombre: e.id.nombre, value: texto.value }));
+                window.ocVentana.abrir({ titulo: ocT("Nota en {toLowerCase}", { toLowerCase: e.id.nombre.toLowerCase() }), cuerpo: grande, vuelta: ensenar,
                     clase: "es-ancha" });
-            }, "Enseñar la nota en grande");
-            const copiar = botonDe("oc-vida-accion", "⧉ copiar", () => copiarTexto(escrito().letras, "Copiada la nota."),
-                "Copiar la nota en su alfabeto");
-            const imagen = botonDe("oc-vida-accion", "🖼️ imagen", () => {
+            }, ocT("Enseñar la nota en grande"));
+            const copiar = botonDe("oc-vida-accion", ocT("⧉ copiar"), () => copiarTexto(escrito().letras, ocT("Copiada la nota.")),
+                ocT("Copiar la nota en su alfabeto"));
+            const imagen = botonDe("oc-vida-accion", ocT("🖼️ imagen"), () => {
                 const e = escrito();
-                notaEnImagen(e.letras || " ", e.id, e.id.glifos ? "Richi " + e.id.fuente : "Pangolin")
-                    .catch(() => avisar("No se ha podido hacer la imagen."));
-            }, "Descargar la nota como imagen");
+                notaEnImagen(e.letras || " ", e.id, e.id.glifos ? ocT("Richi {fuente}", { fuente: e.id.fuente }) : "Pangolin")
+                    .catch(() => avisar(ocT("No se ha podido hacer la imagen.")));
+            }, ocT("Descargar la nota como imagen"));
             const clave = crear("div", "master-idioma-panel");
             clave.id = "master-idioma-clave-" + m.id;
-            const verClave = botonDe("oc-vida-accion", "🔑 alfabeto", () => {
+            const verClave = botonDe("oc-vida-accion", ocT("🔑 alfabeto"), () => {
                 d.clave = !d.clave;
                 guardar();
                 pintar();
-            }, "Alfabeto de referencia");
+            }, ocT("Alfabeto de referencia"));
             verClave.setAttribute("aria-controls", clave.id);
             const pintarClave = (id) => {
                 verClave.hidden = !id.glifos;
@@ -5667,13 +5652,13 @@
                     clave.replaceChildren();
                     return;
                 }
-                const grande = botonDe("oc-vida-accion", "👁️ enseñar el alfabeto", () => {
-                    window.ocVentana.abrir({ titulo: "Alfabeto " + id.nombre.toLowerCase() + " (" + id.alfabeto + ")",
+                const grande = botonDe("oc-vida-accion", ocT("👁️ enseñar el alfabeto"), () => {
+                    window.ocVentana.abrir({ titulo: ocT("Alfabeto {toLowerCase} ({alfabeto})", { toLowerCase: id.nombre.toLowerCase(), alfabeto: id.alfabeto }),
                         cuerpo: claveDe(id, "es-grande"), vuelta: grande, clase: "es-ancha" });
                 });
                 clave.replaceChildren(claveDe(id, ""), grande);
                 if (Array.from(new Set(Array.from(id.glifos))).length < 27) {
-                    clave.insertBefore(crear("p", "oc-hoja-nota", "Este alfabeto tiene menos símbolos: algunas letras comparten el mismo."),
+                    clave.insertBefore(crear("p", "oc-hoja-nota", ocT("Este alfabeto tiene menos símbolos: algunas letras comparten el mismo.")),
                         grande);
                 }
             };
@@ -5682,13 +5667,12 @@
                 pintarClave(e.id);
                 hoja.className = "master-idioma-hoja es-" + e.id.id;
                 hoja.textContent = e.letras || "…";
-                hoja.setAttribute("aria-label", "Nota en " + e.id.nombre + " (" + e.id.alfabeto + "). Pone: " +
-                    (texto.value || "nada todavía"));
+                hoja.setAttribute("aria-label", ocT("Nota en {nombre} ({alfabeto}). Pone: {n}", { nombre: e.id.nombre, alfabeto: e.id.alfabeto, n: texto.value || ocT("nada todavía") }));
                 dice.replaceChildren();
                 if (verCaja.checked && texto.value) {
-                    dice.append(crear("strong", "", "Pone: "), document.createTextNode(texto.value));
+                    dice.append(crear("strong", "", ocT("Pone: ")), document.createTextNode(texto.value));
                     if (e.palabras !== texto.value) {
-                        dice.append(crear("br"), crear("strong", "", "Suena: "), document.createTextNode(e.palabras));
+                        dice.append(crear("br"), crear("strong", "", ocT("Suena: ")), document.createTextNode(e.palabras));
                     }
                 }
                 dice.hidden = !dice.childNodes.length;
@@ -5718,14 +5702,14 @@
             escribir.append(etT, texto, azar);
             const tamanos = crear("div", "master-idioma-tam");
             tamanos.setAttribute("role", "group");
-            tamanos.setAttribute("aria-label", "Tamaño de la letra");
+            tamanos.setAttribute("aria-label", ocT("Tamaño de la letra"));
             tamanos.append(menos, mas);
             const botones = crear("div", "master-idioma-botones");
             botones.append(ensenar, copiar, imagen, verClave, tamanos);
             dentro.replaceChildren(arriba, escribir, hoja, ver, dice, botones, clave);
             pintar();
         }).catch(() => {
-            dentro.replaceChildren(crear("p", "oc-vacio", "No he podido cargar los idiomas."));
+            dentro.replaceChildren(crear("p", "oc-vacio", ocT("No he podido cargar los idiomas.")));
         });
     }
 
@@ -5735,7 +5719,7 @@
     // SRD (tienda.json y bestiario.json). ----
     const TIENDA = "datos/personajes/compendio/tienda.json";
     const BESTIARIO = "datos/personajes/compendio/bestiario.json";
-    const FRANJAS = [["0", "VD 0–4"], ["1", "VD 5–10"], ["2", "VD 11–16"], ["3", "VD 17 o más"]];
+    const FRANJAS = [["0", ocT("VD 0–4")], ["1", ocT("VD 5–10")], ["2", ocT("VD 11–16")], ["3", ocT("VD 17 o más")]];
 
     // «3d6» a un número, sin pasar por el registro de tiradas.
     function tiradaSuelta(formula) {
@@ -5757,29 +5741,29 @@
             [["po", "4d6", 500], ["ppt", "2d6", 50]], [["po", "6d6", 2000], ["ppt", "4d6", 500]]],
     };
     const BOTIN_GEMAS = {
-        10: ["ágata", "cuarzo azul", "hematites", "lapislázuli", "malaquita", "obsidiana", "ojo de tigre", "turquesa"],
-        50: ["calcedonia", "citrino", "cornalina", "jaspe sanguíneo", "ónice", "piedra de luna", "cuarzo rosa", "circón"],
-        100: ["ámbar", "amatista", "coral rojo", "granate", "jade", "perla", "espinela", "turmalina"],
-        500: ["aguamarina", "alejandrita", "perla negra", "peridoto", "topacio dorado", "espinela azul"],
-        1000: ["ópalo negro", "ópalo de fuego", "zafiro azul", "esmeralda", "zafiro estrella", "rubí estrella"],
-        5000: ["diamante", "rubí sangre", "zafiro negro", "jacinto", "esmeralda sin defecto"],
+        10: ["ágata", ocT("cuarzo azul"), "hematites", "lapislázuli", "malaquita", "obsidiana", ocT("ojo de tigre"), "turquesa"],
+        50: ["calcedonia", "citrino", "cornalina", ocT("jaspe sanguíneo"), "ónice", ocT("piedra de luna"), ocT("cuarzo rosa"), "circón"],
+        100: ["ámbar", "amatista", ocT("coral rojo"), "granate", "jade", "perla", "espinela", "turmalina"],
+        500: ["aguamarina", "alejandrita", ocT("perla negra"), "peridoto", ocT("topacio dorado"), ocT("espinela azul")],
+        1000: [ocT("ópalo negro"), ocT("ópalo de fuego"), ocT("zafiro azul"), "esmeralda", ocT("zafiro estrella"), ocT("rubí estrella")],
+        5000: ["diamante", ocT("rubí sangre"), ocT("zafiro negro"), "jacinto", ocT("esmeralda sin defecto")],
     };
     const BOTIN_ARTE = {
-        25: ["un aguamanil de cobre con asas de serpiente", "una baraja de naipes pintados a mano",
-            "un espejo de mano con marco de plata", "una figurita de hueso tallado de un búho", "un par de dados de marfil",
-            "un incensario de latón", "un pañuelo de seda bordado", "una pipa de brezo con boquilla de ámbar"],
-        250: ["una copa de plata con incrustaciones de ámbar", "un tapiz pequeño de una cacería",
-            "un broche de oro con forma de hoja", "una caja de música de nogal", "una máscara ceremonial de bronce",
-            "un catalejo de latón grabado", "un anillo de sello de oro", "un cuadro al óleo de un puerto"],
-        750: ["una corona de plata con perlas", "un cáliz de oro con granates", "una daga ceremonial con empuñadura de jade",
-            "un tablero de ajedrez de ébano y marfil", "un collar de cuentas de amatista",
-            "una estatuilla de oro de un dragón dormido"],
-        2500: ["un brazalete de platino con zafiros", "un ídolo de jade del tamaño de un puño",
-            "una diadema de oro con esmeraldas", "un relicario de oro con un retrato en miniatura",
-            "un tapiz enorme tejido con hilo de oro"],
-        7500: ["una corona de oro con rubíes", "un cetro de platino con un diamante en la punta",
-            "una armadura ceremonial dorada, de adorno", "una estatua de mithral de una diosa",
-            "un huevo de oro con joyas incrustadas"],
+        25: [ocT("un aguamanil de cobre con asas de serpiente"), ocT("una baraja de naipes pintados a mano"),
+            ocT("un espejo de mano con marco de plata"), ocT("una figurita de hueso tallado de un búho"), ocT("un par de dados de marfil"),
+            ocT("un incensario de latón"), ocT("un pañuelo de seda bordado"), ocT("una pipa de brezo con boquilla de ámbar")],
+        250: [ocT("una copa de plata con incrustaciones de ámbar"), ocT("un tapiz pequeño de una cacería"),
+            ocT("un broche de oro con forma de hoja"), ocT("una caja de música de nogal"), ocT("una máscara ceremonial de bronce"),
+            ocT("un catalejo de latón grabado"), ocT("un anillo de sello de oro"), ocT("un cuadro al óleo de un puerto")],
+        750: [ocT("una corona de plata con perlas"), ocT("un cáliz de oro con granates"), ocT("una daga ceremonial con empuñadura de jade"),
+            ocT("un tablero de ajedrez de ébano y marfil"), ocT("un collar de cuentas de amatista"),
+            ocT("una estatuilla de oro de un dragón dormido")],
+        2500: [ocT("un brazalete de platino con zafiros"), ocT("un ídolo de jade del tamaño de un puño"),
+            ocT("una diadema de oro con esmeraldas"), ocT("un relicario de oro con un retrato en miniatura"),
+            ocT("un tapiz enorme tejido con hilo de oro")],
+        7500: [ocT("una corona de oro con rubíes"), ocT("un cetro de platino con un diamante en la punta"),
+            ocT("una armadura ceremonial dorada, de adorno"), ocT("una estatua de mithral de una diosa"),
+            ocT("un huevo de oro con joyas incrustadas")],
     };
     // En un tesoro, por franja: cuántas gemas u obras de arte, de qué
     // valores, y cuántos objetos mágicos y de qué rareza (con su peso).
@@ -5852,15 +5836,15 @@
 
     function montarBotin(dentro, m) {
         m.datos = m.datos || {};
-        dentro.appendChild(crear("p", "oc-hoja-nota", "Cargando…"));
+        dentro.appendChild(crear("p", "oc-hoja-nota", ocT("Cargando…")));
         pedir(TIENDA).then((tienda) => {
             const d = m.datos;
             const porEn = {};
             tienda.objetos.forEach((o) => {
                 porEn[o.en] = o;
             });
-            const franja = elegirDe("master-botin-franja-" + m.id, "de quién (su valor de desafío)", FRANJAS, d.franja || "0");
-            const tipo = botonesDe("qué", [["uno", "👤 lo que lleva encima uno"], ["tesoro", "💎 un tesoro"]], d.tipo || "tesoro",
+            const franja = elegirDe("master-botin-franja-" + m.id, ocT("de quién (su valor de desafío)"), FRANJAS, d.franja || "0");
+            const tipo = botonesDe(ocT("qué"), [["uno", ocT("👤 lo que lleva encima uno")], ["tesoro", ocT("💎 un tesoro")]], d.tipo || "tesoro",
                 (v) => {
                     d.tipo = v;
                     guardar();
@@ -5873,9 +5857,8 @@
                 if (!r) {
                     return "";
                 }
-                lineas.push("Monedas: " + r.monedas.filter((x) => x[1]).map((x) => x[1].toLocaleString("es-ES") + " " + x[0]).join(", "));
-                r.cosas.forEach((c) => lineas.push((c.n > 1 ? c.n + " × " : "") + c.texto + " (" + c.valor.toLocaleString("es-ES") +
-                    " po" + (c.n > 1 ? " cada " + (c.que === "gema" ? "una" : "uno") : "") + ")"));
+                lineas.push(ocT("Monedas: {join}", { join: r.monedas.filter((x) => x[1]).map((x) => x[1].toLocaleString("es-ES") + " " + x[0]).join(", ") }));
+                r.cosas.forEach((c) => lineas.push(ocT("{n} ({toLocaleString} po{n2})", { n: (c.n > 1 ? ocT("{n} × ", { n: c.n }) : "") + c.texto, toLocaleString: c.valor.toLocaleString("es-ES"), n2: c.n > 1 ? ocT(" cada {n}", { n: c.que === "gema" ? "una" : "uno" }) : "" })));
                 r.objetos.forEach((en) => lineas.push((porEn[en] || { nombre: en }).nombre));
                 return lineas.join("\n");
             };
@@ -5883,7 +5866,7 @@
                 const r = d.sale;
                 sale.replaceChildren();
                 if (!r) {
-                    sale.appendChild(crear("p", "oc-vacio", "Elige y pulsa «generar»."));
+                    sale.appendChild(crear("p", "oc-vacio", ocT("Elige y pulsa «generar».")));
                     return;
                 }
                 const lista = crear("ul", "master-botin-lista");
@@ -5891,14 +5874,14 @@
                 const li = crear("li", "master-botin-cosa es-monedas");
                 li.append(crear("span", "master-botin-icono", "🪙"), crear("span", "",
                     monedas.map((x) => x[1].toLocaleString("es-ES") + " " + x[0]).join(" · ")));
-                li.querySelector("span:last-child").setAttribute("aria-label", "Monedas: " + monedas.map((x) =>
-                    x[1].toLocaleString("es-ES") + " " + (MONEDAS.find((y) => y[0] === x[0]) || [0, x[0]])[1]).join(", "));
+                li.querySelector("span:last-child").setAttribute("aria-label", ocT("Monedas: {join}", { join: monedas.map((x) =>
+                    x[1].toLocaleString("es-ES") + " " + (MONEDAS.find((y) => y[0] === x[0]) || [0, x[0]])[1]).join(", ") }));
                 lista.appendChild(li);
                 r.cosas.forEach((c) => {
                     const x = crear("li", "master-botin-cosa");
                     x.append(crear("span", "master-botin-icono", c.que === "gema" ? "💎" : "🏺"),
-                        crear("span", "", (c.n > 1 ? c.n + " × " : "") + c.texto),
-                        crear("span", "master-botin-valor", c.valor.toLocaleString("es-ES") + " po" + (c.n > 1 ? " c/u" : "")));
+                        crear("span", "", (c.n > 1 ? ocT("{n} × ", { n: c.n }) : "") + c.texto),
+                        crear("span", "master-botin-valor", ocT("{toLocaleString} po{n}", { toLocaleString: c.valor.toLocaleString("es-ES"), n: c.n > 1 ? ocT(" c/u") : "" })));
                     lista.appendChild(x);
                 });
                 r.objetos.forEach((en) => {
@@ -5907,7 +5890,7 @@
                         return;
                     }
                     const x = crear("li", "master-botin-cosa es-magico");
-                    const b = botonDe("master-botin-objeto", o.nombre, () => abrirObjeto(o, b, tienda.fuente), "Ver " + o.nombre);
+                    const b = botonDe("master-botin-objeto", o.nombre, () => abrirObjeto(o, b, tienda.fuente), ocT("Ver {nombre}", { nombre: o.nombre }));
                     x.append(crear("span", "master-botin-icono", "✨"), b, crear("span", "master-botin-valor", o.rareza));
                     lista.appendChild(x);
                 });
@@ -5915,26 +5898,24 @@
                 r.cosas.forEach((c) => {
                     total += c.n * c.valor;
                 });
-                sale.append(lista, crear("p", "master-botin-total", "Monedas, gemas y arte: unas " +
-                    Math.round(total).toLocaleString("es-ES") + " po" + (r.objetos.length ? ", más " + r.objetos.length +
-                    (r.objetos.length > 1 ? " objetos mágicos." : " objeto mágico.") : ".")));
+                sale.append(lista, crear("p", "master-botin-total", ocT("Monedas, gemas y arte: unas {toLocaleString} po{n}", { toLocaleString: Math.round(total).toLocaleString("es-ES"), n: r.objetos.length ? ocT(", más {n}{n2}", { n: r.objetos.length, n2: r.objetos.length > 1 ? ocT(" objetos mágicos.") : ocT(" objeto mágico.") }) : "." })));
             };
-            const generar = botonDe("oc-vida-accion es-principal master-nombres-generar", "🎲 generar botín", () => {
+            const generar = botonDe("oc-vida-accion es-principal master-nombres-generar", ocT("🎲 generar botín"), () => {
                 d.franja = franja.elegir.value;
                 d.tipo = tipo.valor();
                 d.sale = hacerBotin(tienda.objetos, parseInt(d.franja, 10), d.tipo);
                 guardar();
                 pintar();
-                avisar("Botín nuevo: " + texto().replace(/\n/g, ". ") + ".");
+                avisar(ocT("Botín nuevo: {replace}.", { replace: texto().replace(/\n/g, ". ") }));
             });
-            const copiar = botonDe("oc-vida-accion", "⧉ copiar", () => copiarTexto(texto(), "Copiado el botín."), "Copiar el botín");
+            const copiar = botonDe("oc-vida-accion", ocT("⧉ copiar"), () => copiarTexto(texto(), ocT("Copiado el botín.")), ocT("Copiar el botín"));
             const arriba = crear("div", "master-nombres-form");
             arriba.append(franja, tipo, generar);
             dentro.replaceChildren(arriba, sale, copiar,
-                crear("p", "oc-hoja-nota master-fuente", "Monedas, gemas y arte: tablas propias. Objetos: SRD 5.2 (CC BY 4.0)."));
+                crear("p", "oc-hoja-nota master-fuente", ocT("Monedas, gemas y arte: tablas propias. Objetos: SRD 5.2 (CC BY 4.0).")));
             pintar();
         }).catch(() => {
-            dentro.replaceChildren(crear("p", "oc-vacio", "No he podido cargar los objetos."));
+            dentro.replaceChildren(crear("p", "oc-vacio", ocT("No he podido cargar los objetos.")));
         });
     }
 
@@ -5983,7 +5964,7 @@
 
     function montarEncuentros(dentro, m) {
         m.datos = m.datos || {};
-        dentro.appendChild(crear("p", "oc-hoja-nota", "Cargando…"));
+        dentro.appendChild(crear("p", "oc-hoja-nota", ocT("Cargando…")));
         pedir(BESTIARIO).then((datos) => {
             const d = m.datos;
             const bichos = datos.monstruos;
@@ -5993,8 +5974,8 @@
             });
             const habitats = Array.from(new Set(bichos.flatMap((b) => b.habitat || []))).filter((h) => h !== "cualquiera")
                 .sort((a, b) => a.localeCompare(b, "es"));
-            const habitat = elegirDe("master-encuentro-habitat-" + m.id, "dónde",
-                [["", "cualquier sitio"]].concat(habitats.map((h) => [h, h])), d.habitat || "");
+            const habitat = elegirDe("master-encuentro-habitat-" + m.id, ocT("dónde"),
+                [["", ocT("cualquier sitio")]].concat(habitats.map((h) => [h, h])), d.habitat || "");
             const enParty = estado.modulos.filter((x) => x.tipo === "party")
                 .reduce((t, x) => t + ((x.datos && x.datos.pjs) || []).length, 0);
             const numero = (id, texto, valor, min, max) => {
@@ -6011,8 +5992,8 @@
                 caja.elegir = x;
                 return caja;
             };
-            const nivel = numero("master-encuentro-nivel-", "nivel de la party", d.nivel || 3, 1, 20);
-            const pjs = numero("master-encuentro-pjs-", "cuántos PJ" + (enParty ? " (en la party hay " + enParty + ")" : ""),
+            const nivel = numero("master-encuentro-nivel-", ocT("nivel de la party"), d.nivel || 3, 1, 20);
+            const pjs = numero("master-encuentro-pjs-", ocT("cuántos PJ{n}", { n: enParty ? ocT(" (en la party hay {enParty})", { enParty: enParty }) : "" }),
                 d.pjs || enParty || 4, 1, 10);
             const fila = crear("div", "master-encuentro-fila");
             fila.append(nivel, pjs);
@@ -6030,8 +6011,8 @@
                 if (!nv.length) {
                     conPartyC.checked = false;
                 }
-                conPartyT.textContent = nv.length ? " con la party de la campaña (" + nv.length + " PJ, niveles " + nv.join(", ") + ")"
-                    : " con la party de la campaña (no hay nadie todavía)";
+                conPartyT.textContent = nv.length ? ocT(" con la party de la campaña ({n} PJ, niveles {join})", { n: nv.length, join: nv.join(", ") })
+                    : ocT(" con la party de la campaña (no hay nadie todavía)");
                 fila.hidden = conPartyC.checked;
             };
             conPartyC.addEventListener("change", () => {
@@ -6041,11 +6022,11 @@
             });
             pintarParty();
             mientrasEste(dentro, "master:pjs", pintarParty);
-            const dificultad = botonesDe("dificultad", DIFICULTADES.map((x) => [x[0], x[1]]), d.dificultad || "moderada", (v) => {
+            const dificultad = botonesDe(ocT("dificultad"), DIFICULTADES.map((x) => [x[0], x[1]]), d.dificultad || "moderada", (v) => {
                 d.dificultad = v;
                 guardar();
             });
-            const etDif = crear("p", "oc-dados-etiqueta", "dificultad");
+            const etDif = crear("p", "oc-dados-etiqueta", ocT("dificultad"));
             etDif.setAttribute("aria-hidden", "true");
             const sale = crear("div", "master-botin");
             sale.setAttribute("aria-live", "polite");
@@ -6053,11 +6034,11 @@
                 const r = d.sale;
                 sale.replaceChildren();
                 if (!r) {
-                    sale.appendChild(crear("p", "oc-vacio", "Elige y pulsa «generar»."));
+                    sale.appendChild(crear("p", "oc-vacio", ocT("Elige y pulsa «generar».")));
                     return;
                 }
                 if (!r.grupos.length) {
-                    sale.appendChild(crear("p", "oc-vacio", "No cabe ningún monstruo de ese sitio. Prueba con otro o sube la dificultad."));
+                    sale.appendChild(crear("p", "oc-vacio", ocT("No cabe ningún monstruo de ese sitio. Prueba con otro o sube la dificultad.")));
                     return;
                 }
                 const lista = crear("ul", "master-botin-lista");
@@ -6069,13 +6050,12 @@
                     }
                     px += g.n * pxDe(b);
                     const li = crear("li", "master-botin-cosa");
-                    const ver = botonDe("master-botin-objeto", (g.n > 1 ? g.n + " × " : "") + b.nombre, () => abrirBicho(b, ver, datos.fuente),
-                        "Ver " + b.nombre);
-                    li.append(tokenDe(b), ver, crear("span", "master-botin-valor", "VD " + b.cr + " · " +
-                        (g.n * pxDe(b)).toLocaleString("es-ES") + " PX"));
+                    const ver = botonDe("master-botin-objeto", (g.n > 1 ? ocT("{n} × ", { n: g.n }) : "") + b.nombre, () => abrirBicho(b, ver, datos.fuente),
+                        ocT("Ver {nombre}", { nombre: b.nombre }));
+                    li.append(tokenDe(b), ver, crear("span", "master-botin-valor", ocT("VD {cr} · {toLocaleString} PX", { cr: b.cr, toLocaleString: (g.n * pxDe(b)).toLocaleString("es-ES") })));
                     lista.appendChild(li);
                 });
-                const todos = botonDe("oc-vida-accion es-principal", "⚔️ todos a la iniciativa", () => {
+                const todos = botonDe("oc-vida-accion es-principal", ocT("⚔️ todos a la iniciativa"), () => {
                     const entran = [];
                     r.grupos.forEach((g) => {
                         const b = porEn[g.en];
@@ -6084,27 +6064,25 @@
                                 (nombres, renombrar) => conNumero(b.nombre, nombres, renombrar), b.nombre));
                         }
                     });
-                    avisar("A la iniciativa: " + entran.filter(Boolean).join(", ") + ".");
+                    avisar(ocT("A la iniciativa: {join}.", { join: entran.filter(Boolean).join(", ") }));
                 });
                 // Qué tal le va a la party de verdad (si la hay).
                 const nv = nivelesParty();
                 let cuanDificil = "";
                 if (nv.length) {
                     const [baja, mod, alta] = presupuestosDe(nv);
-                    cuanDificil = " Para tu party (" + nv.length + " PJ): " + (px <= baja ? "baja" : px <= mod ? "moderada" : px <= alta
-                        ? "alta" : "más que alta, ¡ojo!") + " (baja " + baja.toLocaleString("es-ES") + " · moderada "
-                        + mod.toLocaleString("es-ES") + " · alta " + alta.toLocaleString("es-ES") + ").";
+                    cuanDificil = ocT(" Para tu party ({n} PJ): {n2} (baja {toLocaleString} · moderada {toLocaleString2} · alta {toLocaleString3}).", { n: nv.length, n2: px <= baja ? "baja" : px <= mod ? "moderada" : px <= alta
+                        ? "alta" : ocT("más que alta, ¡ojo!"), toLocaleString: baja.toLocaleString("es-ES"), toLocaleString2: mod.toLocaleString("es-ES"), toLocaleString3: alta.toLocaleString("es-ES") });
                 }
-                const darPxB = botonDe("oc-vida-accion", "🏆 dar sus PX a la party", () => darPx(px, null, darPxB),
-                    "Repartir los " + px.toLocaleString("es-ES") + " PX de este encuentro entre la party");
+                const darPxB = botonDe("oc-vida-accion", ocT("🏆 dar sus PX a la party"), () => darPx(px, null, darPxB),
+                    ocT("Repartir los {toLocaleString} PX de este encuentro entre la party", { toLocaleString: px.toLocaleString("es-ES") }));
                 darPxB.hidden = !nv.length;
                 const botonesE = crear("div", "master-creador-barra");
                 botonesE.append(todos, darPxB);
-                sale.append(crear("p", "master-encuentro-hacen", "Están " + r.hacen + "."), lista,
-                    crear("p", "master-botin-total", px.toLocaleString("es-ES") + " PX de " +
-                        r.presupuesto.toLocaleString("es-ES") + " que aguanta la party." + cuanDificil), botonesE);
+                sale.append(crear("p", "master-encuentro-hacen", ocT("Están {hacen}.", { hacen: r.hacen })), lista,
+                    crear("p", "master-botin-total", ocT("{toLocaleString} PX de {toLocaleString2} que aguanta la party.{cuanDificil}", { toLocaleString: px.toLocaleString("es-ES"), toLocaleString2: r.presupuesto.toLocaleString("es-ES"), cuanDificil: cuanDificil })), botonesE);
             };
-            const generar = botonDe("oc-vida-accion es-principal master-nombres-generar", "🎲 generar encuentro", () => {
+            const generar = botonDe("oc-vida-accion es-principal master-nombres-generar", ocT("🎲 generar encuentro"), () => {
                 d.habitat = habitat.elegir.value;
                 d.nivel = Math.min(20, Math.max(1, parseInt(nivel.elegir.value, 10) || 1));
                 d.pjs = Math.min(10, Math.max(1, parseInt(pjs.elegir.value, 10) || 1));
@@ -6116,17 +6094,16 @@
                     presupuestosDe(nv)[iDif]) : hacerEncuentro(bichos, d.habitat, d.nivel, d.pjs, f);
                 guardar();
                 pintar();
-                avisar(d.sale.grupos.length ? "Encuentro: " + d.sale.grupos.map((g) => g.n + " " + (porEn[g.en] || {}).nombre)
-                    .join(" y ") + ", " + d.sale.hacen + "." : "No cabe ningún monstruo.");
+                avisar(d.sale.grupos.length ? ocT("Encuentro: {join}, {hacen}.", { join: d.sale.grupos.map((g) => g.n + " " + (porEn[g.en] || {}).nombre)
+                    .join(ocT(" y ")), hacen: d.sale.hacen }) : ocT("No cabe ningún monstruo."));
             });
             const arriba = crear("div", "master-nombres-form");
             arriba.append(habitat, conParty, fila, etDif, dificultad, generar);
             dentro.replaceChildren(arriba, sale, crear("p", "oc-hoja-nota master-fuente",
-                "Monstruos: SRD 5.2 (CC BY 4.0). La dificultad, con la party, según los PX que aguanta cada PJ por su nivel; sin ella, una cuenta"
-                + " propia aproximada."));
+                ocT("Monstruos: SRD 5.2 (CC BY 4.0). La dificultad, con la party, según los PX que aguanta cada PJ por su nivel; sin ella, una cuenta propia aproximada.")));
             pintar();
         }).catch(() => {
-            dentro.replaceChildren(crear("p", "oc-vacio", "No he podido cargar el bestiario."));
+            dentro.replaceChildren(crear("p", "oc-vacio", ocT("No he podido cargar el bestiario.")));
         });
     }
 
@@ -6147,16 +6124,16 @@
     const DIBUJO_ANCHO = 1000;
     const DIBUJO_ALTO = 750;
     const DIBUJO_PAPEL = "#fdfaf0";
-    const DIBUJO_COLORES = [["#1d1b26", "negro"], ["#ffffff", "blanco"], ["#c62828", "rojo"], ["#1565c0", "azul"],
-        ["#2e7d32", "verde"], ["#ef6c00", "naranja"], ["#6a1b9a", "morado"], ["#8d6e63", "marrón"], ["#fdd835", "amarillo"],
-        ["#9e9e9e", "gris"]];
+    const DIBUJO_COLORES = [["#1d1b26", ocT("negro")], ["#ffffff", ocT("blanco")], ["#c62828", ocT("rojo")], ["#1565c0", ocT("azul")],
+        ["#2e7d32", ocT("verde")], ["#ef6c00", ocT("naranja")], ["#6a1b9a", ocT("morado")], ["#8d6e63", ocT("marrón")], ["#fdd835", ocT("amarillo")],
+        ["#9e9e9e", ocT("gris")]];
     // [id, emoji, nombre, tecla]
-    const DIBUJO_HERRAMIENTAS = [["lapiz", "✏️", "Lápiz", "b"], ["goma", "🧽", "Goma", "e"], ["bote", "🪣", "Bote de pintura", "g"],
-        ["seleccionar", "⬚", "Seleccionar y mover", "m"], ["cuentagotas", "💧", "Cuentagotas (coger un color)", "i"],
-        ["linea", "╱", "Línea recta", "l"], ["rectangulo", "▭", "Rectángulo", "u"], ["elipse", "◯", "Elipse", "o"],
+    const DIBUJO_HERRAMIENTAS = [["lapiz", "✏️", "Lápiz", "b"], ["goma", "🧽", "Goma", "e"], ["bote", "🪣", ocT("Bote de pintura"), "g"],
+        ["seleccionar", "⬚", ocT("Seleccionar y mover"), "m"], ["cuentagotas", "💧", ocT("Cuentagotas (coger un color)"), "i"],
+        ["linea", "╱", ocT("Línea recta"), "l"], ["rectangulo", "▭", "Rectángulo", "u"], ["elipse", "◯", "Elipse", "o"],
         ["texto", "T", "Texto", "t"]];
-    const DIBUJO_FUENTES = [["Pangolin", "a mano"], ["Space Grotesk", "normal"], ["Georgia, serif", "con serifa"],
-        ["DM Mono", "de máquina"], ["Jersey 10", "de píxeles"]];
+    const DIBUJO_FUENTES = [["Pangolin", ocT("a mano")], ["Space Grotesk", ocT("normal")], ["Georgia, serif", ocT("con serifa")],
+        ["DM Mono", ocT("de máquina")], ["Jersey 10", ocT("de píxeles")]];
 
     // Solo imágenes metidas en la propia dirección (data:image/…): lo
     // único que lee el dibujo (lo que guarda él y los archivos que se
@@ -6279,7 +6256,7 @@
         const nuevoId = () => "c" + Date.now().toString(36) + (cuenta++);
         // Lo de antes (una sola imagen): pasa a ser la primera capa.
         if (!Array.isArray(d.capas)) {
-            d.capas = [{ id: nuevoId(), tipo: "capa", nombre: "capa 1", visible: true, opacidad: 100, imagen: d.imagen || "" }];
+            d.capas = [{ id: nuevoId(), tipo: "capa", nombre: ocT("capa 1"), visible: true, opacidad: 100, imagen: d.imagen || "" }];
             delete d.imagen;
         }
         d.rejilla = Object.assign({ ver: false, tipo: "cuadrada", tam: 50, color: "#000000", opacidad: 40, bajar: false },
@@ -6338,8 +6315,7 @@
         const cv = vista.getContext("2d");
         const ce = encima.getContext("2d");
         const etiqueta = () => {
-            encima.setAttribute("aria-label", "Dibujo" + (d.desc ? ": " + d.desc : " (sin descripción)") +
-                ". Se dibuja con el ratón, el dedo o un lápiz; Ctrl+V pega una imagen.");
+            encima.setAttribute("aria-label", ocT("Dibujo{n}. Se dibuja con el ratón, el dedo o un lápiz; Ctrl+V pega una imagen.", { n: d.desc ? ": " + d.desc : ocT(" (sin descripción)") }));
         };
         etiqueta();
 
@@ -6449,7 +6425,7 @@
             espera = setTimeout(() => {
                 volcar();
                 if (!guardar()) {
-                    avisar("No se ha podido guardar el dibujo: no cabe. Quita alguna imagen o capa, o descárgalo.");
+                    avisar(ocT("No se ha podido guardar el dibujo: no cabe. Quita alguna imagen o capa, o descárgalo."));
                 }
             }, 400);
         };
@@ -6495,7 +6471,7 @@
         const sePuede = () => {
             const c = capaActiva();
             if (!c) {
-                avisar("Elige una capa (no una carpeta) para pintar.");
+                avisar(ocT("Elige una capa (no una carpeta) para pintar."));
                 return null;
             }
             let ve = true;
@@ -6505,7 +6481,7 @@
                 b = b.padre ? buscar(b.padre.id) : null;
             }
             if (!ve) {
-                avisar("La capa «" + c.nombre + "» está escondida: enséñala para pintar en ella.");
+                avisar(ocT("La capa «{nombre}» está escondida: enséñala para pintar en ella.", { nombre: c.nombre }));
                 return null;
             }
             return c;
@@ -6596,7 +6572,7 @@
             acabarTexto(true);
             const caja = crear("textarea", "master-dibujo-texto");
             caja.rows = 1;
-            caja.setAttribute("aria-label", "Texto para el dibujo (Intro lo pone; Esc lo quita)");
+            caja.setAttribute("aria-label", ocT("Texto para el dibujo (Intro lo pone; Esc lo quita)"));
             const k = encima.getBoundingClientRect().width / ANCHO;
             caja.style.left = (p[0] / ANCHO * 100) + "%";
             caja.style.top = (p[1] / ALTO * 100) + "%";
@@ -6652,7 +6628,7 @@
                 ctx.restore();
                 guardarDibujo(e.capa);
                 repintar();
-                avisar("Texto puesto: " + texto.replace(/\n/g, " ") + ".");
+                avisar(ocT("Texto puesto: {replace}.", { replace: texto.replace(/\n/g, " ") }));
             });
         }
 
@@ -6772,7 +6748,7 @@
                 const px = cv.getImageData(Math.min(ANCHO - 1, Math.max(0, p[0])), Math.min(ALTO - 1, Math.max(0, p[1])),
                     1, 1).data;
                 ponerColor("#" + [px[0], px[1], px[2]].map((x) => x.toString(16).padStart(2, "0")).join(""));
-                avisar("Color cogido: " + color + ".");
+                avisar(ocT("Color cogido: {color}.", { color: color }));
                 elegirHerramienta("lapiz");
                 return;
             }
@@ -6927,7 +6903,7 @@
             } else if (gesto.que === "elegir" && sel && (sel.w < 3 || sel.h < 3)) {
                 sel = null;
             } else if (gesto.que === "elegir" && sel) {
-                avisar("Seleccionado. Arrástralo o muévelo con las flechas; las asas o + y − cambian el tamaño; Supr lo borra, Esc lo suelta.");
+                avisar(ocT("Seleccionado. Arrástralo o muévelo con las flechas; las asas o + y − cambian el tamaño; Supr lo borra, Esc lo suelta."));
             }
             gesto = null;
             repintar();
@@ -6979,7 +6955,7 @@
                 sel = { x: sel.x + (sel.w - w) / 2, y: sel.y + (sel.h - h) / 2, w, h };
                 Object.assign(flotante, sel);
                 repintar();
-                avisar("Tamaño: " + Math.round(w) + " × " + Math.round(h) + ".");
+                avisar(ocT("Tamaño: {round} × {round2}.", { round: Math.round(w), round2: Math.round(h) }));
                 return;
             }
             if (sel && (e.key === "Delete" || e.key === "Backspace")) {
@@ -6996,14 +6972,14 @@
                 }
                 sel = null;
                 repintar();
-                avisar("Borrado lo seleccionado.");
+                avisar(ocT("Borrado lo seleccionado."));
                 return;
             }
             if (sel && e.key === "Escape") {
                 e.preventDefault();
                 e.stopPropagation();
                 quitarSeleccion();
-                avisar("Selección soltada.");
+                avisar(ocT("Selección soltada."));
                 return;
             }
             const h = DIBUJO_HERRAMIENTAS.find((x) => x[3] === k);
@@ -7019,7 +6995,7 @@
         // moverlas.
         const pegar = (archivo, x, y) => {
             if (!archivo || !/^image\//.test(archivo.type)) {
-                avisar("Eso no es una imagen.");
+                avisar(ocT("Eso no es una imagen."));
                 return;
             }
             const lector = new FileReader();
@@ -7040,9 +7016,9 @@
                     elegirHerramienta("seleccionar");
                     sel = { x: px, y: py, w, h };
                     repintar();
-                    avisar("Imagen pegada en una capa nueva, seleccionada para moverla.");
+                    avisar(ocT("Imagen pegada en una capa nueva, seleccionada para moverla."));
                 };
-                img.onerror = () => avisar("No he podido abrir esa imagen.");
+                img.onerror = () => avisar(ocT("No he podido abrir esa imagen."));
                 img.src = imagenSegura(lector.result);
             };
             lector.readAsDataURL(archivo);
@@ -7077,7 +7053,7 @@
         // ---- LA BARRA DE LA IZQUIERDA ----
         const barra = crear("div", "master-postit-barra es-dibujo");
         barra.setAttribute("role", "toolbar");
-        barra.setAttribute("aria-label", "Herramientas del dibujo");
+        barra.setAttribute("aria-label", ocT("Herramientas del dibujo"));
         const grupo = (...cosas) => {
             const g = crear("span", "master-postit-grupo");
             g.append(...cosas);
@@ -7111,7 +7087,7 @@
                 if (herramienta === "goma" || herramienta === "seleccionar" || herramienta === "cuentagotas") {
                     elegirHerramienta("lapiz");
                 }
-            }, "Color " + nombre);
+            }, ocT("Color {nombre}", { nombre: nombre }));
             b.title = nombre;
             b.dataset.hex = hex;
             b.style.setProperty("--muestra", hex);
@@ -7119,8 +7095,8 @@
         });
         const elegirColor = crear("input", "master-dibujo-selector");
         elegirColor.type = "color";
-        elegirColor.title = "Cualquier color";
-        elegirColor.setAttribute("aria-label", "Elegir cualquier color");
+        elegirColor.title = ocT("Cualquier color");
+        elegirColor.setAttribute("aria-label", ocT("Elegir cualquier color"));
         elegirColor.addEventListener("input", () => ponerColor(elegirColor.value));
         function ponerColor(hex) {
             color = hex.toLowerCase();
@@ -7137,7 +7113,7 @@
         // deshacer, imagen, descargar y rejilla. ----
         const opciones = crear("div", "master-dibujo-opciones");
         opciones.setAttribute("role", "toolbar");
-        opciones.setAttribute("aria-label", "Opciones del dibujo");
+        opciones.setAttribute("aria-label", ocT("Opciones del dibujo"));
         const deslizador = (texto, min, max, valor, alCambiar, unidad) => {
             const et = crear("label", "master-dibujo-deslizador");
             const r = crear("input");
@@ -7156,23 +7132,23 @@
             et.append(crear("span", "oc-dados-etiqueta", texto), r, v);
             return et;
         };
-        const opGrosor = deslizador("grosor", 1, 80, grosor, (x) => {
+        const opGrosor = deslizador(ocT("grosor"), 1, 80, grosor, (x) => {
             grosor = x;
             d.grosor = x;
             guardar();
         }, " px");
         let margenBote = parseInt(d.margen, 10) || 40;
-        const opMargen = deslizador("margen del bote", 0, 160, margenBote, (x) => {
+        const opMargen = deslizador(ocT("margen del bote"), 0, 160, margenBote, (x) => {
             margenBote = x;
             d.margen = x;
             guardar();
         });
-        opMargen.title = "Cuánto se puede parecer un color al de donde pinchas para que también se rellene";
+        opMargen.title = ocT("Cuánto se puede parecer un color al de donde pinchas para que también se rellene");
         // El texto: letra, tamaño y negrita.
         d.texto = Object.assign({ fuente: "Pangolin", tam: 40, negrita: false }, d.texto || {});
         const opTexto = crear("span", "master-dibujo-optexto");
         const fuente = crear("select", "master-postit-elegir");
-        fuente.setAttribute("aria-label", "Letra del texto");
+        fuente.setAttribute("aria-label", ocT("Letra del texto"));
         DIBUJO_FUENTES.forEach(([f, n]) => {
             const o = crear("option", "", n);
             o.value = f;
@@ -7184,13 +7160,13 @@
         tamTexto.min = 8;
         tamTexto.max = 300;
         tamTexto.value = d.texto.tam;
-        tamTexto.setAttribute("aria-label", "Tamaño del texto");
-        tamTexto.title = "Tamaño del texto";
+        tamTexto.setAttribute("aria-label", ocT("Tamaño del texto"));
+        tamTexto.title = ocT("Tamaño del texto");
         const negrita = botonDe("master-postit-boton es-negrita", "B", () => {
             d.texto.negrita = !d.texto.negrita;
             negrita.setAttribute("aria-pressed", String(d.texto.negrita));
             guardar();
-        }, "Texto en negrita");
+        }, ocT("Texto en negrita"));
         negrita.setAttribute("aria-pressed", String(!!d.texto.negrita));
         fuente.addEventListener("change", () => {
             d.texto.fuente = fuente.value;
@@ -7206,10 +7182,10 @@
             opMargen.hidden = herramienta !== "bote";
             opTexto.hidden = herramienta !== "texto";
         };
-        const deshacer = botonDe("master-postit-boton", "↶", () => volverA(atras, adelante), "Deshacer");
-        const rehacer = botonDe("master-postit-boton", "↷", () => volverA(adelante, atras), "Rehacer");
-        deshacer.title = "Deshacer (Ctrl+Z)";
-        rehacer.title = "Rehacer (Ctrl+Y)";
+        const deshacer = botonDe("master-postit-boton", "↶", () => volverA(atras, adelante), ocT("Deshacer"));
+        const rehacer = botonDe("master-postit-boton", "↷", () => volverA(adelante, atras), ocT("Rehacer"));
+        deshacer.title = ocT("Deshacer (Ctrl+Z)");
+        rehacer.title = ocT("Rehacer (Ctrl+Y)");
         const archivo = crear("input");
         archivo.type = "file";
         archivo.accept = "image/*";
@@ -7218,8 +7194,8 @@
             pegar(archivo.files && archivo.files[0]);
             archivo.value = "";
         });
-        const imagen = botonDe("master-postit-boton", "🖼️", () => archivo.click(), "Poner una imagen");
-        imagen.title = "Poner una imagen en una capa nueva (o pégala con Ctrl+V)";
+        const imagen = botonDe("master-postit-boton", "🖼️", () => archivo.click(), ocT("Poner una imagen"));
+        imagen.title = ocT("Poner una imagen en una capa nueva (o pégala con Ctrl+V)");
         const bajar = botonDe("master-postit-boton", "⬇", () => {
             soltarFlotante();
             const l = lienzoNuevo(ANCHO, ALTO);
@@ -7234,9 +7210,9 @@
             document.body.appendChild(a);
             a.click();
             a.remove();
-            avisar("Descargado: " + a.download + ".");
-        }, "Descargar el dibujo");
-        bajar.title = "Descargar como PNG (todas las capas que se ven)";
+            avisar(ocT("Descargado: {download}.", { download: a.download }));
+        }, ocT("Descargar el dibujo"));
+        bajar.title = ocT("Descargar como PNG (todas las capas que se ven)");
         const aJugadores = botonDe("master-postit-boton", "📺", () => {
             soltarFlotante();
             const l = lienzoNuevo(ANCHO, ALTO);
@@ -7247,15 +7223,15 @@
             }
             l.toBlob((blob) => {
                 if (blob) {
-                    mostrarAJugadores({ modo: "imagen", titulo: "" }, blob).then(() => avisar("Los jugadores ven el dibujo."));
+                    mostrarAJugadores({ modo: "imagen", titulo: "" }, blob).then(() => avisar(ocT("Los jugadores ven el dibujo.")));
                 }
             }, "image/png");
-        }, "Enseñar este dibujo en la pantalla de jugadores");
-        aJugadores.title = "Enseñar el dibujo en la pantalla de jugadores (lo que se ve ahora)";
+        }, ocT("Enseñar este dibujo en la pantalla de jugadores"));
+        aJugadores.title = ocT("Enseñar el dibujo en la pantalla de jugadores (lo que se ve ahora)");
         const botonRejilla = crear("button", "master-postit-boton", "#");
         botonRejilla.type = "button";
-        botonRejilla.setAttribute("aria-label", "Rejilla de rol");
-        botonRejilla.title = "Enseñar o esconder la rejilla";
+        botonRejilla.setAttribute("aria-label", ocT("Rejilla de rol"));
+        botonRejilla.title = ocT("Enseñar o esconder la rejilla");
 
         // GUARDAR EN DOCUMENTOS: el dibujo entero (con sus capas), para
         // abrirlo otra vez desde «documentos» y seguir dibujando.
@@ -7270,8 +7246,8 @@
             }, (id) => {
                 d.doc = id;
             });
-        }, "Guardar en documentos (con sus capas)");
-        aDocs.title = "Guardar en documentos (con sus capas)";
+        }, ocT("Guardar en documentos (con sus capas)"));
+        aDocs.title = ocT("Guardar en documentos (con sus capas)");
         aDocs.setAttribute("aria-haspopup", "dialog");
 
         // EL ZOOM DEL LIENZO (d.zoom): − 100 % +, y Ctrl + rueda encima. A
@@ -7283,23 +7259,23 @@
         let zoomD = zoomGuardado >= ZOOMS_DIBUJO[0] && zoomGuardado <= ZOOMS_DIBUJO[ZOOMS_DIBUJO.length - 1] ? zoomGuardado : 1;
         const visor = crear("div", "master-dibujo-visor");
         const valorZoom = botonDe("master-postit-boton master-dibujo-zoom-valor", "100 %", () => ponerZoomD(1, true),
-            "Zoom del lienzo al 100 %");
-        const menosZoom = botonDe("master-postit-boton", "－", () => pasoZoomD(-1), "Alejar el lienzo");
-        const masZoom = botonDe("master-postit-boton", "＋", () => pasoZoomD(1), "Acercar el lienzo");
-        menosZoom.title = "Alejar (Ctrl + rueda)";
-        masZoom.title = "Acercar (Ctrl + rueda)";
+            ocT("Zoom del lienzo al 100 %"));
+        const menosZoom = botonDe("master-postit-boton", "－", () => pasoZoomD(-1), ocT("Alejar el lienzo"));
+        const masZoom = botonDe("master-postit-boton", "＋", () => pasoZoomD(1), ocT("Acercar el lienzo"));
+        menosZoom.title = ocT("Alejar (Ctrl + rueda)");
+        masZoom.title = ocT("Acercar (Ctrl + rueda)");
         function ponerZoomD(z, decirlo) {
             zoomD = z;
             d.zoom = z === 1 ? undefined : z;
             marco.style.width = z === 1 ? "" : (z * 100) + "%";
             valorZoom.textContent = Math.round(z * 100) + " %";
-            valorZoom.setAttribute("aria-label", "Zoom del lienzo: " + Math.round(z * 100) + " % (pulsa para el 100 %)");
+            valorZoom.setAttribute("aria-label", ocT("Zoom del lienzo: {round} % (pulsa para el 100 %)", { round: Math.round(z * 100) }));
             menosZoom.disabled = z <= ZOOMS_DIBUJO[0];
             masZoom.disabled = z >= ZOOMS_DIBUJO[ZOOMS_DIBUJO.length - 1];
             pintarEncima();
             guardar();
             if (decirlo) {
-                avisar("Zoom del lienzo: " + Math.round(z * 100) + " %.");
+                avisar(ocT("Zoom del lienzo: {round} %.", { round: Math.round(z * 100) }));
             }
         }
         const pasoZoomD = (s) => {
@@ -7325,16 +7301,16 @@
             g.setAttribute("aria-label", texto);
             return g;
         };
-        titulado("Deshacer y rehacer", deshacer, rehacer);
-        titulado("Zoom del lienzo", menosZoom, masZoom);
-        titulado("Zoom actual", valorZoom).classList.add("es-selector");
-        titulado("Rejilla", botonRejilla);
-        titulado("Guardar", imagen, bajar, aDocs, aJugadores).classList.add("es-guardar");
+        titulado(ocT("Deshacer y rehacer"), deshacer, rehacer);
+        titulado(ocT("Zoom del lienzo"), menosZoom, masZoom);
+        titulado(ocT("Zoom actual"), valorZoom).classList.add("es-selector");
+        titulado(ocT("Rejilla"), botonRejilla);
+        titulado(ocT("Guardar"), imagen, bajar, aDocs, aJugadores).classList.add("es-guardar");
         opciones.append(opGrosor, opMargen, opTexto);
 
         // ---- LAS CAPAS (a la derecha) ----
         const panel = crear("div", "master-dibujo-panel");
-        const tituloCapas = crear("h3", "master-dibujo-titulo", "capas");
+        const tituloCapas = crear("h3", "master-dibujo-titulo", ocT("capas"));
         const listaCapas = crear("ul", "master-dibujo-capas");
         // Las miniaturas de cada capa, para repintarlas al guardar.
         let minis = {};
@@ -7350,9 +7326,9 @@
                 mc.drawImage(lienzos[id], (40 - ANCHO * k) / 2, (30 - ALTO * k) / 2, ANCHO * k, ALTO * k);
             });
         }
-        listaCapas.setAttribute("aria-label", "Capas y carpetas (la de arriba se ve encima)");
+        listaCapas.setAttribute("aria-label", ocT("Capas y carpetas (la de arriba se ve encima)"));
         function nuevaCapa(nombre) {
-            const c = { id: nuevoId(), tipo: "capa", nombre: nombre || "capa " + (Object.keys(lienzos).length + 1), visible: true,
+            const c = { id: nuevoId(), tipo: "capa", nombre: nombre || ocT("capa {n}", { n: Object.keys(lienzos).length + 1 }), visible: true,
                 opacidad: 100, imagen: "" };
             lienzos[c.id] = lienzoNuevo(ANCHO, ALTO);
             // Encima de la activa, en su misma carpeta.
@@ -7365,11 +7341,11 @@
             guardar();
             return c;
         }
-        const masCapa = botonDe("oc-vida-accion", "＋ capa", () => {
+        const masCapa = botonDe("oc-vida-accion", ocT("＋ capa"), () => {
             const c = nuevaCapa();
-            avisar("Capa nueva: " + c.nombre + ".");
-        }, "Capa nueva");
-        const masCarpeta = botonDe("oc-vida-accion", "📁 carpeta", () => {
+            avisar(ocT("Capa nueva: {nombre}.", { nombre: c.nombre }));
+        }, ocT("Capa nueva"));
+        const masCarpeta = botonDe("oc-vida-accion", ocT("📁 carpeta"), () => {
             const n = { id: nuevoId(), tipo: "carpeta", nombre: "carpeta", visible: true, opacidad: 100, abierta: true, hijos: [] };
             const b = buscar(activa);
             const lista = b ? b.lista : d.capas;
@@ -7377,8 +7353,8 @@
             activa = n.id;
             pintarCapas();
             guardar();
-            avisar("Carpeta nueva. Mete capas en ella con «⇥ a la carpeta».");
-        }, "Carpeta nueva");
+            avisar(ocT("Carpeta nueva. Mete capas en ella con «⇥ a la carpeta»."));
+        }, ocT("Carpeta nueva"));
         const nuevas = crear("div", "master-dibujo-nuevas");
         nuevas.append(masCapa, masCarpeta);
         const fila = (n, nivel) => {
@@ -7389,8 +7365,8 @@
                 pintarCapas();
                 repintar();
                 guardar();
-                avisar((n.visible ? "Se ve: " : "Escondida: ") + n.nombre + ".");
-            }, (n.visible ? "Esconder " : "Enseñar ") + n.nombre);
+                avisar((n.visible ? ocT("Se ve: ") : ocT("Escondida: ")) + n.nombre + ".");
+            }, (n.visible ? ocT("Esconder ") : ocT("Enseñar ")) + n.nombre);
             ojo.setAttribute("aria-pressed", String(!!n.visible));
             ojo.title = n.visible ? "Esconder" : "Enseñar";
             li.appendChild(ojo);
@@ -7399,7 +7375,7 @@
                     n.abierta = !n.abierta;
                     pintarCapas();
                     guardar();
-                }, (n.abierta ? "Cerrar " : "Abrir ") + "la carpeta " + n.nombre);
+                }, ocT("{n}la carpeta {nombre}", { n: n.abierta ? ocT("Cerrar ") : ocT("Abrir "), nombre: n.nombre }));
                 plegar.setAttribute("aria-expanded", String(!!n.abierta));
                 li.appendChild(plegar);
             }
@@ -7411,7 +7387,7 @@
                 pintarCapas();
                 repintar();
                 guardar();
-            }, (n.tipo === "carpeta" ? "Carpeta " : "Capa ") + n.nombre + (n.visible ? "" : " (escondida)"));
+            }, (n.tipo === "carpeta" ? ocT("Carpeta ") : ocT("Capa ")) + n.nombre + (n.visible ? "" : ocT(" (escondida)")));
             if (n.id === activa) {
                 nombre.setAttribute("aria-current", "true");
             }
@@ -7451,11 +7427,11 @@
             pintarCapas();
             repintar();
             guardar();
-            avisar((paso < 0 ? "Subida: " : "Bajada: ") + b.n.nombre + ".");
+            avisar((paso < 0 ? ocT("Subida: ") : ocT("Bajada: ")) + b.n.nombre + ".");
         };
-        const subir = mando("↑", "Subir (que se vea más encima)", () => mover(-1));
-        const bajarCapa = mando("↓", "Bajar (que se vea más debajo)", () => mover(1));
-        const aCarpeta = mando("⇥", "Meterla en la carpeta de encima", () => {
+        const subir = mando("↑", ocT("Subir (que se vea más encima)"), () => mover(-1));
+        const bajarCapa = mando("↓", ocT("Bajar (que se vea más debajo)"), () => mover(1));
+        const aCarpeta = mando("⇥", ocT("Meterla en la carpeta de encima"), () => {
             const b = buscar(activa);
             if (!b) {
                 return;
@@ -7463,7 +7439,7 @@
             const i = b.lista.indexOf(b.n);
             const carpeta = b.lista.slice(0, i).reverse().find((x) => x.tipo === "carpeta" && x !== b.n);
             if (!carpeta) {
-                avisar("No hay ninguna carpeta encima de esta, al mismo nivel.");
+                avisar(ocT("No hay ninguna carpeta encima de esta, al mismo nivel."));
                 return;
             }
             b.lista.splice(i, 1);
@@ -7472,9 +7448,9 @@
             pintarCapas();
             repintar();
             guardar();
-            avisar(b.n.nombre + " va ahora en la carpeta " + carpeta.nombre + ".");
+            avisar(ocT("{nombre} va ahora en la carpeta {nombre2}.", { nombre: b.n.nombre, nombre2: carpeta.nombre }));
         });
-        const fuera = mando("⇤", "Sacarla de su carpeta", () => {
+        const fuera = mando("⇤", ocT("Sacarla de su carpeta"), () => {
             const b = buscar(activa);
             if (!b || !b.padre) {
                 return;
@@ -7485,16 +7461,16 @@
             pintarCapas();
             repintar();
             guardar();
-            avisar(b.n.nombre + " ya no va en " + b.padre.nombre + ".");
+            avisar(ocT("{nombre} ya no va en {nombre2}.", { nombre: b.n.nombre, nombre2: b.padre.nombre }));
         });
-        const renombrar = mando("✎", "Cambiarle el nombre", () => {
+        const renombrar = mando("✎", ocT("Cambiarle el nombre"), () => {
             const b = buscar(activa);
             if (!b) {
                 return;
             }
             const campo = crear("input", "master-elegir master-dibujo-renombrar");
             campo.value = b.n.nombre;
-            campo.setAttribute("aria-label", "Nombre de " + b.n.nombre);
+            campo.setAttribute("aria-label", ocT("Nombre de {nombre}", { nombre: b.n.nombre }));
             const actual = listaCapas.querySelector(".es-activa .master-dibujo-capa-nombre");
             if (!actual) {
                 return;
@@ -7527,15 +7503,15 @@
             });
             campo.addEventListener("blur", () => acabarNombre(true));
         });
-        const duplicar = mando("⧉", "Duplicar la capa", () => {
+        const duplicar = mando("⧉", ocT("Duplicar la capa"), () => {
             const c = capaActiva();
             if (!c) {
-                avisar("Solo se pueden duplicar capas.");
+                avisar(ocT("Solo se pueden duplicar capas."));
                 return;
             }
             soltarFlotante();
             const original = lienzos[c.id];
-            const copia = nuevaCapa(c.nombre + " (copia)");
+            const copia = nuevaCapa(ocT("{nombre} (copia)", { nombre: c.nombre }));
             lienzos[copia.id].getContext("2d").drawImage(original, 0, 0);
             copia.opacidad = c.opacidad;
             guardarDibujo(copia.id);
@@ -7543,7 +7519,7 @@
             repintar();
         });
         let seguro = false;
-        const borrarCapa = mando("🗑️", "Borrar la capa o carpeta", () => {
+        const borrarCapa = mando("🗑️", ocT("Borrar la capa o carpeta"), () => {
             const b = buscar(activa);
             if (!b) {
                 return;
@@ -7559,25 +7535,24 @@
                 }
             }, b.n.tipo === "carpeta" ? b.n.hijos : [b.n]);
             if (capas - dentroHay.length < 1) {
-                avisar("Tiene que quedar al menos una capa.");
+                avisar(ocT("Tiene que quedar al menos una capa."));
                 return;
             }
             if (!seguro) {
                 seguro = true;
                 borrarCapa.textContent = "⚠️";
-                borrarCapa.setAttribute("aria-label", "¿Seguro? Pulsa otra vez para borrar " + b.n.nombre);
-                avisar("Pulsa otra vez para borrar " + b.n.nombre + (b.n.tipo === "carpeta" ? " y todo lo que tiene" : "") +
-                    ". No se puede deshacer.");
+                borrarCapa.setAttribute("aria-label", ocT("¿Seguro? Pulsa otra vez para borrar {nombre}", { nombre: b.n.nombre }));
+                avisar(ocT("Pulsa otra vez para borrar {nombre}{n}. No se puede deshacer.", { nombre: b.n.nombre, n: b.n.tipo === "carpeta" ? ocT(" y todo lo que tiene") : "" }));
                 setTimeout(() => {
                     seguro = false;
                     borrarCapa.textContent = "🗑️";
-                    borrarCapa.setAttribute("aria-label", "Borrar la capa o carpeta");
+                    borrarCapa.setAttribute("aria-label", ocT("Borrar la capa o carpeta"));
                 }, 4000);
                 return;
             }
             seguro = false;
             borrarCapa.textContent = "🗑️";
-            borrarCapa.setAttribute("aria-label", "Borrar la capa o carpeta");
+            borrarCapa.setAttribute("aria-label", ocT("Borrar la capa o carpeta"));
             soltarFlotante(false);
             sel = null;
             const i = b.lista.indexOf(b.n);
@@ -7600,7 +7575,7 @@
             pintarCapas();
             repintar();
             guardar();
-            avisar("Borrada: " + b.n.nombre + ".");
+            avisar(ocT("Borrada: {nombre}.", { nombre: b.n.nombre }));
         });
         const etOpa = crear("label", "oc-dados-etiqueta master-dibujo-opacidad");
         const opacidad = crear("input");
@@ -7609,7 +7584,7 @@
         opacidad.max = 100;
         opacidad.step = 5;
         const valorOpa = crear("span", "", "");
-        etOpa.append(document.createTextNode("opacidad "), valorOpa, opacidad);
+        etOpa.append(document.createTextNode(ocT("opacidad ")), valorOpa, opacidad);
         opacidad.addEventListener("input", () => {
             const b = buscar(activa);
             if (!b) {
@@ -7644,7 +7619,7 @@
                 if (n.tipo === "carpeta" && n.abierta) {
                     pasar(n.hijos, nivel + 1);
                     if (!n.hijos.length) {
-                        const vacia = crear("li", "master-dibujo-capa es-vacia", "(vacía)");
+                        const vacia = crear("li", "master-dibujo-capa es-vacia", ocT("(vacía)"));
                         vacia.style.setProperty("--nivel", nivel + 1);
                         filas.push(vacia);
                     }
@@ -7660,9 +7635,9 @@
         const rejilla = crear("div", "master-dibujo-rejilla");
         // Los ajustes, plegados; «#» en la barra la enseña o la esconde.
         const tituloR = crear("h3", "master-dibujo-titulo");
-        const plegarR = botonDe("master-dibujo-plegar", (d.rejilla.abierta ? "▾" : "▸") + " rejilla de rol", () => {
+        const plegarR = botonDe("master-dibujo-plegar", ocT("{n} rejilla de rol", { n: d.rejilla.abierta ? "▾" : "▸" }), () => {
             d.rejilla.abierta = !d.rejilla.abierta;
-            plegarR.textContent = (d.rejilla.abierta ? "▾" : "▸") + " rejilla de rol";
+            plegarR.textContent = ocT("{n} rejilla de rol", { n: d.rejilla.abierta ? "▾" : "▸" });
             plegarR.setAttribute("aria-expanded", String(!!d.rejilla.abierta));
             ajustesR.hidden = !d.rejilla.abierta;
             guardar();
@@ -7680,7 +7655,7 @@
         ver.type = "checkbox";
         ver.checked = !!d.rejilla.ver;
         const etVer = crear("label", "master-nombres-apellido");
-        etVer.append(ver, document.createTextNode(" enseñar la rejilla"));
+        etVer.append(ver, document.createTextNode(ocT(" enseñar la rejilla")));
         const tipo = crear("select", "master-elegir");
         [["cuadrada", "cuadrada"], ["hex", "hexagonal"]].forEach(([v, n]) => {
             const o = crear("option", "", n);
@@ -7707,7 +7682,7 @@
         bajarR.type = "checkbox";
         bajarR.checked = !!d.rejilla.bajar;
         const etBajar = crear("label", "master-nombres-apellido");
-        etBajar.append(bajarR, document.createTextNode(" en la imagen al descargar"));
+        etBajar.append(bajarR, document.createTextNode(ocT(" en la imagen al descargar")));
         const cambiarRejilla = () => {
             Object.assign(d.rejilla, { ver: ver.checked, tipo: tipo.value, tam: Math.min(250, Math.max(10, parseInt(tam.value, 10) || 50)),
                 color: colorR.value, opacidad: parseInt(opaR.value, 10), bajar: bajarR.checked });
@@ -7718,13 +7693,13 @@
         };
         [ver, tipo, tam, colorR, opaR, bajarR].forEach((x) => x.addEventListener(x.type === "range" || x.type === "color" ? "input" : "change",
             cambiarRejilla));
-        ajustesR.append(etVer, caja("forma", tipo), caja("casilla (de 1000 de ancho)", tam), caja("color", colorR),
-            caja("cuánto se ve", opaR), etBajar);
+        ajustesR.append(etVer, caja(ocT("forma"), tipo), caja(ocT("casilla (de 1000 de ancho)"), tam), caja("color", colorR),
+            caja(ocT("cuánto se ve"), opaR), etBajar);
         rejilla.append(tituloR, ajustesR);
         botonRejilla.addEventListener("click", () => {
             ver.checked = !ver.checked;
             cambiarRejilla();
-            avisar(ver.checked ? "Rejilla a la vista." : "Rejilla escondida.");
+            avisar(ver.checked ? ocT("Rejilla a la vista.") : ocT("Rejilla escondida."));
         });
         botonRejilla.setAttribute("aria-pressed", String(!!d.rejilla.ver));
         // ---- EL TAMAÑO DEL LIENZO (plegado): unos cuantos ya hechos o el
@@ -7734,16 +7709,16 @@
         const tituloT = crear("h3", "master-dibujo-titulo");
         const ajustesT = crear("div", "master-dibujo-ajustes");
         ajustesT.hidden = true;
-        const plegarT = botonDe("master-dibujo-plegar", "▸ tamaño del lienzo", () => {
+        const plegarT = botonDe("master-dibujo-plegar", ocT("▸ tamaño del lienzo"), () => {
             ajustesT.hidden = !ajustesT.hidden;
-            plegarT.textContent = (ajustesT.hidden ? "▸" : "▾") + " tamaño del lienzo";
+            plegarT.textContent = ocT("{n} tamaño del lienzo", { n: ajustesT.hidden ? "▸" : "▾" });
             plegarT.setAttribute("aria-expanded", String(!ajustesT.hidden));
         });
         plegarT.setAttribute("aria-expanded", "false");
         tituloT.appendChild(plegarT);
         const hechos = crear("select", "master-elegir");
-        [["", "a medida"], ["1000x750", "normal (1000 × 750)"], ["1200x1200", "cuadrado (1200 × 1200)"],
-            ["1600x900", "panorámico (1600 × 900)"], ["750x1000", "de pie (750 × 1000)"], ["2000x1500", "grande (2000 × 1500)"]]
+        [["", ocT("a medida")], ["1000x750", ocT("normal (1000 × 750)")], ["1200x1200", ocT("cuadrado (1200 × 1200)")],
+            ["1600x900", ocT("panorámico (1600 × 900)")], ["750x1000", ocT("de pie (750 × 1000)")], ["2000x1500", ocT("grande (2000 × 1500)")]]
             .forEach(([v, n]) => {
                 const o = crear("option", "", n);
                 o.value = v;
@@ -7769,8 +7744,8 @@
         const estirar = crear("input");
         estirar.type = "checkbox";
         const etEstirar = crear("label", "master-nombres-apellido");
-        etEstirar.append(estirar, document.createTextNode(" estirar lo dibujado"));
-        const cambiarT = botonDe("oc-vida-accion", "↔ cambiar el tamaño", () => {
+        etEstirar.append(estirar, document.createTextNode(ocT(" estirar lo dibujado")));
+        const cambiarT = botonDe("oc-vida-accion", ocT("↔ cambiar el tamaño"), () => {
             const w = Math.min(3000, Math.max(200, parseInt(anchoT.value, 10) || ANCHO));
             const h = Math.min(3000, Math.max(200, parseInt(altoT.value, 10) || ALTO));
             if (w === ANCHO && h === ALTO) {
@@ -7802,14 +7777,14 @@
             guardarDibujo();
             pintarCapas();
             repintar();
-            avisar("El lienzo mide ahora " + w + " × " + h + ". (Esto no se deshace.)");
+            avisar(ocT("El lienzo mide ahora {w} × {h}. (Esto no se deshace.)", { w: w, h: h }));
         });
-        ajustesT.append(caja("ya hecho", hechos), caja("ancho", anchoT), caja("alto", altoT), etEstirar, cambiarT);
+        ajustesT.append(caja(ocT("ya hecho"), hechos), caja(ocT("ancho"), anchoT), caja(ocT("alto"), altoT), etEstirar, cambiarT);
         tamanoL.append(tituloT, ajustesT);
         panel.append(tituloCapas, nuevas, listaCapas, mandos, etOpa, rejilla, tamanoL);
 
         // Lo que es el dibujo, para quien no lo ve.
-        const etD = crear("label", "oc-dados-etiqueta", "de qué es (para el lector de pantalla)");
+        const etD = crear("label", "oc-dados-etiqueta", ocT("de qué es (para el lector de pantalla)"));
         const desc = crear("input", "master-elegir");
         desc.id = "master-dibujo-desc-" + m.id;
         desc.value = d.desc || "";
@@ -7882,22 +7857,22 @@
     // oficio, aspecto, carácter, manía al hablar, qué quiere y un secreto.
     // Cada cosa se puede volver a tirar suelta (🎲); ☆ lo guarda. ----
     const PNJ_CAMPOS = [["oficio", "Oficio", "oficios"], ["aspecto", "Aspecto", "aspecto"], ["rasgo", "Carácter", "rasgos"],
-        ["mania", "Al hablar", "manias"], ["quiere", "Quiere", "quiere"], ["secreto", "Secreto", "secretos"]];
+        ["mania", ocT("Al hablar"), "manias"], ["quiere", "Quiere", "quiere"], ["secreto", "Secreto", "secretos"]];
 
     function montarPnj(dentro, m) {
         m.datos = m.datos || {};
-        dentro.appendChild(crear("p", "oc-hoja-nota", "Cargando…"));
+        dentro.appendChild(crear("p", "oc-hoja-nota", ocT("Cargando…")));
         Promise.all([pedir(TABLAS), pedir(NOMBRES)]).then(([tablas, nombres]) => {
             const d = m.datos;
             const t = tablas.pnj;
-            const especie = elegirDe("master-pnj-especie-" + m.id, "especie",
-                [["", "al azar"]].concat(Object.keys(nombres.especies).map((k) => [k, nombres.especies[k].nombre])), d.especie || "");
-            const genero = botonesDe("género", [["cualquiera", "cualquiera"], ["f", "♀"], ["m", "♂"], ["n", "⚪ neutro"]],
+            const especie = elegirDe("master-pnj-especie-" + m.id, ocT("especie"),
+                [["", ocT("al azar")]].concat(Object.keys(nombres.especies).map((k) => [k, nombres.especies[k].nombre])), d.especie || "");
+            const genero = botonesDe(ocT("género"), [["cualquiera", ocT("cualquiera")], ["f", "♀"], ["m", "♂"], ["n", ocT("⚪ neutro")]],
                 d.genero || "cualquiera", (v) => {
                     d.genero = v;
                     guardar();
                 });
-            const etGen = crear("p", "oc-dados-etiqueta", "género");
+            const etGen = crear("p", "oc-dados-etiqueta", ocT("género"));
             etGen.setAttribute("aria-hidden", "true");
             const nuevo = () => {
                 const esp = especie.elegir.value || alAzar(Object.keys(nombres.especies));
@@ -7911,14 +7886,14 @@
             const ficha = crear("div", "master-pnj");
             ficha.setAttribute("aria-live", "polite");
             const guardados = crear("ul", "master-pnj-guardados");
-            guardados.setAttribute("aria-label", "PNJ guardados");
-            const tituloG = crear("h3", "master-nombres-titulo", "⭐ guardados");
+            guardados.setAttribute("aria-label", ocT("PNJ guardados"));
+            const tituloG = crear("h3", "master-nombres-titulo", ocT("⭐ guardados"));
             const texto = (p) => p.nombre + " (" + p.especie + ")\n" + PNJ_CAMPOS.map(([k, n]) => n + ": " + p[k]).join("\n");
             const pintarFicha = () => {
                 const p = d.pnj;
                 ficha.replaceChildren();
                 if (!p) {
-                    ficha.appendChild(crear("p", "oc-vacio", "Pulsa «generar»."));
+                    ficha.appendChild(crear("p", "oc-vacio", ocT("Pulsa «generar».")));
                     return;
                 }
                 const cab = crear("div", "master-pnj-cabeza");
@@ -7932,20 +7907,20 @@
                         guardar();
                         pintarFicha();
                         avisar(nombre + ": " + p[k] + ".");
-                    }, "Otro valor para " + nombre.toLowerCase());
-                    otra.title = "Otro";
+                    }, ocT("Otro valor para {toLowerCase}", { toLowerCase: nombre.toLowerCase() }));
+                    otra.title = ocT("Otro");
                     dd.appendChild(otra);
                     dl.append(crear("dt", "", nombre), dd);
                 });
                 const botones = crear("div", "master-pnj-botones");
                 botones.append(
-                    botonDe("oc-vida-accion", "☆ guardar", () => {
+                    botonDe("oc-vida-accion", ocT("☆ guardar"), () => {
                         d.guardados = (d.guardados || []).concat([Object.assign({}, p)]);
                         guardar();
                         pintarGuardados();
-                        avisar("Guardado: " + p.nombre + ".");
-                    }, "Guardar a " + p.nombre),
-                    botonDe("oc-vida-accion", "⧉ copiar", () => copiarTexto(texto(p), "Copiado: " + p.nombre + "."), "Copiar a " + p.nombre));
+                        avisar(ocT("Guardado: {nombre}.", { nombre: p.nombre }));
+                    }, ocT("Guardar a {nombre}", { nombre: p.nombre })),
+                    botonDe("oc-vida-accion", ocT("⧉ copiar"), () => copiarTexto(texto(p), ocT("Copiado: {nombre}.", { nombre: p.nombre })), ocT("Copiar a {nombre}", { nombre: p.nombre })));
                 ficha.append(cab, dl, botones);
             };
             const pintarGuardados = () => {
@@ -7956,25 +7931,25 @@
                         d.pnj = Object.assign({}, p);
                         guardar();
                         pintarFicha();
-                        avisar("PNJ: " + p.nombre + ", " + p.oficio + ".");
-                    }, "Ver a " + p.nombre);
+                        avisar(ocT("PNJ: {nombre}, {oficio}.", { nombre: p.nombre, oficio: p.oficio }));
+                    }, ocT("Ver a {nombre}", { nombre: p.nombre }));
                     const quitar = botonDe("master-nombre-boton", "✕", () => {
                         lista.splice(i, 1);
                         guardar();
                         pintarGuardados();
-                        avisar("Quitado: " + p.nombre + ".");
-                    }, "Quitar a " + p.nombre + " de guardados");
+                        avisar(ocT("Quitado: {nombre}.", { nombre: p.nombre }));
+                    }, ocT("Quitar a {nombre} de guardados", { nombre: p.nombre }));
                     li.append(ver, quitar);
                     return li;
                 }));
                 tituloG.hidden = guardados.hidden = !lista.length;
             };
-            const generar = botonDe("oc-vida-accion es-principal master-nombres-generar", "🎲 generar PNJ", () => {
+            const generar = botonDe("oc-vida-accion es-principal master-nombres-generar", ocT("🎲 generar PNJ"), () => {
                 d.especie = especie.elegir.value;
                 d.pnj = nuevo();
                 guardar();
                 pintarFicha();
-                avisar("PNJ: " + d.pnj.nombre + ", " + d.pnj.oficio + ".");
+                avisar(ocT("PNJ: {nombre}, {oficio}.", { nombre: d.pnj.nombre, oficio: d.pnj.oficio }));
             });
             const arriba = crear("div", "master-nombres-form");
             arriba.append(especie, etGen, genero, generar);
@@ -7982,7 +7957,7 @@
             pintarFicha();
             pintarGuardados();
         }).catch(() => {
-            dentro.replaceChildren(crear("p", "oc-vacio", "No he podido cargar las tablas."));
+            dentro.replaceChildren(crear("p", "oc-vacio", ocT("No he podido cargar las tablas.")));
         });
     }
 
@@ -8000,8 +7975,7 @@
             const a0 = (i / partes) * Math.PI * 2 - Math.PI / 2;
             const a1 = ((i + 1) / partes) * Math.PI * 2 - Math.PI / 2;
             const trozo = document.createElementNS(SVG, "path");
-            trozo.setAttribute("d", "M0 0 L" + (48 * Math.cos(a0)).toFixed(2) + " " + (48 * Math.sin(a0)).toFixed(2) + " A48 48 0 0 1 " +
-                (48 * Math.cos(a1)).toFixed(2) + " " + (48 * Math.sin(a1)).toFixed(2) + " Z");
+            trozo.setAttribute("d", ocT("M0 0 L{n} {n2} A48 48 0 0 1 {n3} {n4} Z", { n: (48 * Math.cos(a0)).toFixed(2), n2: (48 * Math.sin(a0)).toFixed(2), n3: (48 * Math.cos(a1)).toFixed(2), n4: (48 * Math.sin(a1)).toFixed(2) }));
             trozo.setAttribute("class", "master-reloj-trozo" + (i < llenas ? " es-lleno" : ""));
             trozo.addEventListener("click", () => alPinchar(i));
             svg.appendChild(trozo);
@@ -8014,13 +7988,13 @@
         const d = m.datos;
         d.relojes = Array.isArray(d.relojes) ? d.relojes : [];
         const lista = crear("ul", "master-relojes");
-        lista.setAttribute("aria-label", "Relojes");
+        lista.setAttribute("aria-label", ocT("Relojes"));
         const pintar = () => {
             lista.replaceChildren(...d.relojes.map((r, i) => {
                 const li = crear("li", "master-reloj" + (r.llenas >= r.partes ? " es-lleno" : ""));
                 const nombre = crear("input", "master-elegir master-reloj-nombre");
                 nombre.value = r.nombre;
-                nombre.setAttribute("aria-label", "Nombre del reloj");
+                nombre.setAttribute("aria-label", ocT("Nombre del reloj"));
                 nombre.addEventListener("change", () => {
                     r.nombre = nombre.value.trim() || "reloj";
                     guardar();
@@ -8034,7 +8008,7 @@
                     if (foco) {
                         foco.focus();
                     }
-                    avisar(r.nombre + ": " + r.llenas + " de " + r.partes + (r.llenas >= r.partes ? ". ¡Lleno!" : "."));
+                    avisar(ocT("{nombre}: {llenas} de {partes}{n}", { nombre: r.nombre, llenas: r.llenas, partes: r.partes, n: r.llenas >= r.partes ? ocT(". ¡Lleno!") : "." }));
                 };
                 const barra = crear("div", "master-reloj-cuenta");
                 barra.setAttribute("role", "meter");
@@ -8044,14 +8018,14 @@
                 barra.setAttribute("aria-label", r.nombre);
                 barra.append(dibujoReloj(r.partes, r.llenas, (j) => poner(j + 1 === r.llenas ? j : j + 1)),
                     crear("span", "master-reloj-numero", r.llenas + "/" + r.partes));
-                const menos = botonDe("master-pestana-mando es-menos", "−", () => poner(r.llenas - 1), "Vaciar un trozo de " + r.nombre);
-                const mas = botonDe("master-pestana-mando es-mas", "+", () => poner(r.llenas + 1), "Llenar un trozo de " + r.nombre);
+                const menos = botonDe("master-pestana-mando es-menos", "−", () => poner(r.llenas - 1), ocT("Vaciar un trozo de {nombre}", { nombre: r.nombre }));
+                const mas = botonDe("master-pestana-mando es-mas", "+", () => poner(r.llenas + 1), ocT("Llenar un trozo de {nombre}", { nombre: r.nombre }));
                 menos.disabled = r.llenas <= 0;
                 mas.disabled = r.llenas >= r.partes;
                 const partes = crear("select", "master-postit-elegir");
-                partes.setAttribute("aria-label", "Trozos de " + r.nombre);
+                partes.setAttribute("aria-label", ocT("Trozos de {nombre}", { nombre: r.nombre }));
                 [4, 6, 8, 10, 12].forEach((n) => {
-                    const o = crear("option", "", n + " trozos");
+                    const o = crear("option", "", ocT("{n} trozos", { n: n }));
                     o.value = n;
                     partes.appendChild(o);
                 });
@@ -8066,41 +8040,41 @@
                     d.relojes.splice(i, 1);
                     guardar();
                     pintar();
-                    avisar("Quitado: " + r.nombre + ".");
+                    avisar(ocT("Quitado: {nombre}.", { nombre: r.nombre }));
                     nuevoNombre.focus();
-                }, "Quitar el reloj " + r.nombre);
+                }, ocT("Quitar el reloj {nombre}", { nombre: r.nombre }));
                 const mandos = crear("div", "master-reloj-mandos");
                 mandos.append(menos, mas, partes, quitar);
                 li.append(nombre, barra, mandos);
                 return li;
             }));
             if (!d.relojes.length) {
-                lista.appendChild(crear("li", "oc-vacio", "Sin relojes todavía."));
+                lista.appendChild(crear("li", "oc-vacio", ocT("Sin relojes todavía.")));
             }
         };
         const form = crear("form", "master-reloj-nuevo");
         const nuevoNombre = crear("input", "master-elegir");
-        nuevoNombre.placeholder = "la guardia llega, el ritual se completa…";
-        nuevoNombre.setAttribute("aria-label", "Nombre del reloj nuevo");
+        nuevoNombre.placeholder = ocT("la guardia llega, el ritual se completa…");
+        nuevoNombre.setAttribute("aria-label", ocT("Nombre del reloj nuevo"));
         const nuevoPartes = crear("select", "master-postit-elegir");
-        nuevoPartes.setAttribute("aria-label", "Trozos del reloj nuevo");
+        nuevoPartes.setAttribute("aria-label", ocT("Trozos del reloj nuevo"));
         [4, 6, 8, 10, 12].forEach((n) => {
-            const o = crear("option", "", n + " trozos");
+            const o = crear("option", "", ocT("{n} trozos", { n: n }));
             o.value = n;
             nuevoPartes.appendChild(o);
         });
         nuevoPartes.value = "6";
-        const anadirReloj = crear("button", "oc-vida-accion es-principal", "＋ reloj");
+        const anadirReloj = crear("button", "oc-vida-accion es-principal", ocT("＋ reloj"));
         anadirReloj.type = "submit";
         form.append(nuevoNombre, nuevoPartes, anadirReloj);
         form.addEventListener("submit", (e) => {
             e.preventDefault();
-            const r = { nombre: nuevoNombre.value.trim() || "reloj " + (d.relojes.length + 1), partes: parseInt(nuevoPartes.value, 10), llenas: 0 };
+            const r = { nombre: nuevoNombre.value.trim() || ocT("reloj {n}", { n: d.relojes.length + 1 }), partes: parseInt(nuevoPartes.value, 10), llenas: 0 };
             d.relojes.push(r);
             nuevoNombre.value = "";
             guardar();
             pintar();
-            avisar("Reloj nuevo: " + r.nombre + ", de " + r.partes + " trozos.");
+            avisar(ocT("Reloj nuevo: {nombre}, de {partes} trozos.", { nombre: r.nombre, partes: r.partes }));
         });
         dentro.append(form, lista);
         pintar();
@@ -8117,13 +8091,13 @@
 
     function montarCalendario(dentro, m) {
         m.datos = m.datos || {};
-        dentro.appendChild(crear("p", "oc-hoja-nota", "Cargando…"));
+        dentro.appendChild(crear("p", "oc-hoja-nota", ocT("Cargando…")));
         pedir(TABLAS).then((tablas) => {
             const d = m.datos;
             const hoyReal = new Date();
             d.tipo = d.tipo || "gregoriano";
-            d.propio = Object.assign({ nombre: "propio", anio: "", meses: "Primero: 30\nSegundo: 30\nTercero: 30\nCuarto: 30",
-                semana: "uno, dos, tres, cuatro, cinco, seis, siete" }, d.propio || {});
+            d.propio = Object.assign({ nombre: "propio", anio: "", meses: ocT("Primero: 30\nSegundo: 30\nTercero: 30\nCuarto: 30"),
+                semana: ocT("uno, dos, tres, cuatro, cinco, seis, siete") }, d.propio || {});
             d.apuntes = d.apuntes || {};
             const harptos = tablas.calendarios.harptos;
             // Los meses de un año (con sus días; las fiestas, de 1 día).
@@ -8176,14 +8150,14 @@
             const nombreFecha = (f) => {
                 const mes = mesesDe(f.anio)[f.mes];
                 if (mes.fiesta) {
-                    return mes.nombre + " de " + f.anio + sufijo();
+                    return ocT("{nombre} de {anio}{sufijo}", { nombre: mes.nombre, anio: f.anio, sufijo: sufijo() });
                 }
                 const dia = d.tipo === "gregoriano" ? ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"][diaSemana(f)]
-                    + " " + f.dia : d.tipo === "harptos" ? "día " + f.dia : f.dia + " (" + semana()[diaSemana(f)] + ")";
-                return dia + " de " + mes.nombre + " de " + f.anio + sufijo();
+                    + " " + f.dia : d.tipo === "harptos" ? ocT("día {dia}", { dia: f.dia }) : f.dia + " (" + semana()[diaSemana(f)] + ")";
+                return ocT("{dia} de {nombre} de {anio}{sufijo}", { dia: dia, nombre: mes.nombre, anio: f.anio, sufijo: sufijo() });
             };
-            const momento = (h) => (h < 6 ? "de madrugada" : h < 12 ? "por la mañana" : h < 14 ? "a mediodía" : h < 20 ? "por la tarde"
-                : "por la noche");
+            const momento = (h) => (h < 6 ? ocT("de madrugada") : h < 12 ? ocT("por la mañana") : h < 14 ? ocT("a mediodía") : h < 20 ? ocT("por la tarde")
+                : ocT("por la noche"));
             // Que pase el tiempo (en horas; con días si se pasa de 24).
             const pasar = (horas) => {
                 let h = (d.hora || 0) + horas;
@@ -8218,13 +8192,13 @@
                 d.viendo = { anio: f.anio, mes: f.mes };
                 guardar();
                 pintar();
-                avisar("Ahora: " + nombreFecha(f) + ", a las " + d.hora + ":00 (" + momento(d.hora) + ").");
+                avisar(ocT("Ahora: {nombreFecha}, a las {hora}:00 ({momento}).", { nombreFecha: nombreFecha(f), hora: d.hora, momento: momento(d.hora) }));
                 // Para los efectos con duración (que cuentan las horas).
                 document.dispatchEvent(new CustomEvent("master:tiempo", { detail: { horas } }));
             };
             // ARRIBA: qué calendario, la fecha de la partida y el tiempo.
-            const tipo = elegirDe("master-cal-tipo-" + m.id, "calendario", [["gregoriano", "gregoriano"], ["harptos", harptos.nombre],
-                ["propio", "propio"]], d.tipo);
+            const tipo = elegirDe("master-cal-tipo-" + m.id, ocT("calendario"), [["gregoriano", ocT("gregoriano")], ["harptos", harptos.nombre],
+                ["propio", ocT("propio")]], d.tipo);
             tipo.elegir.addEventListener("change", () => {
                 d.tipo = tipo.elegir.value;
                 d.fecha = d.tipo === "gregoriano" ? { anio: hoyReal.getFullYear(), mes: hoyReal.getMonth(), dia: hoyReal.getDate() }
@@ -8232,47 +8206,47 @@
                 d.viendo = { anio: d.fecha.anio, mes: d.fecha.mes };
                 guardar();
                 pintar();
-                avisar("Calendario " + tipo.elegir.selectedOptions[0].textContent + ".");
+                avisar(ocT("Calendario {textContent}.", { textContent: tipo.elegir.selectedOptions[0].textContent }));
             });
             const ahora = crear("p", "master-cal-ahora");
             ahora.setAttribute("aria-live", "polite");
             const tiempo = crear("div", "master-cal-tiempo");
             tiempo.setAttribute("role", "group");
-            tiempo.setAttribute("aria-label", "Que pase el tiempo");
-            [["−1 día", -24], ["+1 h", 1], ["+8 h (descanso largo)", 8], ["+1 día", 24], ["+1 semana", 0]].forEach(([texto, h]) => {
+            tiempo.setAttribute("aria-label", ocT("Que pase el tiempo"));
+            [[ocT("−1 día"), -24], [ocT("+1 h"), 1], [ocT("+8 h (descanso largo)"), 8], [ocT("+1 día"), 24], [ocT("+1 semana"), 0]].forEach(([texto, h]) => {
                 tiempo.appendChild(botonDe("oc-vida-accion", texto, () => pasar(h || 24 * (semana().length || 7))));
             });
             // EL PROPIO: meses (uno por línea, «nombre: días»), días de la
             // semana y lo que va detrás del año.
             const propio = crear("div", "master-cal-propio");
-            const etMeses = crear("label", "oc-dados-etiqueta", "meses (uno por línea: «nombre: días»)");
+            const etMeses = crear("label", "oc-dados-etiqueta", ocT("meses (uno por línea: «nombre: días»)"));
             const meses = crear("textarea", "oc-notas-texto es-corta");
             meses.id = "master-cal-meses-" + m.id;
             etMeses.htmlFor = meses.id;
             meses.value = d.propio.meses;
-            const etSemana = crear("label", "oc-dados-etiqueta", "días de la semana (separados por comas)");
+            const etSemana = crear("label", "oc-dados-etiqueta", ocT("días de la semana (separados por comas)"));
             const sem = crear("input", "master-elegir");
             sem.id = "master-cal-semana-" + m.id;
             etSemana.htmlFor = sem.id;
             sem.value = d.propio.semana;
-            const etAnio = crear("label", "oc-dados-etiqueta", "detrás del año (DEM, AEM…)");
+            const etAnio = crear("label", "oc-dados-etiqueta", ocT("detrás del año (DEM, AEM…)"));
             const anio = crear("input", "master-elegir");
             anio.id = "master-cal-anio-" + m.id;
             etAnio.htmlFor = anio.id;
             anio.value = d.propio.anio;
-            const etNum = crear("label", "oc-dados-etiqueta", "año de la partida");
+            const etNum = crear("label", "oc-dados-etiqueta", ocT("año de la partida"));
             const numAnio = crear("input", "master-elegir");
             numAnio.type = "number";
             numAnio.id = "master-cal-num-" + m.id;
             etNum.htmlFor = numAnio.id;
-            const usar = botonDe("oc-vida-accion", "✔ usar", () => {
+            const usar = botonDe("oc-vida-accion", ocT("✔ usar"), () => {
                 Object.assign(d.propio, { meses: meses.value, semana: sem.value, anio: anio.value.trim() });
                 d.fecha.anio = parseInt(numAnio.value, 10) || d.fecha.anio;
                 arreglar(d.fecha);
                 d.viendo = { anio: d.fecha.anio, mes: d.fecha.mes };
                 guardar();
                 pintar();
-                avisar("Calendario propio puesto.");
+                avisar(ocT("Calendario propio puesto."));
             });
             propio.append(etMeses, meses, etSemana, sem, etAnio, anio, etNum, numAnio, usar);
             // EL MES: en rejilla, con ‹ › para cambiar de mes.
@@ -8293,13 +8267,13 @@
                 guardar();
                 pintarMes();
             };
-            const antes = botonDe("master-pestana-mando", "‹", () => verMes(-1), "Mes anterior");
-            const despues = botonDe("master-pestana-mando", "›", () => verMes(1), "Mes siguiente");
-            const volver = botonDe("oc-vida-accion", "hoy", () => {
+            const antes = botonDe("master-pestana-mando", "‹", () => verMes(-1), ocT("Mes anterior"));
+            const despues = botonDe("master-pestana-mando", "›", () => verMes(1), ocT("Mes siguiente"));
+            const volver = botonDe("oc-vida-accion", ocT("hoy"), () => {
                 d.viendo = { anio: d.fecha.anio, mes: d.fecha.mes };
                 guardar();
                 pintarMes();
-            }, "Volver al mes de la partida");
+            }, ocT("Volver al mes de la partida"));
             cabeza.append(antes, titulo, despues, volver);
             const rejilla = crear("table", "master-cal-rejilla");
             // El día elegido y sus apuntes.
@@ -8309,11 +8283,11 @@
             apunte.id = "master-cal-apunte-" + m.id;
             etDia.htmlFor = apunte.id;
             apunte.rows = 3;
-            const esHoy = botonDe("oc-vida-accion", "📍 que la partida esté en este día", () => {
+            const esHoy = botonDe("oc-vida-accion", ocT("📍 que la partida esté en este día"), () => {
                 d.fecha = Object.assign({}, elegido);
                 guardar();
                 pintar();
-                avisar("La partida está en " + nombreFecha(d.fecha) + ".");
+                avisar(ocT("La partida está en {nombreFecha}.", { nombreFecha: nombreFecha(d.fecha) }));
             });
             let espera = 0;
             apunte.addEventListener("input", () => {
@@ -8329,14 +8303,14 @@
                 }, 400);
             });
             const pintarDia = () => {
-                etDia.textContent = "apuntes del " + nombreFecha(elegido);
+                etDia.textContent = ocT("apuntes del {nombreFecha}", { nombreFecha: nombreFecha(elegido) });
                 apunte.value = d.apuntes[clave(elegido)] || "";
             };
             function pintarMes() {
                 const { anio: a, mes: me } = d.viendo;
                 const lista = mesesDe(a);
                 const mes = lista[Math.min(me, lista.length - 1)];
-                titulo.textContent = mes.nombre + " de " + a + sufijo();
+                titulo.textContent = ocT("{nombre} de {a}{sufijo}", { nombre: mes.nombre, a: a, sufijo: sufijo() });
                 const dias = semana();
                 const cols = Math.max(1, dias.length);
                 const cab = crear("tr");
@@ -8355,7 +8329,7 @@
                         pintarMes();
                         pintarDia();
                         apunte.focus();
-                    }, nombreFecha(f) + (d.apuntes[clave(f)] ? " (con apuntes)" : ""));
+                    }, nombreFecha(f) + (d.apuntes[clave(f)] ? ocT(" (con apuntes)") : ""));
                     if (a === d.fecha.anio && me === d.fecha.mes && dia === d.fecha.dia) {
                         b.classList.add("es-hoy");
                         b.setAttribute("aria-current", "date");
@@ -8382,8 +8356,7 @@
             function pintar() {
                 // La fecha, en texto, para quien la quiera (la línea temporal).
                 d.textoHoy = nombreFecha(d.fecha);
-                ahora.replaceChildren(crear("strong", "", "En la partida: "), document.createTextNode(nombreFecha(d.fecha) + ", a las " +
-                    (d.hora || 0) + ":00 (" + momento(d.hora || 0) + ")"));
+                ahora.replaceChildren(crear("strong", "", ocT("En la partida: ")), document.createTextNode(ocT("{nombreFecha}, a las {n}:00 ({momento})", { nombreFecha: nombreFecha(d.fecha), n: d.hora || 0, momento: momento(d.hora || 0) })));
                 propio.hidden = d.tipo !== "propio";
                 numAnio.value = d.fecha.anio;
                 elegido = Object.assign({}, d.fecha);
@@ -8395,7 +8368,7 @@
             dentro.replaceChildren(arriba, cabeza, rejilla, etDia, apunte, esHoy);
             pintar();
         }).catch(() => {
-            dentro.replaceChildren(crear("p", "oc-vacio", "No he podido cargar los calendarios."));
+            dentro.replaceChildren(crear("p", "oc-vacio", ocT("No he podido cargar los calendarios.")));
         });
     }
 
@@ -8409,7 +8382,7 @@
     const DUNGEON_ANCHO = 48;
     const DUNGEON_ALTO = 36;
     const DUNGEON_CELDA = 20;
-    const DUNGEON_TAMANOS = [["5", "pequeño (5 salas)"], ["8", "mediano (8 salas)"], ["12", "grande (12 salas)"]];
+    const DUNGEON_TAMANOS = [["5", ocT("pequeño (5 salas)")], ["8", ocT("mediano (8 salas)")], ["12", ocT("grande (12 salas)")]];
     // La trampa según el nivel: CD y daño (cuenta propia).
     const DUNGEON_TRAMPA = [[4, 12, "2d10"], [10, 14, "4d10"], [16, 16, "8d10"], [99, 18, "10d10"]];
 
@@ -8676,7 +8649,7 @@
 
     function montarDungeon(dentro, m) {
         m.datos = m.datos || {};
-        dentro.appendChild(crear("p", "oc-hoja-nota", "Cargando…"));
+        dentro.appendChild(crear("p", "oc-hoja-nota", ocT("Cargando…")));
         Promise.all([pedir(TABLAS), pedir(BESTIARIO), pedir(TIENDA)]).then(([tablas, best, tienda]) => {
             const d = m.datos;
             const t = tablas.dungeon;
@@ -8688,9 +8661,9 @@
             tienda.objetos.forEach((o) => {
                 objetos[o.en] = o;
             });
-            const tema = elegirDe("master-dungeon-tema-" + m.id, "qué es", Object.keys(t.temas).map((k) => [k, t.temas[k].emoji + " " +
+            const tema = elegirDe("master-dungeon-tema-" + m.id, ocT("qué es"), Object.keys(t.temas).map((k) => [k, t.temas[k].emoji + " " +
                 t.temas[k].nombre]), d.tema || "cripta");
-            const tamano = elegirDe("master-dungeon-tam-" + m.id, "tamaño", DUNGEON_TAMANOS, d.salas || "8");
+            const tamano = elegirDe("master-dungeon-tam-" + m.id, ocT("tamaño"), DUNGEON_TAMANOS, d.salas || "8");
             const enParty = estado.modulos.filter((x) => x.tipo === "party").reduce((n, x) => n + ((x.datos && x.datos.pjs) || []).length, 0);
             const numero = (id, texto, valor, min, max) => {
                 const caja = crear("div", "master-campo");
@@ -8706,14 +8679,14 @@
                 caja.elegir = x;
                 return caja;
             };
-            const nivel = numero("master-dungeon-nivel-", "nivel de la party", d.nivel || 3, 1, 20);
-            const pjs = numero("master-dungeon-pjs-", "cuántos PJ", d.pjs || enParty || 4, 1, 10);
-            const estilo = elegirDe("master-dungeon-estilo-" + m.id, "estilo del mapa", [["", "según el sitio"], ["salas", "salas y puertas"],
-                ["cavernas", "cavernas"]], d.estilo || "");
+            const nivel = numero("master-dungeon-nivel-", ocT("nivel de la party"), d.nivel || 3, 1, 20);
+            const pjs = numero("master-dungeon-pjs-", ocT("cuántos PJ"), d.pjs || enParty || 4, 1, 10);
+            const estilo = elegirDe("master-dungeon-estilo-" + m.id, ocT("estilo del mapa"), [["", ocT("según el sitio")], ["salas", ocT("salas y puertas")],
+                ["cavernas", ocT("cavernas")]], d.estilo || "");
             const fila = crear("div", "master-encuentro-fila");
             fila.append(tema, tamano, nivel, pjs, estilo);
             // El del máster (todo) o el de los jugadores (lo descubierto).
-            const vista = botonesDe("qué mapa se ve", [["master", "🧙 el del máster"], ["jugadores", "👥 el de los jugadores"]],
+            const vista = botonesDe(ocT("qué mapa se ve"), [["master", ocT("🧙 el del máster")], ["jugadores", ocT("👥 el de los jugadores")]],
                 d.vista || "master", (v) => {
                     d.vista = v;
                     guardar();
@@ -8722,7 +8695,7 @@
             const mapaLienzo = crear("canvas", "master-dungeon-mapa");
             mapaLienzo.setAttribute("role", "img");
             const salasLista = crear("ol", "master-dungeon-salas");
-            salasLista.setAttribute("aria-label", "Las salas");
+            salasLista.setAttribute("aria-label", ocT("Las salas"));
             const botones = crear("div", "master-notas-botones");
 
             const generar = () => {
@@ -8776,17 +8749,17 @@
                 d.contenido = salas;
                 guardar();
                 pintar();
-                avisar("Dungeon nuevo: " + tm.nombre + " de " + salas.length + " salas.");
+                avisar(ocT("Dungeon nuevo: {nombre} de {n} salas.", { nombre: tm.nombre, n: salas.length }));
             };
             const botinTexto = (r) => {
                 const partes = r.monedas.filter((x) => x[1]).map((x) => x[1].toLocaleString("es-ES") + " " + x[0]);
-                r.cosas.forEach((c) => partes.push((c.n > 1 ? c.n + " × " : "") + c.texto + " (" + c.valor + " po)"));
+                r.cosas.forEach((c) => partes.push(ocT("{n} ({valor} po)", { n: (c.n > 1 ? ocT("{n} × ", { n: c.n }) : "") + c.texto, valor: c.valor })));
                 return partes.join(", ");
             };
             function pintar() {
                 if (!d.mapa) {
                     mapaLienzo.hidden = true;
-                    salasLista.replaceChildren(crear("li", "oc-vacio", "Elige y pulsa «generar»."));
+                    salasLista.replaceChildren(crear("li", "oc-vacio", ocT("Elige y pulsa «generar».")));
                     botones.hidden = true;
                     leyenda.hidden = true;
                     return;
@@ -8801,9 +8774,8 @@
                 descubrir.hidden = tapar.hidden = !deJugadores;
                 salasLista.replaceChildren(...d.contenido.map((s, i) => {
                     const li = crear("li", "master-dungeon-sala");
-                    const h = crear("h3", "master-dungeon-sala-titulo", "Sala " + (i + 1) + (i === 0 ? " (entrada)" : "") +
-                        (i === d.contenido.length - 1 ? " (la última)" : ""));
-                    const desc = crear("p", "", "Es " + s.que + "; " + s.detalle + ".");
+                    const h = crear("h3", "master-dungeon-sala-titulo", ocT("Sala {n}{n2}{n3}", { n: i + 1, n2: i === 0 ? ocT(" (entrada)") : "", n3: i === d.contenido.length - 1 ? ocT(" (la última)") : "" }));
+                    const desc = crear("p", "", ocT("Es {que}; {detalle}.", { que: s.que, detalle: s.detalle }));
                     // ¿La han descubierto ya? (Sale en el mapa de los jugadores.)
                     const etVista = crear("label", "master-nombres-apellido");
                     const caja = crear("input");
@@ -8813,27 +8785,27 @@
                         d.vistas = d.vistas.filter((x) => x !== i).concat(caja.checked ? [i] : []);
                         guardar();
                         pintarVista();
-                        avisar("Sala " + (i + 1) + (caja.checked ? " descubierta." : " tapada."));
+                        avisar(ocT("Sala {n}{n2}", { n: i + 1, n2: caja.checked ? ocT(" descubierta.") : ocT(" tapada.") }));
                     });
-                    etVista.append(caja, document.createTextNode(" descubierta (sale en el mapa de los jugadores)"));
+                    etVista.append(caja, document.createTextNode(ocT(" descubierta (sale en el mapa de los jugadores)")));
                     li.append(h, desc, etVista);
                     if (s.bichos && s.bichos.length) {
                         const p = crear("p", "master-dungeon-cosa");
-                        p.append(crear("strong", "", "Monstruos: "));
+                        p.append(crear("strong", "", ocT("Monstruos: ")));
                         s.bichos.forEach((g, k) => {
                             const b = porEn[g.en];
                             if (!b) {
                                 return;
                             }
                             if (k) {
-                                p.appendChild(document.createTextNode(" y "));
+                                p.appendChild(document.createTextNode(ocT(" y ")));
                             }
-                            const ver = botonDe("master-botin-objeto", (g.n > 1 ? g.n + " × " : "") + b.nombre, () => abrirBicho(b, ver, best.fuente),
-                                "Ver " + b.nombre);
+                            const ver = botonDe("master-botin-objeto", (g.n > 1 ? ocT("{n} × ", { n: g.n }) : "") + b.nombre, () => abrirBicho(b, ver, best.fuente),
+                                ocT("Ver {nombre}", { nombre: b.nombre }));
                             p.appendChild(ver);
                         });
-                        p.appendChild(document.createTextNode(" (están " + s.hacen + ")."));
-                        const ini = botonDe("oc-vida-accion", "⚔️ a la iniciativa", () => {
+                        p.appendChild(document.createTextNode(ocT(" (están {hacen}).", { hacen: s.hacen })));
+                        const ini = botonDe("oc-vida-accion", ocT("⚔️ a la iniciativa"), () => {
                             const entran = [];
                             s.bichos.forEach((g) => {
                                 const b = porEn[g.en];
@@ -8842,13 +8814,13 @@
                                         (nombres, renombrar) => conNumero(b.nombre, nombres, renombrar), b.nombre));
                                 }
                             });
-                            avisar("A la iniciativa: " + entran.filter(Boolean).join(", ") + ".");
-                        }, "Los monstruos de la sala " + (i + 1) + " a la iniciativa");
+                            avisar(ocT("A la iniciativa: {join}.", { join: entran.filter(Boolean).join(", ") }));
+                        }, ocT("Los monstruos de la sala {n} a la iniciativa", { n: i + 1 }));
                         li.append(p, ini);
                     }
                     if (s.trampa) {
                         const p = crear("p", "master-dungeon-cosa");
-                        p.append(crear("strong", "", "Trampa: " + s.trampa.nombre + ". "), document.createTextNode(s.trampa.texto));
+                        p.append(crear("strong", "", ocT("Trampa: {nombre}. ", { nombre: s.trampa.nombre })), document.createTextNode(s.trampa.texto));
                         if (window.ocDadosEnTexto) {
                             window.ocDadosEnTexto(p);
                         }
@@ -8856,21 +8828,21 @@
                     }
                     if (s.botin) {
                         const p = crear("p", "master-dungeon-cosa");
-                        p.append(crear("strong", "", "Botín (" + s.donde + "): "), document.createTextNode(botinTexto(s.botin)));
+                        p.append(crear("strong", "", ocT("Botín ({donde}): ", { donde: s.donde })), document.createTextNode(botinTexto(s.botin)));
                         s.botin.objetos.forEach((en) => {
                             const o = objetos[en];
                             if (!o) {
                                 return;
                             }
                             p.appendChild(document.createTextNode(", "));
-                            const ver = botonDe("master-botin-objeto", "✨ " + o.nombre, () => abrirObjeto(o, ver, tienda.fuente), "Ver " + o.nombre);
+                            const ver = botonDe("master-botin-objeto", "✨ " + o.nombre, () => abrirObjeto(o, ver, tienda.fuente), ocT("Ver {nombre}", { nombre: o.nombre }));
                             p.appendChild(ver);
                         });
                         p.appendChild(document.createTextNode("."));
                         li.appendChild(p);
                     }
                     if (!s.bichos && !s.trampa && !s.botin) {
-                        li.appendChild(crear("p", "master-dungeon-cosa", "No hay nada más (o eso parece)."));
+                        li.appendChild(crear("p", "master-dungeon-cosa", ocT("No hay nada más (o eso parece).")));
                     }
                     // Sus puertas especiales (cerradas, atrancadas, secretas).
                     (d.mapa.puertas || []).filter((pu) => pu.sala === i && pu.tipo !== "normal").forEach((pu) => {
@@ -8878,12 +8850,9 @@
                         const otra = pas.a === i ? pas.b : pas.a;
                         const p = crear("p", "master-dungeon-cosa");
                         const que = {
-                            cerrada: "Puerta cerrada con llave hacia la sala " + (otra + 1) + ": se abre con herramientas de ladrón (Destreza CD " +
-                                pu.cd + ") o se echa abajo (Fuerza (Atletismo) CD " + (pu.cd + 2) + ").",
-                            atrancada: "Puerta atrancada por el otro lado (hacia la sala " + (otra + 1) + "): Fuerza (Atletismo) CD " + pu.cd +
-                                " para forzarla; hace ruido.",
-                            secreta: "Puerta secreta a un pasillo oculto que lleva a la sala " + (otra + 1) + ": Sabiduría (Percepción) CD " +
-                                pu.cd + " para verla.",
+                            cerrada: ocT("Puerta cerrada con llave hacia la sala {n}: se abre con herramientas de ladrón (Destreza CD {cd}) o se echa abajo (Fuerza (Atletismo) CD {n2}).", { n: otra + 1, cd: pu.cd, n2: pu.cd + 2 }),
+                            atrancada: ocT("Puerta atrancada por el otro lado (hacia la sala {n}): Fuerza (Atletismo) CD {cd} para forzarla; hace ruido.", { n: otra + 1, cd: pu.cd }),
+                            secreta: ocT("Puerta secreta a un pasillo oculto que lleva a la sala {n}: Sabiduría (Percepción) CD {cd} para verla.", { n: otra + 1, cd: pu.cd }),
                         }[pu.tipo];
                         p.append(crear("strong", "", "🚪 "), document.createTextNode(que));
                         li.appendChild(p);
@@ -8896,9 +8865,9 @@
                                 d.encontrados = d.encontrados.filter((x) => x !== pu.pasillo).concat(enc.checked ? [pu.pasillo] : []);
                                 guardar();
                                 pintarVista();
-                                avisar(enc.checked ? "Pasillo secreto encontrado." : "Pasillo secreto escondido otra vez.");
+                                avisar(enc.checked ? ocT("Pasillo secreto encontrado.") : ocT("Pasillo secreto escondido otra vez."));
                             });
-                            etE.append(enc, document.createTextNode(" la han encontrado"));
+                            etE.append(enc, document.createTextNode(ocT(" la han encontrado")));
                             li.appendChild(etE);
                         }
                     });
@@ -8910,73 +8879,71 @@
                 // (Los de antes no tienen zonas: solo el del máster.)
                 const deJugadores = d.vista === "jugadores" && !!d.mapa.zonas;
                 pintarMapa(mapaLienzo, d.mapa, deJugadores ? { jugadores: true, vistas: d.vistas, encontrados: d.encontrados } : {});
-                const tm = t.temas[d.tema] || { nombre: "dungeon" };
-                mapaLienzo.setAttribute("aria-label", deJugadores ? "Mapa de los jugadores: se ven " + d.vistas.length + " de " +
-                    d.mapa.salas.length + " salas, sin números ni secretos." : "Mapa de " + tm.nombre + ": " + d.mapa.salas.length +
-                    " salas numeradas unidas por pasillos; la 1 es la entrada. Lo que hay en cada una, en la lista de debajo.");
+                const tm = t.temas[d.tema] || { nombre: ocT("dungeon") };
+                mapaLienzo.setAttribute("aria-label", deJugadores ? ocT("Mapa de los jugadores: se ven {n} de {n2} salas, sin números ni secretos.", { n: d.vistas.length, n2: d.mapa.salas.length }) : ocT("Mapa de {nombre}: {length} salas numeradas unidas por pasillos; la 1 es la entrada. Lo que hay en cada una, en la lista de debajo.", { nombre: tm.nombre, length: d.mapa.salas.length }));
             }
-            const boton = botonDe("oc-vida-accion es-principal master-nombres-generar", "🎲 generar dungeon", generar);
-            const alDibujo = botonDe("oc-vida-accion", "🎨 al dibujo", () => {
+            const boton = botonDe("oc-vida-accion es-principal master-nombres-generar", ocT("🎲 generar dungeon"), generar);
+            const alDibujo = botonDe("oc-vida-accion", ocT("🎨 al dibujo"), () => {
                 const l = crear("canvas");
                 pintarMapa(l, d.mapa);
                 anadir("dibujo", { titulo: "mapa: " + ((t.temas[d.tema] || {}).nombre || "dungeon"), w: 900, h: 700,
-                    datos: { ancho: l.width, alto: l.height, capas: [{ id: "c1", tipo: "capa", nombre: "mapa", visible: true, opacidad: 100,
-                        imagen: l.toDataURL("image/png") }, { id: "c2", tipo: "capa", nombre: "notas", visible: true, opacidad: 100, imagen: "" }],
+                    datos: { ancho: l.width, alto: l.height, capas: [{ id: "c1", tipo: "capa", nombre: ocT("mapa"), visible: true, opacidad: 100,
+                        imagen: l.toDataURL("image/png") }, { id: "c2", tipo: "capa", nombre: ocT("notas"), visible: true, opacidad: 100, imagen: "" }],
                     activa: "c2", rejilla: { ver: false, tipo: "cuadrada", tam: DUNGEON_CELDA, color: "#000000", opacidad: 40 } } });
-            }, "Pasar el mapa a una ventana de dibujo, para pintar encima");
-            const copiar = botonDe("oc-vida-accion", "⧉ copiar las salas", () => copiarTexto(Array.from(salasLista.children).map((li) => li.innerText)
-                .join("\n\n"), "Copiado el dungeon."), "Copiar las salas (texto)");
+            }, ocT("Pasar el mapa a una ventana de dibujo, para pintar encima"));
+            const copiar = botonDe("oc-vida-accion", ocT("⧉ copiar las salas"), () => copiarTexto(Array.from(salasLista.children).map((li) => li.innerText)
+                .join("\n\n"), ocT("Copiado el dungeon.")), ocT("Copiar las salas (texto)"));
             // La imagen del mapa: copiarla (para pegarla en otro sitio) o
             // descargarla en PNG.
-            const copiarImagen = botonDe("oc-vida-accion", "🖼️ copiar la imagen", () => {
+            const copiarImagen = botonDe("oc-vida-accion", ocT("🖼️ copiar la imagen"), () => {
                 if (!window.ClipboardItem || !navigator.clipboard || !navigator.clipboard.write) {
-                    avisar("Este navegador no deja copiar imágenes: descárgala.");
+                    avisar(ocT("Este navegador no deja copiar imágenes: descárgala."));
                     return;
                 }
                 mapaLienzo.toBlob((blob) => {
                     navigator.clipboard.write([new ClipboardItem({ "image/png": blob })])
-                        .then(() => avisar("Copiada la imagen del mapa."))
-                        .catch(() => avisar("No se ha podido copiar la imagen: descárgala."));
+                        .then(() => avisar(ocT("Copiada la imagen del mapa.")))
+                        .catch(() => avisar(ocT("No se ha podido copiar la imagen: descárgala.")));
                 }, "image/png");
-            }, "Copiar la imagen del mapa");
-            const bajarImagen = botonDe("oc-vida-accion", "⬇ descargar la imagen", () => {
+            }, ocT("Copiar la imagen del mapa"));
+            const bajarImagen = botonDe("oc-vida-accion", ocT("⬇ descargar la imagen"), () => {
                 const a = crear("a");
                 a.href = mapaLienzo.toDataURL("image/png");
                 a.download = "dungeon-" + (d.tema || "mapa") + ".png";
                 document.body.appendChild(a);
                 a.click();
                 a.remove();
-                avisar("Descargado: " + a.download + ".");
-            }, "Descargar la imagen del mapa (PNG)");
-            const ensenar = botonDe("oc-vida-accion es-principal", "👁️ enseñar a la mesa", () => {
+                avisar(ocT("Descargado: {download}.", { download: a.download }));
+            }, ocT("Descargar la imagen del mapa (PNG)"));
+            const ensenar = botonDe("oc-vida-accion es-principal", ocT("👁️ enseñar a la mesa"), () => {
                 const l = crear("canvas", "master-dungeon-mapa es-grande");
                 pintarMapa(l, d.mapa, { jugadores: true, vistas: d.vistas, encontrados: d.encontrados });
                 l.setAttribute("role", "img");
-                l.setAttribute("aria-label", "Mapa de los jugadores: lo descubierto.");
-                window.ocVentana.abrir({ titulo: "el mapa", cuerpo: l, vuelta: ensenar, clase: "es-ancha" });
-            }, "Enseñar en grande el mapa de los jugadores (solo lo descubierto)");
-            const descubrir = botonDe("oc-vida-accion", "☀️ descubrir todas", () => {
+                l.setAttribute("aria-label", ocT("Mapa de los jugadores: lo descubierto."));
+                window.ocVentana.abrir({ titulo: ocT("el mapa"), cuerpo: l, vuelta: ensenar, clase: "es-ancha" });
+            }, ocT("Enseñar en grande el mapa de los jugadores (solo lo descubierto)"));
+            const descubrir = botonDe("oc-vida-accion", ocT("☀️ descubrir todas"), () => {
                 d.vistas = d.mapa.salas.map((x, i) => i);
                 guardar();
                 pintar();
-                avisar("Todas las salas descubiertas.");
+                avisar(ocT("Todas las salas descubiertas."));
             });
-            const tapar = botonDe("oc-vida-accion", "🌑 tapar todas", () => {
+            const tapar = botonDe("oc-vida-accion", ocT("🌑 tapar todas"), () => {
                 d.vistas = [0];
                 guardar();
                 pintar();
-                avisar("Tapadas todas menos la entrada.");
+                avisar(ocT("Tapadas todas menos la entrada."));
             });
             botones.append(ensenar, copiarImagen, bajarImagen, alDibujo, copiar, descubrir, tapar);
             const leyenda = crear("p", "oc-hoja-nota master-dungeon-leyenda",
-                "Puertas: C cerrada con llave, A atrancada, S secreta; a rayas rojas, el pasillo secreto. Copiar y descargar, el mapa que se ve.");
+                ocT("Puertas: C cerrada con llave, A atrancada, S secreta; a rayas rojas, el pasillo secreto. Copiar y descargar, el mapa que se ve."));
             const arriba = crear("div", "master-nombres-form");
             arriba.append(fila, boton, vista);
             dentro.replaceChildren(arriba, mapaLienzo, leyenda, botones, salasLista,
-                crear("p", "oc-hoja-nota master-fuente", "Salas, trampas, gemas y arte: tablas propias. Monstruos y objetos: SRD 5.2 (CC BY 4.0)."));
+                crear("p", "oc-hoja-nota master-fuente", ocT("Salas, trampas, gemas y arte: tablas propias. Monstruos y objetos: SRD 5.2 (CC BY 4.0).")));
             pintar();
         }).catch(() => {
-            dentro.replaceChildren(crear("p", "oc-vacio", "No he podido cargar las tablas."));
+            dentro.replaceChildren(crear("p", "oc-vacio", ocT("No he podido cargar las tablas.")));
         });
     }
 
@@ -9001,26 +8968,26 @@
 
     function cuantoQueda(seg) {
         if (seg <= 0) {
-            return "se ha acabado";
+            return ocT("se ha acabado");
         }
         if (seg < 60) {
             const r = Math.ceil(seg / 6);
-            return r + (r === 1 ? " ronda" : " rondas");
+            return r + (r === 1 ? ocT(" ronda") : ocT(" rondas"));
         }
         if (seg < 3600) {
             const mi = Math.ceil(seg / 60);
-            return mi + (mi === 1 ? " minuto" : " minutos") + (mi <= 10 ? " (" + Math.ceil(seg / 6) + " rondas)" : "");
+            return mi + (mi === 1 ? ocT(" minuto") : ocT(" minutos")) + (mi <= 10 ? ocT(" ({ceil} rondas)", { ceil: Math.ceil(seg / 6) }) : "");
         }
         if (seg < 86400) {
             const minutos = Math.ceil(seg / 60);
             const h = Math.floor(minutos / 60);
             const mi = minutos % 60;
-            return h + " h" + (mi ? " " + mi + " min" : "");
+            return ocT("{h} h{n}", { h: h, n: mi ? ocT(" {mi} min", { mi: mi }) : "" });
         }
         const horas = Math.ceil(seg / 3600);
         const di = Math.floor(horas / 24);
         const h = horas % 24;
-        return di + (di === 1 ? " día" : " días") + (h ? " " + h + " h" : "");
+        return di + (di === 1 ? ocT(" día") : ocT(" días")) + (h ? ocT(" {h} h", { h: h }) : "");
     }
 
     function montarEfectos(dentro, m) {
@@ -9040,37 +9007,37 @@
         // EL FORMULARIO: nombre (con los conjuros), sobre quién, cuánto
         // dura y si es de concentración.
         const form = crear("form", "master-efecto-nuevo");
-        const etN = crear("label", "oc-dados-etiqueta", "qué es (un conjuro del SRD pone su duración)");
+        const etN = crear("label", "oc-dados-etiqueta", ocT("qué es (un conjuro del SRD pone su duración)"));
         const nombre = crear("input", "master-elegir");
         nombre.id = "master-efecto-nombre-" + m.id;
         etN.htmlFor = nombre.id;
-        nombre.placeholder = "Bendecir, Armadura de mago, veneno…";
+        nombre.placeholder = ocT("Bendecir, Armadura de mago, veneno…");
         const lista = crear("datalist");
         lista.id = "master-efecto-conjuros-" + m.id;
         nombre.setAttribute("list", lista.id);
-        const sobre = elegirDe("master-efecto-sobre-" + m.id, "sobre quién", [["", "—"]], "");
+        const sobre = elegirDe("master-efecto-sobre-" + m.id, ocT("sobre quién"), [["", "—"]], "");
         const numero = crear("input", "master-elegir");
         numero.type = "number";
         numero.min = 1;
         numero.value = 1;
-        numero.setAttribute("aria-label", "Cuánto dura");
+        numero.setAttribute("aria-label", ocT("Cuánto dura"));
         const unidad = crear("select", "master-elegir");
-        unidad.setAttribute("aria-label", "En qué");
+        unidad.setAttribute("aria-label", ocT("En qué"));
         UNIDADES.forEach(([v, n]) => {
             const o = crear("option", "", n);
             o.value = v;
             unidad.appendChild(o);
         });
         unidad.value = "minutos";
-        const etDura = crear("p", "oc-dados-etiqueta", "cuánto dura");
+        const etDura = crear("p", "oc-dados-etiqueta", ocT("cuánto dura"));
         etDura.setAttribute("aria-hidden", "true");
         const dura = crear("div", "master-efecto-dura");
         dura.append(numero, unidad);
         const etConc = crear("label", "master-nombres-apellido");
         const conc = crear("input");
         conc.type = "checkbox";
-        etConc.append(conc, document.createTextNode(" de concentración"));
-        const anadirE = crear("button", "oc-vida-accion es-principal", "＋ efecto");
+        etConc.append(conc, document.createTextNode(ocT(" de concentración")));
+        const anadirE = crear("button", "oc-vida-accion es-principal", ocT("＋ efecto"));
         anadirE.type = "submit";
         form.append(etN, nombre, lista, sobre, etDura, dura, etConc, anadirE);
         let conjuros = [];
@@ -9114,7 +9081,7 @@
             conc.checked = false;
             guardar();
             pintar();
-            avisar("Efecto: " + ef.nombre + (ef.sobre ? " en " + ef.sobre : "") + ", " + cuantoQueda(seg) + ".");
+            avisar(ocT("Efecto: {nombre}{n}, {cuantoQueda}.", { nombre: ef.nombre, n: ef.sobre ? " en " + ef.sobre : "", cuantoQueda: cuantoQueda(seg) }));
         });
         // QUE PASE EL TIEMPO (en segundos): se descuenta a todos.
         const pasar = (seg, porque) => {
@@ -9130,55 +9097,55 @@
             guardar();
             pintar();
             if (acaban.length) {
-                avisar("Se acaba: " + acaban.join(", ") + ".");
+                avisar(ocT("Se acaba: {join}.", { join: acaban.join(", ") }));
             } else if (porque) {
                 avisar(porque);
             }
         };
         const aMano = crear("div", "master-cal-tiempo");
         aMano.setAttribute("role", "group");
-        aMano.setAttribute("aria-label", "Que pase el tiempo a mano");
-        [["+1 ronda", 6], ["+1 minuto", 60], ["+10 minutos", 600], ["+1 hora", 3600]].forEach(([t, seg]) => {
-            aMano.appendChild(botonDe("oc-vida-accion", t, () => pasar(seg, "Pasa " + t.slice(1) + ".")));
+        aMano.setAttribute("aria-label", ocT("Que pase el tiempo a mano"));
+        [[ocT("+1 ronda"), 6], [ocT("+1 minuto"), 60], [ocT("+10 minutos"), 600], [ocT("+1 hora"), 3600]].forEach(([t, seg]) => {
+            aMano.appendChild(botonDe("oc-vida-accion", t, () => pasar(seg, ocT("Pasa {slice}.", { slice: t.slice(1) }))));
         });
         const listaE = crear("ul", "master-efectos");
-        listaE.setAttribute("aria-label", "Efectos");
-        const quitarAcabados = botonDe("oc-vida-accion", "🧹 quitar los acabados", () => {
+        listaE.setAttribute("aria-label", ocT("Efectos"));
+        const quitarAcabados = botonDe("oc-vida-accion", ocT("🧹 quitar los acabados"), () => {
             d.efectos = d.efectos.filter((x) => x.quedan > 0);
             guardar();
             pintar();
-            avisar("Quitados los que se habían acabado.");
+            avisar(ocT("Quitados los que se habían acabado."));
         });
         function pintar() {
             listaE.replaceChildren(...d.efectos.map((ef, i) => {
                 const li = crear("li", "master-efecto" + (ef.quedan <= 0 ? " es-acabado" : ""));
                 const cab = crear("p", "master-efecto-nombre");
-                cab.append(crear("strong", "", ef.nombre), document.createTextNode((ef.sobre ? " · " + ef.sobre : "") + (ef.conc ? " · 🧠 concentración" : "")));
+                cab.append(crear("strong", "", ef.nombre), document.createTextNode((ef.sobre ? " · " + ef.sobre : "") + (ef.conc ? ocT(" · 🧠 concentración") : "")));
                 const barra = crear("div", "master-efecto-barra");
                 barra.setAttribute("role", "meter");
                 barra.setAttribute("aria-valuemin", "0");
                 barra.setAttribute("aria-valuemax", String(ef.total));
                 barra.setAttribute("aria-valuenow", String(ef.quedan));
-                barra.setAttribute("aria-valuetext", "Queda: " + cuantoQueda(ef.quedan));
+                barra.setAttribute("aria-valuetext", ocT("Queda: ") + cuantoQueda(ef.quedan));
                 barra.setAttribute("aria-label", ef.nombre);
                 const lleno = crear("span", "master-efecto-lleno");
                 lleno.style.setProperty("--parte", Math.round(100 * ef.quedan / Math.max(1, ef.total)) + "%");
                 barra.appendChild(lleno);
-                const queda = crear("p", "master-efecto-queda", ef.quedan > 0 ? "Queda: " + cuantoQueda(ef.quedan) : "⌛ Se ha acabado");
+                const queda = crear("p", "master-efecto-queda", ef.quedan > 0 ? ocT("Queda: {cuantoQueda}", { cuantoQueda: cuantoQueda(ef.quedan) }) : ocT("⌛ Se ha acabado"));
                 const quitar = botonDe("master-nombre-boton", "✕", () => {
                     d.efectos.splice(i, 1);
                     guardar();
                     pintar();
-                    avisar("Quitado: " + ef.nombre + ".");
+                    avisar(ocT("Quitado: {nombre}.", { nombre: ef.nombre }));
                     nombre.focus();
-                }, "Quitar " + ef.nombre);
+                }, ocT("Quitar {nombre}", { nombre: ef.nombre }));
                 const fila = crear("div", "master-efecto-fila");
                 fila.append(cab, quitar);
                 li.append(fila, barra, queda);
                 return li;
             }));
             if (!d.efectos.length) {
-                listaE.appendChild(crear("li", "oc-vacio", "Sin efectos. Añade uno arriba."));
+                listaE.appendChild(crear("li", "oc-vacio", ocT("Sin efectos. Añade uno arriba.")));
             }
             quitarAcabados.hidden = !d.efectos.some((x) => x.quedan <= 0);
         }
@@ -9194,7 +9161,7 @@
             d.ronda = r;
             pintarQuien();
             if (r > antes) {
-                pasar((r - antes) * 6, "Ronda " + r + ".");
+                pasar((r - antes) * 6, ocT("Ronda {r}.", { r: r }));
             } else {
                 guardar();
             }
@@ -9212,7 +9179,7 @@
         document.addEventListener("oc-iniciativa:guardada", alIni);
         document.addEventListener("master:tiempo", alTiempo);
         document.addEventListener("oc-iniciativa:cambio", pintarQuien);
-        const etTiempo = crear("p", "oc-hoja-nota", "Se descuentan solos con las rondas de la iniciativa y el tiempo del calendario; o a mano:");
+        const etTiempo = crear("p", "oc-hoja-nota", ocT("Se descuentan solos con las rondas de la iniciativa y el tiempo del calendario; o a mano:"));
         dentro.append(form, etTiempo, aMano, listaE, quitarAcabados);
         pintarQuien();
         pintar();
@@ -9237,25 +9204,25 @@
         a.click();
         a.remove();
         setTimeout(() => URL.revokeObjectURL(archivoBlob), 1000);
-        avisar("Descargado: " + archivo + ".");
+        avisar(ocT("Descargado: {archivo}.", { archivo: archivo }));
     }
 
-    const precioDe = (cp) => (cp ? moneda(cp) : "a convenir");
+    const precioDe = (cp) => (cp ? moneda(cp) : ocT("a convenir"));
 
     // Un negocio de antes (sólo taberna, en m.datos.taberna) al de ahora.
     function negocioDeTaberna(x) {
         return {
             tipo: "taberna", calidad: x.calidad, nombre: x.nombre, emoji: "🍺", ambiente: x.ambiente, quien: x.quien,
-            destacado: ["⭐ Especialidad de la casa:", x.especialidad[0] + " — " + moneda(x.especialidad[1])],
-            secciones: [{ titulo: "🍷 Bebidas", filas: x.bebidas }, { titulo: "🍲 Comidas", filas: x.comidas },
-                { titulo: "🛏️ Habitaciones (por noche)", filas: x.habitaciones }],
-            gancho: ["👂 Se oye que", x.rumor + "."],
+            destacado: [ocT("⭐ Especialidad de la casa:"), x.especialidad[0] + " — " + moneda(x.especialidad[1])],
+            secciones: [{ titulo: ocT("🍷 Bebidas"), filas: x.bebidas }, { titulo: ocT("🍲 Comidas"), filas: x.comidas },
+                { titulo: ocT("🛏️ Habitaciones (por noche)"), filas: x.habitaciones }],
+            gancho: [ocT("👂 Se oye que"), x.rumor + "."],
         };
     }
 
     function negocioEnTexto(x, nombreTipo) {
         const lineas = [x.nombre + " — " + nombreTipo + " (" + x.calidad + ")", "",
-            x.ambiente.charAt(0).toUpperCase() + x.ambiente.slice(1) + ".", "Al frente: " + x.quien + "."];
+            x.ambiente.charAt(0).toUpperCase() + x.ambiente.slice(1) + ".", ocT("Al frente: {quien}.", { quien: x.quien })];
         if (x.destacado) {
             lineas.push("", x.destacado.join(" "));
         }
@@ -9302,7 +9269,7 @@
         parrafo(x.emoji + " " + x.nombre, 34, "bold", "#3b2a17");
         parrafo(nombreTipo + " · " + x.calidad, 18, "italic", "#6b4e2a");
         y += 10;
-        parrafo(x.ambiente.charAt(0).toUpperCase() + x.ambiente.slice(1) + ". Al frente: " + x.quien + ".", 18, "normal", "#3b2a17");
+        parrafo(ocT("{n}. Al frente: {quien}.", { n: x.ambiente.charAt(0).toUpperCase() + x.ambiente.slice(1), quien: x.quien }), 18, "normal", "#3b2a17");
         if (x.destacado) {
             y += 6;
             parrafo(x.destacado.join(" "), 18, "bold", "#3b2a17");
@@ -9366,7 +9333,7 @@
 
     function montarNegocio(dentro, m) {
         m.datos = m.datos || {};
-        dentro.appendChild(crear("p", "oc-hoja-nota", "Cargando…"));
+        dentro.appendChild(crear("p", "oc-hoja-nota", ocT("Cargando…")));
         Promise.all([pedir(TABLAS), pedir(NOMBRES), pedir(TIENDA), pedir(CONJUROS_SRD)]).then(([tablas, nombres, tienda, conjuros]) => {
             const d = m.datos;
             if (d.taberna && !d.negocio) {
@@ -9375,18 +9342,18 @@
             }
             const t = tablas.taberna;
             const N = tablas.negocios;
-            const tipo = elegirDe("master-negocio-tipo-" + m.id, "qué negocio",
+            const tipo = elegirDe("master-negocio-tipo-" + m.id, ocT("qué negocio"),
                 Object.keys(N.tipos).map((k) => [k, N.tipos[k].emoji + " " + N.tipos[k].nombre]), d.tipo || "taberna");
             tipo.elegir.addEventListener("change", () => {
                 d.tipo = tipo.elegir.value;
                 guardar();
             });
-            const calidad = botonesDe("lo bueno que es", Object.keys(N.calidades).map((k) => [k, k]),
+            const calidad = botonesDe(ocT("lo bueno que es"), Object.keys(N.calidades).map((k) => [k, k]),
                 d.calidad || "modesta", (v) => {
                     d.calidad = v;
                     guardar();
                 });
-            const etCal = crear("p", "oc-dados-etiqueta", "lo bueno que es");
+            const etCal = crear("p", "oc-dados-etiqueta", ocT("lo bueno que es"));
             etCal.setAttribute("aria-hidden", "true");
             const sale = crear("div", "master-negocio");
             sale.setAttribute("aria-live", "polite");
@@ -9411,8 +9378,8 @@
                 (tp.conjuros || []).map(conjuroDe).filter((c) => c && c.nivel <= nivel).forEach((c) => {
                     const componente = /(\d[\d.]*) po/.exec(c.comp || "");
                     const extra = componente ? Number(componente[1].replace(/\./g, "")) * 100 : 0;
-                    filas.push(["Lanzar " + c.nombre, PRECIO_CONJURO[c.nivel] + extra, (c.nivel ? "nivel " + c.nivel : "truco") +
-                        (extra ? "; con el componente (" + moneda(extra) + ")" : ""), "c:" + c.en]);
+                    filas.push([ocT("Lanzar {nombre}", { nombre: c.nombre }), PRECIO_CONJURO[c.nivel] + extra, (c.nivel ? ocT("nivel {nivel}", { nivel: c.nivel }) : "truco") +
+                        (extra ? ocT("; con el componente ({moneda})", { moneda: moneda(extra) }) : ""), "c:" + c.en]);
                 });
                 return filas;
             };
@@ -9424,7 +9391,7 @@
                 const g = alAzar(["f", "m"]);
                 const especie = alAzar(Object.keys(nombres.especies));
                 const dueno = nombreDe(nombres, especie, g, false);
-                const quien = dueno + " (" + nombres.especies[especie].nombre + "), que " + alAzar(tablas.pnj.rasgos);
+                const quien = ocT("{dueno} ({nombre}), que {alAzar}", { dueno: dueno, nombre: nombres.especies[especie].nombre, alAzar: alAzar(tablas.pnj.rasgos) });
                 const caro = (a, b) => a.cp - b.cp;
                 if (k === "taberna") {
                     const tc = t.calidades[cal];
@@ -9438,10 +9405,10 @@
                     const rumor = alAzar(t.rumores);
                     d.negocio = {
                         tipo: k, calidad: cal, nombre: lugarDe(nombres, "taberna"), emoji: tp.emoji, ambiente: alAzar(tc.ambiente), quien,
-                        destacado: null, secciones: [{ titulo: "🍺 Comida y bebida", filas: comer },
-                            { titulo: "🛏️ Alojamiento (por noche)", filas: dormir },
-                            { titulo: "🛠️ Servicios", filas: servicios(tp, nc.nivel) }],
-                        gancho: ["👂 Se oye que", rumor + "."],
+                        destacado: null, secciones: [{ titulo: ocT("🍺 Comida y bebida"), filas: comer },
+                            { titulo: ocT("🛏️ Alojamiento (por noche)"), filas: dormir },
+                            { titulo: ocT("🛠️ Servicios"), filas: servicios(tp, nc.nivel) }],
+                        gancho: [ocT("👂 Se oye que"), rumor + "."],
                     };
                 } else {
                     let nombre;
@@ -9457,16 +9424,16 @@
                         : (o.tiendas || []).includes(tp.tienda)) && (k === "magia"
                         ? RAREZAS.indexOf(o.rareza) > -1 && RAREZAS.indexOf(o.rareza) < nc.rareza : !nc.tope || o.cp <= nc.tope));
                     if (hay.length) {
-                        secciones.push({ titulo: "🛒 Lo que vende", filas: variosDe(hay, nc.cuantos).sort(caro).map(fila) });
+                        secciones.push({ titulo: ocT("🛒 Lo que vende"), filas: variosDe(hay, nc.cuantos).sort(caro).map(fila) });
                     }
                     const sv = servicios(tp, nc.nivel);
                     if (sv.length) {
-                        secciones.push({ titulo: "🛠️ Servicios", filas: sv });
+                        secciones.push({ titulo: ocT("🛠️ Servicios"), filas: sv });
                     }
                     const gancho = alAzar(tp.ganchos);
                     d.negocio = {
                         tipo: k, calidad: cal, nombre, emoji: tp.emoji, ambiente: alAzar(tp.ambiente) + "; " + alAzar(nc.ambiente), quien,
-                        destacado: null, secciones, gancho: ["🪝 Gancho:", gancho.charAt(0).toUpperCase() + gancho.slice(1) + "."],
+                        destacado: null, secciones, gancho: [ocT("🪝 Gancho:"), gancho.charAt(0).toUpperCase() + gancho.slice(1) + "."],
                     };
                 }
                 guardar();
@@ -9483,10 +9450,10 @@
                     const c = typeof ref === "string" && ref.startsWith("c:") ? conjuroDe(ref.slice(2)) : null;
                     const o = !c && ref ? objetoDe(n) : null;
                     if (c) {
-                        const ver = botonDe("master-botin-objeto", n, () => abrirConjuro(c, ver, conjuros.fuente), "Ver el conjuro " + c.nombre);
+                        const ver = botonDe("master-botin-objeto", n, () => abrirConjuro(c, ver, conjuros.fuente), ocT("Ver el conjuro {nombre}", { nombre: c.nombre }));
                         dt.appendChild(ver);
                     } else if (o) {
-                        const ver = botonDe("master-botin-objeto", n, () => abrirObjeto(o, ver, tienda.fuente), "Ver " + n);
+                        const ver = botonDe("master-botin-objeto", n, () => abrirObjeto(o, ver, tienda.fuente), ocT("Ver {n}", { n: n }));
                         dt.appendChild(ver);
                     } else {
                         dt.textContent = n;
@@ -9505,13 +9472,12 @@
                 sale.replaceChildren();
                 acciones.hidden = !x;
                 if (!x) {
-                    sale.appendChild(crear("p", "oc-vacio", "Elige el negocio, cómo es y pulsa «generar»."));
+                    sale.appendChild(crear("p", "oc-vacio", ocT("Elige el negocio, cómo es y pulsa «generar».")));
                     return;
                 }
                 const cab = crear("h3", "master-negocio-nombre", x.emoji + " " + x.nombre);
                 const sub = crear("p", "master-negocio-tipo", nombreTipo() + " · " + x.calidad);
-                const amb = crear("p", "master-negocio-ambiente", x.ambiente.charAt(0).toUpperCase() + x.ambiente.slice(1) +
-                    ". Al frente: " + x.quien + ".");
+                const amb = crear("p", "master-negocio-ambiente", ocT("{n}. Al frente: {quien}.", { n: x.ambiente.charAt(0).toUpperCase() + x.ambiente.slice(1), quien: x.quien }));
                 sale.append(cab, sub, amb);
                 if (x.destacado) {
                     const esp = crear("p", "master-negocio-ambiente");
@@ -9525,20 +9491,20 @@
             }
             const archivo = (ext) => (d.negocio.nombre || "negocio").replace(/[^\p{L}\p{N}]+/gu, "-").toLowerCase() + "." + ext;
             acciones.append(
-                botonDe("oc-vida-accion", "⧉ copiar", () => copiarTexto(negocioEnTexto(d.negocio, nombreTipo()), "Copiado."),
-                    "Copiar el negocio como texto"),
-                botonDe("oc-vida-accion", "📄 guardar como texto", () => descargarArchivo(new Blob([negocioEnTexto(d.negocio,
+                botonDe("oc-vida-accion", ocT("⧉ copiar"), () => copiarTexto(negocioEnTexto(d.negocio, nombreTipo()), ocT("Copiado.")),
+                    ocT("Copiar el negocio como texto")),
+                botonDe("oc-vida-accion", ocT("📄 guardar como texto"), () => descargarArchivo(new Blob([negocioEnTexto(d.negocio,
                     nombreTipo())], { type: "text/plain;charset=utf-8" }), archivo("txt"))),
-                botonDe("oc-vida-accion", "🖼️ guardar como imagen", () => negocioEnLienzo(d.negocio, nombreTipo())
+                botonDe("oc-vida-accion", ocT("🖼️ guardar como imagen"), () => negocioEnLienzo(d.negocio, nombreTipo())
                     .toBlob((blob) => descargarArchivo(blob, archivo("png")), "image/png")));
-            const boton = botonDe("oc-vida-accion es-principal master-nombres-generar", "🎲 generar negocio", generar);
+            const boton = botonDe("oc-vida-accion es-principal master-nombres-generar", ocT("🎲 generar negocio"), generar);
             const arriba = crear("div", "master-nombres-form");
             arriba.append(tipo, etCal, calidad, boton);
             dentro.replaceChildren(arriba, sale, acciones, crear("p", "oc-hoja-nota master-fuente",
-                "Lo que venden, los servicios y sus precios: SRD 5.2 (CC BY 4.0). Nombres, ambientes, rumores y ganchos: tablas propias."));
+                ocT("Lo que venden, los servicios y sus precios: SRD 5.2 (CC BY 4.0). Nombres, ambientes, rumores y ganchos: tablas propias.")));
             pintar();
         }).catch(() => {
-            dentro.replaceChildren(crear("p", "oc-vacio", "No he podido cargar las tablas."));
+            dentro.replaceChildren(crear("p", "oc-vacio", ocT("No he podido cargar las tablas.")));
         });
     }
 
@@ -9546,7 +9512,7 @@
     // azar (encuentros, nombres, el tiempo que hace…) ----
     function montarTabla(dentro, m) {
         m.datos = m.datos || {};
-        const etX = crear("label", "oc-dados-etiqueta", "lo que puede salir (una cosa por línea)");
+        const etX = crear("label", "oc-dados-etiqueta", ocT("lo que puede salir (una cosa por línea)"));
         const texto = crear("textarea", "oc-notas-texto es-corta");
         texto.id = "master-tabla-texto-" + m.id;
         texto.rows = 6;
@@ -9563,10 +9529,10 @@
             }, 400);
         };
         texto.addEventListener("input", alEscribir);
-        const tirar = botonDe("oc-vida-accion es-principal", "🎲 tirar en la tabla", () => {
+        const tirar = botonDe("oc-vida-accion es-principal", ocT("🎲 tirar en la tabla"), () => {
             const cosas = texto.value.split("\n").map((x) => x.trim()).filter(Boolean);
             if (!cosas.length) {
-                sale.textContent = "Escribe primero lo que puede salir.";
+                sale.textContent = ocT("Escribe primero lo que puede salir.");
                 return;
             }
             const u = new Uint32Array(1);
@@ -9574,7 +9540,7 @@
             const i = u[0] % cosas.length;
             sale.textContent = "";
             setTimeout(() => {
-                sale.textContent = (i + 1) + " de " + cosas.length + ": " + cosas[i];
+                sale.textContent = ocT("{n} de {n2}: {n3}", { n: i + 1, n2: cosas.length, n3: cosas[i] });
             }, 50);
         });
         dentro.append(etX, texto, tirar, sale);
@@ -9638,7 +9604,7 @@
         const iguales = patron ? datos.lista.filter((x) => !x.pj && patron.test(x.nombre)) : [];
         const con = iguales.length ? iguales[iguales.length - 1] : null;
         const r = con || !window.ocDados ? null : window.ocDados.tirar("1d20" + (bono ? (bono > 0 ? "+" : "") + bono : ""),
-            "iniciativa de " + nombre);
+            ocT("iniciativa de {nombre}", { nombre: nombre }));
         const entra = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), nombre, color: c.color,
             ini: con ? con.ini : r ? r.total : 10 + bono, ca: parseInt(c.ca, 10) || "", pg: c.pg === undefined ? "" : c.pg };
         if (con) {
@@ -9698,7 +9664,7 @@
         // está ya; si no, con número si se repite (Lobo 1, Lobo 2…).
         const nombre = meterEnIniciativa(Object.assign(iniDeBicho(b), { nombre: nombreBase || b.nombre }), (nombres, renombrar) => (nombreBase && nombreBase !== b.nombre && nombres.indexOf(nombreBase) < 0 ? nombreBase
             : conNumero(b.nombre, nombres, renombrar)), b.nombre);
-        avisar("A la iniciativa: " + nombre + ".");
+        avisar(ocT("A la iniciativa: {nombre}.", { nombre: nombre }));
         if (boton) {
             boton.focus();
         }
@@ -9718,7 +9684,7 @@
             }
             dd.appendChild(document.createTextNode(m[1] + " "));
             const n = parseInt(m[2].replace("−", "-"), 10);
-            dd.appendChild(window.ocDadoBoton(m[2], "1d20" + (n >= 0 ? "+" : "") + n, que + " de " + m[1]));
+            dd.appendChild(window.ocDadoBoton(m[2], "1d20" + (n >= 0 ? "+" : "") + n, ocT("{que} de {n}", { que: que, n: m[1] })));
         });
         return dd;
     }
@@ -9730,7 +9696,7 @@
     function casillas(usos, clave, n, que, alCambiar) {
         const caja = crear("span", "master-usos");
         caja.setAttribute("role", "group");
-        caja.setAttribute("aria-label", "Usos de " + que);
+        caja.setAttribute("aria-label", ocT("Usos de {que}", { que: que }));
         const pintar = () => {
             caja.replaceChildren(...Array.from({ length: n }, (x, i) => {
                 const gastado = i < (usos[clave] || 0);
@@ -9739,8 +9705,8 @@
                     pintar();
                     alCambiar();
                     caja.querySelectorAll(".master-uso")[i].focus();
-                    avisar(que + ": " + (usos[clave] || 0) + " de " + n + " gastados.");
-                }, que + ", uso " + (i + 1) + " de " + n);
+                    avisar(ocT("{que}: {n} de {n2} gastados.", { que: que, n: usos[clave] || 0, n2: n }));
+                }, ocT("{que}, uso {n} de {n2}", { que: que, n: i + 1, n2: n }));
                 b.setAttribute("aria-pressed", gastado ? "true" : "false");
                 return b;
             }));
@@ -9768,7 +9734,7 @@
             return null;
         }
         const tabla = crear("table", "master-ataques");
-        tabla.appendChild(crear("caption", "visually-hidden", "Ataques"));
+        tabla.appendChild(crear("caption", "visually-hidden", ocT("Ataques")));
         const cab = crear("tr");
         ["Ataque", "Bono", "Alcance", "Daño"].forEach((t) => {
             const th = crear("th", "", t);
@@ -9785,7 +9751,7 @@
             th.append(crear("strong", "", x.r.n), crear("span", "master-ataque-tipo", x.tipo));
             const n = parseInt(x.bono.replace("−", "-"), 10);
             const tdB = crear("td");
-            tdB.appendChild(window.ocDadoBoton ? window.ocDadoBoton(x.bono, "1d20" + (n >= 0 ? "+" : "") + n, x.r.n + " · ataque")
+            tdB.appendChild(window.ocDadoBoton ? window.ocDadoBoton(x.bono, "1d20" + (n >= 0 ? "+" : "") + n, ocT("{n} · ataque", { n: x.r.n }))
                 : document.createTextNode(x.bono));
             const tdA = crear("td", "", x.alcance);
             const tdD = crear("td", "master-ataque-dano");
@@ -9795,8 +9761,8 @@
             const d = /^(\d+) \(([^()]+)\) (?:de )?daño (?:de )?([^.,]+?)([.,].*)?$/s.exec(x.dano.trim());
             if (d && window.ocDadoBoton) {
                 const linea = crear("p", "master-ataque-dado");
-                linea.append(window.ocDadoBoton(d[2], d[2].replace(/\s+/g, "").replace("−", "-"), x.r.n + " · daño"),
-                    crear("span", "master-ataque-media", " " + d[3] + " · media " + d[1]));
+                linea.append(window.ocDadoBoton(d[2], d[2].replace(/\s+/g, "").replace("−", "-"), ocT("{n} · daño", { n: x.r.n })),
+                    crear("span", "master-ataque-media", ocT(" {n} · media {n2}", { n: d[3], n2: d[1] })));
                 tdD.appendChild(linea);
                 if (window.ocDadosEnTexto) {
                     window.ocDadosEnTexto(linea.lastChild);
@@ -9845,8 +9811,8 @@
         if (guardado && guardado.nombre) {
             // En el tablero, qué es de verdad (si se le ha cambiado el
             // nombre) y un botón para cambiárselo.
-            const cambiar = botonDe("master-bicho-renombrar", "✎ nombre", () => guardado.renombrar(cambiar),
-                "Cambiar el nombre de " + quien());
+            const cambiar = botonDe("master-bicho-renombrar", ocT("✎ nombre"), () => guardado.renombrar(cambiar),
+                ocT("Cambiar el nombre de {quien}", { quien: quien() }));
             cambiar.setAttribute("aria-haspopup", "dialog");
             tipo.prepend(crear("strong", "", b.nombre + " · "));
             tipo.appendChild(cambiar);
@@ -9857,31 +9823,31 @@
             }
             dl.append(crear("dt", "", que), crear("dd", "", String(valor)));
         };
-        const sumar = botonDe("oc-vida-accion es-principal", "＋ a la iniciativa", () => aLaIniciativa(b, sumar, quien()),
-            "Añadir " + quien() + " a la iniciativa (tira su iniciativa)");
+        const sumar = botonDe("oc-vida-accion es-principal", ocT("＋ a la iniciativa"), () => aLaIniciativa(b, sumar, quien()),
+            ocT("Añadir {quien} a la iniciativa (tira su iniciativa)", { quien: quien() }));
         const botones = crear("div", "master-bicho-botones");
         botones.appendChild(sumar);
         if (alTablero) {
-            botones.appendChild(botonDe("oc-vida-accion", "📌 al tablero", alTablero, "Poner " + b.nombre + " en el tablero, como una ventana"));
+            botones.appendChild(botonDe("oc-vida-accion", ocT("📌 al tablero"), alTablero, ocT("Poner {nombre} en el tablero, como una ventana", { nombre: b.nombre })));
         }
-        const recuperar = botonDe("oc-vida-accion", "↺ recuperar usos", () => {
+        const recuperar = botonDe("oc-vida-accion", ocT("↺ recuperar usos"), () => {
             Object.keys(usos).forEach((k) => delete usos[k]);
             repintables.forEach((r) => r.repintar());
             alCambiar();
-            avisar("Usos recuperados.");
-        }, "Recuperar todos los usos (descanso largo)");
+            avisar(ocT("Usos recuperados."));
+        }, ocT("Recuperar todos los usos (descanso largo)"));
         botones.appendChild(recuperar);
         caja.appendChild(botones);
 
         // ---- estadísticas ----
         const stats = crear("div", "master-bicho-panel");
         const arriba = crear("dl", "master-bicho-datos");
-        fila(arriba, "CA", b.ca);
-        fila(arriba, "Iniciativa", b.ini);
-        fila(arriba, "PG", b.pg + (b.pgf ? " (" + b.pgf + ")" : ""));
-        fila(arriba, "Velocidad", b.vel);
+        fila(arriba, ocT("CA"), b.ca);
+        fila(arriba, ocT("Iniciativa"), b.ini);
+        fila(arriba, ocT("PG"), b.pg + (b.pgf ? " (" + b.pgf + ")" : ""));
+        fila(arriba, ocT("Velocidad"), b.vel);
         const tabla = crear("table", "master-bicho-car");
-        tabla.appendChild(crear("caption", "visually-hidden", "Características"));
+        tabla.appendChild(crear("caption", "visually-hidden", ocT("Características")));
         const cab = crear("tr");
         const val = crear("tr");
         Object.keys(b.car).forEach((k) => {
@@ -9893,7 +9859,7 @@
             const td = crear("td", "", n + " ");
             const bono = (mo >= 0 ? "+" : "−") + Math.abs(mo);
             td.appendChild(window.ocDadoBoton ? window.ocDadoBoton("(" + bono + ")", "1d20" + (mo >= 0 ? "+" : "") + mo,
-                "prueba de " + k) : document.createTextNode("(" + bono + ")"));
+                ocT("prueba de {k}", { k: k })) : document.createTextNode("(" + bono + ")"));
             val.appendChild(td);
         });
         const thead = crear("thead");
@@ -9903,19 +9869,19 @@
         tabla.append(thead, tbody);
         const abajo = crear("dl", "master-bicho-datos");
         if (b.salv) {
-            abajo.append(crear("dt", "", "Salvaciones"), bonosQueSeTiran(b.salv, "salvación"));
+            abajo.append(crear("dt", "", ocT("Salvaciones")), bonosQueSeTiran(b.salv, ocT("salvación")));
         }
         if (b.hab) {
-            abajo.append(crear("dt", "", "Habilidades"), bonosQueSeTiran(b.hab, "prueba"));
+            abajo.append(crear("dt", "", ocT("Habilidades")), bonosQueSeTiran(b.hab, ocT("prueba")));
         }
-        fila(abajo, "Vulnerabilidades", b.vuln);
-        fila(abajo, "Resistencias", b.res);
-        fila(abajo, "Inmunidades", [b.inm, b.inmE].filter(Boolean).join("; "));
-        fila(abajo, "Equipo", b.equipo);
-        fila(abajo, "Sentidos", b.sent);
-        fila(abajo, "Idiomas", b.idio);
-        fila(abajo, "VD", b.vd);
-        fila(abajo, "Hábitat", (b.habitat || []).join(", "));
+        fila(abajo, ocT("Vulnerabilidades"), b.vuln);
+        fila(abajo, ocT("Resistencias"), b.res);
+        fila(abajo, ocT("Inmunidades"), [b.inm, b.inmE].filter(Boolean).join("; "));
+        fila(abajo, ocT("Equipo"), b.equipo);
+        fila(abajo, ocT("Sentidos"), b.sent);
+        fila(abajo, ocT("Idiomas"), b.idio);
+        fila(abajo, ocT("VD"), b.vd);
+        fila(abajo, ocT("Hábitat"), (b.habitat || []).join(", "));
         stats.append(arriba, tabla, abajo);
 
         // Un rasgo o acción: su nombre en negrita (con sus casillas si se
@@ -9931,17 +9897,17 @@
                 const c = casillas(usos, clave, 1, r.n, alCambiar);
                 repintables.push(c);
                 const desde = parseInt(rec[1], 10);
-                const tirarRecarga = botonDe("master-recarga", "🎲 recarga", () => {
-                    const t = window.ocDados ? window.ocDados.tirar("1d6", "recarga de " + r.n) : null;
+                const tirarRecarga = botonDe("master-recarga", ocT("🎲 recarga"), () => {
+                    const t = window.ocDados ? window.ocDados.tirar("1d6", ocT("recarga de {n}", { n: r.n })) : null;
                     if (t && t.total >= desde) {
                         usos[clave] = 0;
                         c.repintar();
                         alCambiar();
-                        avisar(r.n + ": recargada (" + t.total + ").");
+                        avisar(ocT("{n}: recargada ({total}).", { n: r.n, total: t.total }));
                     } else if (t) {
-                        avisar(r.n + ": sin recargar (" + t.total + ").");
+                        avisar(ocT("{n}: sin recargar ({total}).", { n: r.n, total: t.total }));
                     }
-                }, "Tirar la recarga de " + r.n + " (" + desde + " o más en 1d6)");
+                }, ocT("Tirar la recarga de {n} ({desde} o más en 1d6)", { n: r.n, desde: desde }));
                 cabeza.append(c, tirarRecarga);
             } else if (dia) {
                 const c = casillas(usos, seccion + ":" + r.n, parseInt(dia[1], 10), r.n, alCambiar);
@@ -9951,17 +9917,17 @@
             div.append(cabeza, markdown(r.t));
             return div;
         };
-        const paneles = [["estadísticas", stats]];
+        const paneles = [[ocT("estadísticas"), stats]];
         if (b.rasgos && b.rasgos.length) {
             const panel = crear("div", "master-bicho-panel");
             b.rasgos.forEach((r) => panel.appendChild(entrada(r, "rasgos")));
-            paneles.push(["rasgos", panel]);
+            paneles.push([ocT("rasgos"), panel]);
         }
         // LAS ACCIONES: acciones, adicionales, reacciones y legendarias en
         // una pestaña, con un desplegable para elegir cuáles se ven.
         const partes = [];
-        [["acciones", "acciones"], ["adicionales", "acciones adicionales"], ["reacciones", "reacciones"],
-            ["legendarias", "legendarias"]].forEach(([k, titulo]) => {
+        [["acciones", ocT("acciones")], ["adicionales", ocT("acciones adicionales")], ["reacciones", ocT("reacciones")],
+            ["legendarias", ocT("legendarias")]].forEach(([k, titulo]) => {
             if (!b[k] || !b[k].length) {
                 return;
             }
@@ -9970,7 +9936,7 @@
             if (k === "legendarias" && b.legInfo) {
                 const cuantas = parseInt((/Usos de acción legendaria:\* (\d+)/.exec(b.legInfo) || [])[1], 10) || 3;
                 const p = crear("p", "master-bicho-nombre");
-                p.appendChild(crear("strong", "", "Usos"));
+                p.appendChild(crear("strong", "", ocT("Usos")));
                 const c = casillas(usos, "legendarias", cuantas, "acciones legendarias", alCambiar);
                 repintables.push(c);
                 p.appendChild(c);
@@ -9995,7 +9961,7 @@
             }
             if (partes.length > 1) {
                 const fila = crear("div", "master-bicho-ver");
-                const etVer = crear("label", "oc-dados-etiqueta", "ver");
+                const etVer = crear("label", "oc-dados-etiqueta", ocT("ver"));
                 const ver = crear("select", "oc-dados-elegir");
                 ver.id = uid + "-ver";
                 etVer.htmlFor = ver.id;
@@ -10022,12 +9988,12 @@
                 parte.hidden = j !== deAhora;
                 panel.appendChild(parte);
             });
-            paneles.push(["acciones", panel]);
+            paneles.push([ocT("acciones"), panel]);
         }
         if (b.conjuros) {
             const panel = crear("div", "master-bicho-panel");
             panel.appendChild(markdown(b.conjuros.t));
-            panel.appendChild(crear("p", "oc-hoja-nota", "Se lanzan como " + b.conjuros.donde + "."));
+            panel.appendChild(crear("p", "oc-hoja-nota", ocT("Se lanzan como {donde}.", { donde: b.conjuros.donde })));
             b.conjuros.listas.forEach((l, i) => {
                 const div = crear("div", "master-bicho-entrada");
                 const cabeza = crear("p", "master-bicho-nombre");
@@ -10069,10 +10035,10 @@
                     }
                 });
             }).catch(() => {});
-            paneles.push(["hechizos", panel]);
+            paneles.push([ocT("hechizos"), panel]);
         }
 
-        paneles.push(["imagen", panelImagen("monstruo:" + b.en, b.nombre)]);
+        paneles.push([ocT("imagen"), panelImagen("monstruo:" + b.en, b.nombre)]);
 
         // LAS PESTAÑAS: estadísticas, rasgos, acciones, hechizos (las que
         // tenga) e imagen, con las flechas para ir de una a otra.
@@ -10082,7 +10048,7 @@
         }
         const lista = crear("div", "master-bicho-pestanas");
         lista.setAttribute("role", "tablist");
-        lista.setAttribute("aria-label", "Partes del perfil de " + quien());
+        lista.setAttribute("aria-label", ocT("Partes del perfil de {quien}", { quien: quien() }));
         const pestanas = paneles.map(([titulo, panel], i) => {
             const t = botonDe("master-bicho-pestana", titulo, () => elegir(i, false));
             t.setAttribute("role", "tab");
@@ -10134,7 +10100,7 @@
     // una ventana, a mano durante el combate.
     function montarCriatura(dentro, m) {
         m.datos = m.datos || {};
-        dentro.appendChild(crear("p", "oc-hoja-nota", "Cargando…"));
+        dentro.appendChild(crear("p", "oc-hoja-nota", ocT("Cargando…")));
         pedir("datos/personajes/compendio/bestiario.json").then((datos) => {
             const b = (datos.monstruos || []).find((x) => x.en === m.datos.en);
             const guardado = { usos: m.datos.usos || {}, pestana: m.datos.pestana || 0, parte: m.datos.parte || 0,
@@ -10150,7 +10116,7 @@
                 renombrar: (vuelta) => personalizar(m, vuelta) };
             const pintarla = () => {
                 const foco = dentro.contains(document.activeElement) ? document.activeElement.className : "";
-                dentro.replaceChildren(b ? perfil(b, "", null, guardado) : crear("p", "oc-vacio", "No encuentro esa criatura."));
+                dentro.replaceChildren(b ? perfil(b, "", null, guardado) : crear("p", "oc-vacio", ocT("No encuentro esa criatura.")));
                 const otro = foco && dentro.querySelector("." + foco.split(" ")[0]);
                 if (otro) {
                     otro.focus();
@@ -10159,7 +10125,7 @@
             m.alRenombrar = pintarla;
             pintarla();
         }).catch(() => {
-            dentro.replaceChildren(crear("p", "oc-vacio", "No he podido cargar el bestiario."));
+            dentro.replaceChildren(crear("p", "oc-vacio", ocT("No he podido cargar el bestiario.")));
         });
     }
 
@@ -10168,12 +10134,12 @@
     // en personajes.js), así que pasar de turno aquí o allí es lo mismo. ----
     const colorIni = (c) => (/^#[0-9a-f]{6}$/i.test(c.color || "") ? c.color
         : { personaje: "#3fae5a", npc: "#3b7ddd", monstruo: "#d23b3b" }[c.tipo] || "#3fae5a");
-    const textoMarcaIni = (mk) => mk.t + (mk.r ? " (" + mk.r + (mk.r === 1 ? " ronda" : " rondas") + ")" : "");
+    const textoMarcaIni = (mk) => mk.t + (mk.r ? " (" + mk.r + (mk.r === 1 ? ocT(" ronda") : ocT(" rondas")) + ")" : "");
     // Lo de un combatiente que se ve de un vistazo: iniciativa, CA, PG y
     // sus marcas (cegado, concentrado…).
     function datosIni(c, conMarcas) {
         const caja = crear("div", "master-turnos-datos");
-        [["ini", c.ini], ["CA", c.ca], ["PG", c.pg]].forEach(([k, v]) => {
+        [[ocT("ini"), c.ini], [ocT("CA"), c.ca], [ocT("PG"), c.pg]].forEach(([k, v]) => {
             if (v === "" || v === undefined || v === null) {
                 return;
             }
@@ -10184,7 +10150,7 @@
         const marcas = Array.isArray(c.marcas) ? c.marcas : [];
         if (conMarcas && marcas.length) {
             const ul = crear("ul", "oc-ini-marcas");
-            ul.setAttribute("aria-label", "Marcas de " + c.nombre);
+            ul.setAttribute("aria-label", ocT("Marcas de {nombre}", { nombre: c.nombre }));
             marcas.forEach((mk) => ul.appendChild(crear("li", "oc-ini-marca", textoMarcaIni(mk))));
             caja.appendChild(ul);
         }
@@ -10199,8 +10165,7 @@
         }
         const { turno, acabadas } = T.pasar(d, paso);
         T.guardar(d, true);
-        avisar("Ronda " + d.ronda + ": le toca a " + T.nombresDe(turno) + "."
-            + (acabadas.length ? " Se acaba: " + acabadas.join(", ") + "." : ""));
+        avisar(ocT("Ronda {ronda}: le toca a {nombresDe}.{n}", { ronda: d.ronda, nombresDe: T.nombresDe(turno), n: acabadas.length ? ocT(" Se acaba: {join}.", { join: acabadas.join(", ") }) : "" }));
     }
     // Abrir (o traer) la iniciativa: en un modo, en su hueco si lo tiene.
     function irAIniciativa() {
@@ -10223,34 +10188,32 @@
         const ronda = crear("p", "master-turnos-ronda");
         const ahora = crear("div", "master-turnos-ahora");
         const lista = crear("ol", "master-turnos-lista");
-        lista.setAttribute("aria-label", "Los que van después");
+        lista.setAttribute("aria-label", ocT("Los que van después"));
         const mandos = crear("div", "master-turnos-mandos");
-        mandos.append(botonDe("oc-vida-accion", "◀ anterior turno", () => pasarTurno(-1), "Volver al turno anterior"),
-            botonDe("oc-vida-accion es-principal", "siguiente turno ▶", () => pasarTurno(1), "Pasar al siguiente turno"));
+        mandos.append(botonDe("oc-vida-accion", ocT("◀ anterior turno"), () => pasarTurno(-1), ocT("Volver al turno anterior")),
+            botonDe("oc-vida-accion es-principal", ocT("siguiente turno ▶"), () => pasarTurno(1), ocT("Pasar al siguiente turno")));
         function pintar() {
             const d = T.leer();
             if (!d.lista.length) {
-                caja.replaceChildren(crear("p", "oc-vacio", "No hay nadie en la iniciativa. Añádelos en ⏱️ iniciativa, o con «⚔️ a la"
-                    + " iniciativa» en el bestiario, los encuentros y la party."), botonDe("oc-vida-accion", "⏱️ ir a la iniciativa",
+                caja.replaceChildren(crear("p", "oc-vacio", ocT("No hay nadie en la iniciativa. Añádelos en ⏱️ iniciativa, o con «⚔️ a la iniciativa» en el bestiario, los encuentros y la party.")), botonDe("oc-vida-accion", ocT("⏱️ ir a la iniciativa"),
                     irAIniciativa));
                 return;
             }
             if (d.modo !== "combate") {
                 const orden = crear("ol", "master-turnos-lista");
-                orden.setAttribute("aria-label", "El orden, de momento");
+                orden.setAttribute("aria-label", ocT("El orden, de momento"));
                 d.lista.forEach((c) => {
                     const li = crear("li", "master-turnos-fila");
                     li.style.setProperty("--turno-color", colorIni(c));
                     li.append(crear("span", "master-turnos-nombre", c.nombre), datosIni(c, false));
                     orden.appendChild(li);
                 });
-                caja.replaceChildren(crear("p", "oc-hoja-nota", "El combate no ha empezado (" + d.lista.length
-                    + (d.lista.length === 1 ? " en la iniciativa)." : " en la iniciativa).")),
-                botonDe("oc-vida-accion es-principal", "⚔️ empezar el combate", () => {
+                caja.replaceChildren(crear("p", "oc-hoja-nota", ocT("El combate no ha empezado ({n}{n2}", { n: d.lista.length, n2: d.lista.length === 1 ? ocT(" en la iniciativa).") : ocT(" en la iniciativa).") })),
+                botonDe("oc-vida-accion es-principal", ocT("⚔️ empezar el combate"), () => {
                     const x = T.leer();
                     T.empezar(x);
                     T.guardar(x, true);
-                    avisar("¡Combate! Ronda 1: le toca a " + T.nombresDe(T.delTurno(x, 0)) + ".");
+                    avisar(ocT("¡Combate! Ronda 1: le toca a {nombresDe}.", { nombresDe: T.nombresDe(T.delTurno(x, 0)) }));
                 }), orden);
                 return;
             }
@@ -10259,8 +10222,8 @@
             }
             d.turno = T.inicioDe(d, d.turno);
             const turno = T.delTurno(d, d.turno);
-            ronda.textContent = "Ronda " + d.ronda;
-            ahora.replaceChildren(crear("p", "master-turnos-le", "le toca a"), ...turno.map((c) => {
+            ronda.textContent = ocT("Ronda {ronda}", { ronda: d.ronda });
+            ahora.replaceChildren(crear("p", "master-turnos-le", ocT("le toca a")), ...turno.map((c) => {
                 const fila = crear("div", "master-turnos-fila es-ahora");
                 fila.style.setProperty("--turno-color", colorIni(c));
                 fila.append(crear("strong", "master-turnos-nombre", c.nombre), datosIni(c, true));
@@ -10278,7 +10241,7 @@
                     }
                     dadaVuelta = true;
                     i = 0;
-                    filas.push(crear("li", "master-turnos-separa", "ronda " + (d.ronda + 1)));
+                    filas.push(crear("li", "master-turnos-separa", ocT("ronda {n}", { n: d.ronda + 1 })));
                 }
                 if (i === d.turno) {
                     break;
@@ -10287,7 +10250,7 @@
                 const li = crear("li", "master-turnos-fila");
                 li.style.setProperty("--turno-color", colorIni(cs[0]));
                 li.append(crear("span", "master-turnos-nombre", T.nombresDe(cs)), cs.length === 1 ? datosIni(cs[0], true)
-                    : crear("span", "master-turnos-chapa", cs.length + " a la vez"));
+                    : crear("span", "master-turnos-chapa", ocT("{n} a la vez", { n: cs.length })));
                 filas.push(li);
                 i = T.finDe(d, i) + 1;
             }
@@ -10314,8 +10277,7 @@
             if (!turno.length) {
                 if (pintado !== "-") {
                     pintado = "-";
-                    dentro.replaceChildren(crear("p", "oc-vacio", "Nadie tiene el turno. Empieza el combate en ⏱️ iniciativa (o en ⏩"
-                        + " turnos) y aquí sale el perfil de a quien le toque."));
+                    dentro.replaceChildren(crear("p", "oc-vacio", ocT("Nadie tiene el turno. Empieza el combate en ⏱️ iniciativa (o en ⏩ turnos) y aquí sale el perfil de a quien le toque.")));
                 }
                 return;
             }
@@ -10334,7 +10296,7 @@
             if (turno.length > 1) {
                 const cuales = crear("div", "master-opciones");
                 cuales.setAttribute("role", "group");
-                cuales.setAttribute("aria-label", "Quién de su turno");
+                cuales.setAttribute("aria-label", ocT("Quién de su turno"));
                 turno.forEach((c) => {
                     const b = botonDe("master-opcion", c.nombre, () => {
                         m.datos.cual = c.id;
@@ -10352,7 +10314,7 @@
                 dentro.replaceChildren(caja);
                 return;
             }
-            caja.appendChild(crear("p", "oc-hoja-nota", "Cargando…"));
+            caja.appendChild(crear("p", "oc-hoja-nota", ocT("Cargando…")));
             dentro.replaceChildren(caja);
             pedir(BESTIARIO).then((datos) => {
                 if (pintado !== clave) {
@@ -10375,8 +10337,7 @@
                 }
                 caja.appendChild(cabeza);
                 if (!b) {
-                    caja.appendChild(crear("p", "oc-vacio", "«" + elegido.nombre + "» no está en el bestiario. Si es un monstruo, ponlo"
-                        + " en la iniciativa desde el bestiario («⚔️ a la iniciativa») y aquí saldrá su perfil."));
+                    caja.appendChild(crear("p", "oc-vacio", ocT("«{nombre}» no está en el bestiario. Si es un monstruo, ponlo en la iniciativa desde el bestiario («⚔️ a la iniciativa») y aquí saldrá su perfil.", { nombre: elegido.nombre })));
                     return;
                 }
                 const usos = m.datos.usos && m.datos.usos[elegido.id] ? m.datos.usos[elegido.id] : {};
@@ -10386,7 +10347,7 @@
                 } };
                 caja.appendChild(perfil(b, datos.fuente, null, guardado));
             }).catch(() => {
-                caja.replaceChildren(crear("p", "oc-vacio", "No he podido cargar el bestiario."));
+                caja.replaceChildren(crear("p", "oc-vacio", ocT("No he podido cargar el bestiario.")));
             });
         }
         pintar(true);
@@ -10408,7 +10369,7 @@
         cabeza.style.setProperty("--turno-color", colorIni(enIni || { tipo: "personaje" }));
         const nombre = crear("strong", "master-turnos-nombre", quien);
         cabeza.appendChild(nombre);
-        const queEs = [pj.raza, pj.clase, numPj(pj.nivel) ? "nivel " + numPj(pj.nivel) : ""].filter(Boolean).join(" · ");
+        const queEs = [pj.raza, pj.clase, numPj(pj.nivel) ? ocT("nivel {numPj}", { numPj: numPj(pj.nivel) }) : ""].filter(Boolean).join(" · ");
         if (queEs) {
             cabeza.appendChild(crear("span", "master-pj-que", queEs));
         }
@@ -10431,7 +10392,7 @@
         caja.appendChild(cabeza);
         // Salvaciones (las competentes, marcadas).
         const salv = crear("ul", "master-pj-caracteristicas");
-        salv.setAttribute("aria-label", "Salvaciones de " + quien);
+        salv.setAttribute("aria-label", ocT("Salvaciones de {quien}", { quien: quien }));
         SALVACIONES_PJ.forEach((k) => {
             const n = car(k);
             if (n === null) {
@@ -10440,30 +10401,30 @@
             const comp = pj.salvaciones.includes(k);
             const li = crear("li", "master-pj-c" + (comp ? " es-competente" : ""));
             li.append(crear("span", "master-party-et", (comp ? "● " : "○ ") + k.toUpperCase()), dadoPj(modDe(n) + (comp ? prof : 0),
-                "Salvación de " + NOMBRES_CAR[k] + " de " + quien));
+                ocT("Salvación de {n} de {quien}", { n: CAR_VER[k], quien: quien })));
             salv.appendChild(li);
         });
-        caja.append(crear("h3", "master-pj-titulo", "🛡️ Salvaciones"), salv);
+        caja.append(crear("h3", "master-pj-titulo", ocT("🛡️ Salvaciones")), salv);
         if (pj.ataques.length) {
             const ul = crear("ul", "master-pj-lista");
-            ul.setAttribute("aria-label", "Ataques de " + quien);
+            ul.setAttribute("aria-label", ocT("Ataques de {quien}", { quien: quien }));
             pj.ataques.forEach((a) => {
                 const li = crear("li");
                 li.appendChild(crear("span", "", a.nombre || "—"));
                 const b = numPj(String(a.bono || "").replace("−", "-"));
                 if (b !== null) {
-                    li.appendChild(dadoPj(b, (a.nombre || "ataque") + " · ataque"));
+                    li.appendChild(dadoPj(b, ocT("{n} · ataque", { n: a.nombre || "ataque" })));
                 }
                 const dm = /^(\d+d\d+(?:\s*[+−-]\s*\d+)?)\s*(.*)$/.exec(String(a.dano || "").trim());
                 if (dm && window.ocDadoBoton) {
-                    li.append(window.ocDadoBoton(dm[1], dm[1].replace(/\s+/g, "").replace("−", "-"), (a.nombre || "ataque") + " · daño"),
+                    li.append(window.ocDadoBoton(dm[1], dm[1].replace(/\s+/g, "").replace("−", "-"), ocT("{n} · daño", { n: a.nombre || "ataque" })),
                         crear("span", "master-pj-marca", dm[2] || ""));
                 } else if (a.dano) {
                     li.appendChild(crear("span", "master-pj-marca", a.dano));
                 }
                 ul.appendChild(li);
             });
-            caja.append(crear("h3", "master-pj-titulo", "⚔️ Ataques"), ul);
+            caja.append(crear("h3", "master-pj-titulo", ocT("⚔️ Ataques")), ul);
         }
         const conjuros = crear("div");
         caja.appendChild(conjuros);
@@ -10474,15 +10435,15 @@
                     srd[llano(c.nombre)] = c;
                 });
                 const aptitud = pj.aptitud;
-                conjuros.appendChild(crear("h3", "master-pj-titulo", "✨ Conjuros"));
+                conjuros.appendChild(crear("h3", "master-pj-titulo", ocT("✨ Conjuros")));
                 if (aptitud && car(aptitud) !== null) {
                     const bono = modDe(car(aptitud)) + prof;
                     const dl = crear("p", "master-turnos-datos");
                     const cd = crear("span", "master-turnos-chapa");
-                    cd.append(crear("span", "master-turnos-chapa-et", "CD"), document.createTextNode(" " + (8 + bono)));
+                    cd.append(crear("span", "master-turnos-chapa-et", ocT("CD")), document.createTextNode(" " + (8 + bono)));
                     const at = crear("span", "master-turnos-chapa");
-                    at.append(crear("span", "master-turnos-chapa-et", "ataque"), document.createTextNode(" "),
-                        dadoPj(bono, "Ataque de conjuro de " + quien));
+                    at.append(crear("span", "master-turnos-chapa-et", ocT("ataque")), document.createTextNode(" "),
+                        dadoPj(bono, ocT("Ataque de conjuro de {quien}", { quien: quien })));
                     dl.append(cd, at);
                     conjuros.appendChild(dl);
                 }
@@ -10490,18 +10451,17 @@
                 const nvs = Array.from(new Set(todos.map((c) => c.nivel))).sort((a, b) => (a === null) - (b === null) || a - b);
                 nvs.forEach((n) => {
                     const ul = crear("ul", "master-pj-lista");
-                    ul.setAttribute("aria-label", (n === null ? "Otros conjuros" : n === 0 ? "Trucos" : "Conjuros de nivel " + n)
-                        + " de " + quien);
+                    ul.setAttribute("aria-label", ocT("{n} de {quien}", { n: n === null ? ocT("Otros conjuros") : n === 0 ? "Trucos" : ocT("Conjuros de nivel {n}", { n: n }), quien: quien }));
                     todos.filter((c) => c.nivel === n).forEach((c) => {
                         const li = crear("li");
                         li.appendChild(conjuroPj(c.nombre, srd, conj.fuente));
                         ul.appendChild(li);
                     });
-                    conjuros.append(crear("p", "master-pj-marca", n === null ? "otros" : n === 0 ? "trucos" : "nivel " + n), ul);
+                    conjuros.append(crear("p", "master-pj-marca", n === null ? "otros" : n === 0 ? "trucos" : ocT("nivel {n}", { n: n })), ul);
                 });
             }).catch(() => {});
         }
-        caja.appendChild(botonDe("oc-vida-accion", "📖 su ficha entera", () => abrirFichaPj(pj, quien), "Abrir la ficha entera de " + quien));
+        caja.appendChild(botonDe("oc-vida-accion", ocT("📖 su ficha entera"), () => abrirFichaPj(pj, quien), ocT("Abrir la ficha entera de {quien}", { quien: quien })));
         return caja;
     }
 
@@ -10544,17 +10504,17 @@
     }
 
     function montarBestiario(dentro, m) {
-        dentro.appendChild(crear("p", "oc-hoja-nota", "Cargando el bestiario…"));
+        dentro.appendChild(crear("p", "oc-hoja-nota", ocT("Cargando el bestiario…")));
         pedir("datos/personajes/compendio/bestiario.json").then((datos) => {
             const bichos = (datos.monstruos || []).map((b) => ({ b, buscar: llano(b.nombre + " " + b.en + " " + b.tipo) }));
             const fila = crear("div", "master-conjuros-buscar es-bestiario");
-            const et = crear("label", "oc-dados-etiqueta", "buscar");
+            const et = crear("label", "oc-dados-etiqueta", ocT("buscar"));
             const input = crear("input", "oc-dados-texto");
             input.type = "search";
             input.id = "master-bichos-" + m.id;
-            input.placeholder = "goblin, dragón, owlbear…";
+            input.placeholder = ocT("goblin, dragón, owlbear…");
             et.htmlFor = input.id;
-            const etVd = crear("label", "oc-dados-etiqueta", "VD");
+            const etVd = crear("label", "oc-dados-etiqueta", ocT("VD"));
             const vd = crear("select", "oc-dados-elegir");
             vd.id = "master-bichos-vd-" + m.id;
             etVd.htmlFor = vd.id;
@@ -10587,13 +10547,12 @@
                     b.setAttribute("aria-haspopup", "dialog");
                     b.classList.add("con-token");
                     b.append(tokenDe(x.b), crear("span", "master-conjuro-nombre", x.b.nombre),
-                        crear("span", "master-conjuro-datos", "VD " + x.b.cr + " · " + x.b.tipo + " · CA " + parseInt(x.b.ca, 10)
-                            + " · " + x.b.pg + " PG"));
+                        crear("span", "master-conjuro-datos", ocT("VD {cr} · {tipo} · CA {parseInt} · {pg} PG", { cr: x.b.cr, tipo: x.b.tipo, parseInt: parseInt(x.b.ca, 10), pg: x.b.pg })));
                     li.appendChild(b);
                     return li;
                 }));
-                cuantos.textContent = salen.length ? salen.length + (salen.length === 1 ? " monstruo" : " monstruos")
-                    + (salen.length > 60 ? " (salen los 60 primeros)" : "") : "Ningún monstruo con eso.";
+                cuantos.textContent = salen.length ? salen.length + (salen.length === 1 ? ocT(" monstruo") : ocT(" monstruos"))
+                    + (salen.length > 60 ? ocT(" (salen los 60 primeros)") : "") : ocT("Ningún monstruo con eso.");
             };
             let espera = 0;
             input.addEventListener("input", () => {
@@ -10605,7 +10564,7 @@
             dentro.replaceChildren(fila, cuantos, lista, crear("p", "oc-hoja-nota master-fuente", datos.fuente || ""));
             pintar();
         }).catch(() => {
-            dentro.replaceChildren(crear("p", "oc-vacio", "No he podido cargar el bestiario."));
+            dentro.replaceChildren(crear("p", "oc-vacio", ocT("No he podido cargar el bestiario.")));
         });
     }
 
@@ -10622,20 +10581,20 @@
         const pc = total % 10;
         const trozos = [];
         if (po) {
-            trozos.push(po.toLocaleString("es-ES") + " po");
+            trozos.push(ocT("{toLocaleString} po", { toLocaleString: po.toLocaleString("es-ES") }));
         }
         if (pp) {
-            trozos.push(pp + " pp");
+            trozos.push(ocT("{pp} pp", { pp: pp }));
         }
         if (pc || !trozos.length) {
-            trozos.push(pc + " pc");
+            trozos.push(ocT("{pc} pc", { pc: pc }));
         }
         return trozos.join(" ");
     }
 
     function montarTienda(dentro, m) {
         m.datos = m.datos || {};
-        dentro.appendChild(crear("p", "oc-hoja-nota", "Abriendo la tienda…"));
+        dentro.appendChild(crear("p", "oc-hoja-nota", ocT("Abriendo la tienda…")));
         pedir("datos/personajes/compendio/tienda.json").then((datos) => {
             const objetos = (datos.objetos || []).map((o) => ({ o, buscar: llano(o.nombre + " " + o.en + " " + o.cat) }));
             const elegir = (id, texto, opciones, valor) => {
@@ -10652,16 +10611,16 @@
                 return [et, sel];
             };
             const [etTienda, tienda] = elegir("master-tienda-", "tienda",
-                [["", "todas"]].concat((datos.tiendas || []).map((t) => [t, t])), m.datos.tienda);
-            const [etCat, cat] = elegir("master-tienda-cat-", "categoría", [["", "todas"]], "");
+                [["", ocT("todas")]].concat((datos.tiendas || []).map((t) => [t, t])), m.datos.tienda);
+            const [etCat, cat] = elegir("master-tienda-cat-", "categoría", [["", ocT("todas")]], "");
             const [etRareza, rareza] = elegir("master-tienda-rareza-", "rareza",
-                [["", "todas"]].concat(RAREZAS.map((r) => [r, r])), m.datos.rareza);
+                [["", ocT("todas")]].concat(RAREZAS.map((r) => [r, r])), m.datos.rareza);
             // El precio de la tienda, en %: 100 es lo normal; 80, un 20 % más
             // barato; 150, la mitad más caro. (Lo de antes, ×1,5…, pasa a %.)
             if (m.datos.porc === undefined && m.datos.precio) {
                 m.datos.porc = Math.round(parseFloat(m.datos.precio) * 100) || 100;
             }
-            const etPrecio = crear("label", "oc-dados-etiqueta", "precios (%)");
+            const etPrecio = crear("label", "oc-dados-etiqueta", ocT("precios (%)"));
             const precio = crear("input", "oc-dados-texto");
             precio.type = "number";
             precio.min = "0";
@@ -10672,13 +10631,13 @@
             precio.id = "master-tienda-precio-" + m.id;
             precio.setAttribute("aria-describedby", "master-tienda-precio-ayuda-" + m.id);
             etPrecio.htmlFor = precio.id;
-            const ayudaPrecio = crear("p", "oc-hoja-nota master-tienda-ayuda", "100 = normal; 80 = un 20 % más barato; 150 = la mitad más caro.");
+            const ayudaPrecio = crear("p", "oc-hoja-nota master-tienda-ayuda", ocT("100 = normal; 80 = un 20 % más barato; 150 = la mitad más caro."));
             ayudaPrecio.id = "master-tienda-precio-ayuda-" + m.id;
-            const etBuscar = crear("label", "oc-dados-etiqueta", "buscar");
+            const etBuscar = crear("label", "oc-dados-etiqueta", ocT("buscar"));
             const buscar = crear("input", "oc-dados-texto");
             buscar.type = "search";
             buscar.id = "master-tienda-buscar-" + m.id;
-            buscar.placeholder = "cuerda, poción, espada…";
+            buscar.placeholder = ocT("cuerda, poción, espada…");
             etBuscar.htmlFor = buscar.id;
             const campos = crear("div", "master-tienda-campos");
             [[etTienda, tienda], [etCat, cat], [etRareza, rareza], [etPrecio, precio], [etBuscar, buscar]].forEach(([e, c]) => {
@@ -10696,9 +10655,9 @@
             cuantosAzar.max = "40";
             cuantosAzar.value = String(m.datos.cuantos || 8);
             cuantosAzar.id = "master-tienda-cuantos-" + m.id;
-            const etCuantos = crear("label", "oc-dados-etiqueta", "cuántos");
+            const etCuantos = crear("label", "oc-dados-etiqueta", ocT("cuántos"));
             etCuantos.htmlFor = cuantosAzar.id;
-            const azar = botonDe("oc-vida-accion es-principal", "🎲 surtido al azar", () => {
+            const azar = botonDe("oc-vida-accion es-principal", ocT("🎲 surtido al azar"), () => {
                 const n = Math.max(1, Math.min(40, parseInt(cuantosAzar.value, 10) || 8));
                 const pool = filtrados(false).slice();
                 const u = new Uint32Array(pool.length);
@@ -10711,13 +10670,13 @@
                 m.datos.cuantos = n;
                 guardar();
                 pintar();
-                avisar("Surtido nuevo: " + m.datos.surtido.length + " objetos.");
+                avisar(ocT("Surtido nuevo: {n} objetos.", { n: m.datos.surtido.length }));
             });
-            const todo = botonDe("oc-vida-accion", "ver todo", () => {
+            const todo = botonDe("oc-vida-accion", ocT("ver todo"), () => {
                 delete m.datos.surtido;
                 guardar();
                 pintar();
-                avisar("Se ve todo.");
+                avisar(ocT("Se ve todo."));
             });
             const surtidoFila = crear("div", "master-tienda-azar");
             const cajaCuantos = crear("div", "master-tienda-campo");
@@ -10726,7 +10685,7 @@
             const cuantos = crear("p", "oc-hoja-nota");
             cuantos.setAttribute("role", "status");
             const tabla = crear("table", "master-tienda-tabla");
-            const cap = crear("caption", "visually-hidden", "Objetos y precios");
+            const cap = crear("caption", "visually-hidden", ocT("Objetos y precios"));
             const cab = crear("tr");
             [["Objeto", ""], ["Precio", "es-precio"]].forEach(([t, c]) => {
                 const th = crear("th", c, t);
@@ -10751,7 +10710,7 @@
                 const antes = cat.value;
                 const hay = Array.from(new Set(objetos.filter((x) => !tienda.value || x.o.tiendas.indexOf(tienda.value) >= 0)
                     .map((x) => x.o.cat))).sort();
-                cat.replaceChildren(...[["", "todas"]].concat(hay.map((c) => [c, c])).map(([v, t]) => {
+                cat.replaceChildren(...[["", ocT("todas")]].concat(hay.map((c) => [c, c])).map(([v, t]) => {
                     const op = crear("option", "", t);
                     op.value = v;
                     return op;
@@ -10768,10 +10727,10 @@
                 if (o.cp) {
                     const precios = crear("dl", "master-bicho-datos master-objeto-precios");
                     const tiendaP = Math.round(porcentaje() * 100);
-                    precios.append(crear("dt", "", "De lista"), crear("dd", "", moneda(o.cp)),
-                        crear("dt", "", "En esta tienda (" + tiendaP + " %)"), crear("dd", "", moneda(o.cp * porcentaje())));
+                    precios.append(crear("dt", "", ocT("De lista")), crear("dd", "", moneda(o.cp)),
+                        crear("dt", "", ocT("En esta tienda ({tiendaP} %)", { tiendaP: tiendaP })), crear("dd", "", moneda(o.cp * porcentaje())));
                     const form = crear("form", "master-regateo");
-                    const et = crear("label", "oc-dados-etiqueta", "regatear: precio final (%)");
+                    const et = crear("label", "oc-dados-etiqueta", ocT("regatear: precio final (%)"));
                     const pct = crear("input", "oc-dados-texto");
                     pct.type = "number";
                     pct.min = "0";
@@ -10785,7 +10744,7 @@
                     queda.setAttribute("aria-live", "polite");
                     const echar = () => {
                         const v = Math.max(0, parseFloat(pct.value) || 0);
-                        queda.textContent = "Queda en " + moneda(o.cp * v / 100) + " (" + v + " % del precio de lista).";
+                        queda.textContent = ocT("Queda en {moneda} ({v} % del precio de lista).", { moneda: moneda(o.cp * v / 100), v: v });
                     };
                     pct.addEventListener("input", echar);
                     const rapidos = crear("div", "master-regateo-rapidos");
@@ -10793,7 +10752,7 @@
                         rapidos.appendChild(botonDe("oc-vida-accion", (d > 0 ? "+" : "−") + Math.abs(d) + " %", () => {
                             pct.value = String(Math.max(0, (parseFloat(pct.value) || 0) + d));
                             echar();
-                        }, (d > 0 ? "Subir " : "Bajar ") + Math.abs(d) + " puntos"));
+                        }, ocT("{n} puntos", { n: (d > 0 ? ocT("Subir ") : ocT("Bajar ")) + Math.abs(d) })));
                     });
                     form.addEventListener("submit", (e) => {
                         e.preventDefault();
@@ -10803,7 +10762,7 @@
                     echar();
                     cuerpo.append(precios, form);
                 } else {
-                    cuerpo.appendChild(crear("p", "oc-hoja-nota", "No tiene precio: lo pone el DM."));
+                    cuerpo.appendChild(crear("p", "oc-hoja-nota", ocT("No tiene precio: lo pone el DM.")));
                 }
                 cuerpo.appendChild(crear("p", "oc-hoja-nota master-fuente", datos.fuente || ""));
                 window.ocVentana.abrir({ titulo: o.nombre, cuerpo, vuelta, clase: "es-regla" });
@@ -10819,16 +10778,16 @@
                     const b = botonDe("master-tienda-nombre", x.o.nombre, () => ficha(x.o, b));
                     b.setAttribute("aria-haspopup", "dialog");
                     td.appendChild(b);
-                    const extra = [x.o.cat, x.o.rareza, x.o.sint ? "requiere sintonía" : "", x.o.det, x.o.peso, x.o.nota]
+                    const extra = [x.o.cat, x.o.rareza, x.o.sint ? ocT("requiere sintonía") : "", x.o.det, x.o.peso, x.o.nota]
                         .filter(Boolean).join(" · ");
                     td.appendChild(crear("span", "master-tienda-datos", extra));
                     const tdP = crear("td", "es-precio", x.o.cp ? moneda(x.o.cp * veces) : "—");
                     tr.append(td, tdP);
                     return tr;
                 }));
-                cuantos.textContent = (m.datos.surtido ? "Surtido de hoy: " : "") + (salen.length
-                    ? salen.length + (salen.length === 1 ? " objeto" : " objetos") + (salen.length > 100 ? " (salen los 100 primeros)" : "")
-                    : "Nada con eso.");
+                cuantos.textContent = (m.datos.surtido ? ocT("Surtido de hoy: ") : "") + (salen.length
+                    ? salen.length + (salen.length === 1 ? ocT(" objeto") : ocT(" objetos")) + (salen.length > 100 ? ocT(" (salen los 100 primeros)") : "")
+                    : ocT("Nada con eso."));
             }
 
             const alCambiar = () => {
@@ -10854,7 +10813,7 @@
             dentro.replaceChildren(campos, surtidoFila, cuantos, tabla, crear("p", "oc-hoja-nota master-fuente", datos.fuente || ""));
             pintar();
         }).catch(() => {
-            dentro.replaceChildren(crear("p", "oc-vacio", "No he podido abrir la tienda."));
+            dentro.replaceChildren(crear("p", "oc-vacio", ocT("No he podido abrir la tienda.")));
         });
     }
 
@@ -10872,7 +10831,7 @@
                 trozos.push(n.toLocaleString("es-ES") + " " + k);
             }
         });
-        return trozos.join(" ") || "0 pc";
+        return trozos.join(" ") || ocT("0 pc");
     }
 
     function montarMonedas(dentro, m) {
@@ -10894,7 +10853,7 @@
             campos[k] = i;
         });
         const entreCaja = crear("div", "master-tienda-campo");
-        const etEntre = crear("label", "oc-dados-etiqueta", "repartir entre");
+        const etEntre = crear("label", "oc-dados-etiqueta", ocT("repartir entre"));
         const entre = crear("input", "oc-dados-texto");
         entre.type = "number";
         entre.min = "1";
@@ -10906,7 +10865,7 @@
         form.appendChild(entreCaja);
         const salida = crear("dl", "master-bicho-datos master-monedas-salida");
         salida.setAttribute("aria-live", "polite");
-        const vaciar = botonDe("oc-vida-accion", "🗑️ vaciar", () => {
+        const vaciar = botonDe("oc-vida-accion", ocT("🗑️ vaciar"), () => {
             MONEDAS.forEach(([k]) => {
                 campos[k].value = "";
             });
@@ -10923,12 +10882,12 @@
             const n = Math.max(1, parseInt(entre.value, 10) || 1);
             m.datos.entre = n;
             guardar();
-            const filas = [["Total", enMonedas(cp, true)], ["En oro", (cp / 100).toLocaleString("es-ES", { maximumFractionDigits: 2 }) + " po"],
-                ["En plata", (cp / 10).toLocaleString("es-ES", { maximumFractionDigits: 1 }) + " pp"],
-                ["En cobre", cp.toLocaleString("es-ES") + " pc"]];
+            const filas = [["Total", enMonedas(cp, true)], [ocT("En oro"), ocT("{toLocaleString} po", { toLocaleString: (cp / 100).toLocaleString("es-ES", { maximumFractionDigits: 2 }) })],
+                [ocT("En plata"), ocT("{toLocaleString} pp", { toLocaleString: (cp / 10).toLocaleString("es-ES", { maximumFractionDigits: 1 }) })],
+                [ocT("En cobre"), ocT("{toLocaleString} pc", { toLocaleString: cp.toLocaleString("es-ES") })]];
             if (n > 1) {
                 const cada = Math.floor(cp / n);
-                filas.push(["Para cada uno (" + n + ")", enMonedas(cada, false)]);
+                filas.push([ocT("Para cada uno ({n})", { n: n }), enMonedas(cada, false)]);
                 if (cp - cada * n) {
                     filas.push(["Sobra", enMonedas(cp - cada * n, false)]);
                 }
@@ -10988,7 +10947,7 @@
     // Las carpetas como opciones de un desplegable, con sangría.
     function opcionesCarpetas(sin) {
         const { carpetas } = docsDe();
-        const salen = [["", "📁 documentos (fuera de carpetas)"]];
+        const salen = [["", ocT("📁 documentos (fuera de carpetas)")]];
         const bajar = (padre, nivel) => carpetas.filter((c) => (c.padre || null) === padre && sin.indexOf(c.id) < 0)
             .sort((a, b) => a.nombre.localeCompare(b.nombre, "es")).forEach((c) => {
                 salen.push([c.id, "  ".repeat(nivel) + "📁 " + c.nombre]);
@@ -11008,7 +10967,7 @@
     function baseArchivos() {
         return new Promise((hecho, fallo) => {
             if (!window.indexedDB) {
-                fallo(new Error("sin IndexedDB"));
+                fallo(new Error(ocT("sin IndexedDB")));
                 return;
             }
             const pet = indexedDB.open(BASE_ARCHIVOS, 1);
@@ -11086,7 +11045,7 @@
         : fetch(rutaArchivo(id), { method: "PUT", body: blob,
             headers: { "Content-Type": blob.type || "application/octet-stream" } }).then((r) => {
             if (!r.ok) {
-                throw new Error("no se ha guardado");
+                throw new Error(ocT("no se ha guardado"));
             }
         }));
     const carpetaLeer = (id) => fetch(rutaArchivo(id), { cache: "no-store" }).then((r) => (r.ok ? r.blob() : undefined));
@@ -11097,7 +11056,7 @@
         : enArchivos("readwrite", (a) => a.delete(id)).catch(() => {}));
     const todosLosArchivos = () => (EN_CARPETA ? fetch("__archivos", { cache: "no-store" }).then((r) => r.json())
         .then((lista) => Promise.all(lista.map((x) => carpetaLeer(x.id).then((blob) => [x.id, blob])))) : idbTodos());
-    const tamanoBonito = (b) => (b > 1048576 ? (b / 1048576).toFixed(1).replace(".", ",") + " MB" : Math.max(1, Math.round(b / 1024)) + " KB");
+    const tamanoBonito = (b) => (b > 1048576 ? ocT("{replace} MB", { replace: (b / 1048576).toFixed(1).replace(".", ",") }) : ocT("{max} KB", { max: Math.max(1, Math.round(b / 1024)) }));
     // Un Blob a «data:…» (para exportar) y de vuelta (sin fetch: la página
     // no deja pedir direcciones data:).
     const blobADatos = (blob) => new Promise((hecho) => {
@@ -11161,10 +11120,10 @@
         cuerpo.append(et, input);
         let donde = null;
         if (conCarpeta) {
-            donde = elegirDe("master-doc-donde", "dentro de", opcionesCarpetas(conCarpeta.sin), conCarpeta.valor || "");
+            donde = elegirDe("master-doc-donde", ocT("dentro de"), opcionesCarpetas(conCarpeta.sin), conCarpeta.valor || "");
             cuerpo.appendChild(donde);
         }
-        const listo = crear("button", "oc-vida-accion es-principal", "guardar");
+        const listo = crear("button", "oc-vida-accion es-principal", ocT("guardar"));
         listo.type = "submit";
         cuerpo.appendChild(listo);
         cuerpo.addEventListener("submit", (e) => {
@@ -11194,10 +11153,10 @@
             }
             deshacer();
             guardar();
-            avisar("No cabe en el almacenamiento del navegador: descárgalo o borra algún documento grande.");
+            avisar(ocT("No cabe en el almacenamiento del navegador: descárgalo o borra algún documento grande."));
             return false;
         };
-        const nuevo = () => pedirNombreDoc("guardar en documentos", ya ? ya.titulo + " (copia)" : hacer().titulo, vuelta, (nombre, carpeta) => {
+        const nuevo = () => pedirNombreDoc(ocT("guardar en documentos"), ya ? ocT("{titulo} (copia)", { titulo: ya.titulo }) : hacer().titulo, vuelta, (nombre, carpeta) => {
             const n = Object.assign({ id: idDoc("n"), carpeta, cambiada: Date.now() }, hacer(), { titulo: nombre });
             docs.notas.push(n);
             if (!cabe(() => docs.notas.splice(docs.notas.indexOf(n), 1))) {
@@ -11206,16 +11165,16 @@
             alGuardar(n.id);
             guardar();
             avisarDocs();
-            avisar("Guardado en 📁 " + rutaDe(carpeta) + ": " + nombre + ".");
+            avisar(ocT("Guardado en 📁 {rutaDe}: {nombre}.", { rutaDe: rutaDe(carpeta), nombre: nombre }));
         }, { sin: [], valor: (ya && ya.carpeta) || "" });
         if (!ya) {
             nuevo();
             return;
         }
         const cuerpo = crear("div", "master-docs-guardar");
-        cuerpo.appendChild(crear("p", "", "Viene de «" + ya.titulo + "» (📁 " + rutaDe(ya.carpeta) + ")."));
+        cuerpo.appendChild(crear("p", "", ocT("Viene de «{titulo}» (📁 {rutaDe}).", { titulo: ya.titulo, rutaDe: rutaDe(ya.carpeta) })));
         const botones = crear("div", "master-docs-botones");
-        const encima = botonDe("oc-vida-accion es-principal", "💾 guardar encima", () => {
+        const encima = botonDe("oc-vida-accion es-principal", ocT("💾 guardar encima"), () => {
             const antes = Object.assign({}, ya);
             Object.assign(ya, hacer(), { titulo: ya.titulo, cambiada: Date.now() });
             cerrar();
@@ -11224,16 +11183,16 @@
                 Object.assign(ya, antes);
             })) {
                 avisarDocs();
-                avisar("Guardado: " + ya.titulo + ".");
+                avisar(ocT("Guardado: {titulo}.", { titulo: ya.titulo }));
             }
         });
-        const otro = botonDe("oc-vida-accion", "📄 guardar como uno nuevo…", () => {
+        const otro = botonDe("oc-vida-accion", ocT("📄 guardar como uno nuevo…"), () => {
             cerrar();
             nuevo();
         });
         botones.append(encima, otro);
         cuerpo.appendChild(botones);
-        const cerrar = window.ocVentana.abrir({ titulo: "guardar en documentos", cuerpo, vuelta });
+        const cerrar = window.ocVentana.abrir({ titulo: ocT("guardar en documentos"), cuerpo, vuelta });
     }
 
     function montarDocumentos(dentro, m) {
@@ -11243,16 +11202,16 @@
         const uid = "master-docs-" + m.id;
         // Dónde se crean las nuevas: la carpeta elegida (o la raíz).
         let aqui = d.aqui || null;
-        const etBuscar = crear("label", "oc-dados-etiqueta", "buscar en los nombres y en lo escrito");
+        const etBuscar = crear("label", "oc-dados-etiqueta", ocT("buscar en los nombres y en lo escrito"));
         const buscar = crear("input", "oc-dados-texto");
         buscar.type = "search";
         buscar.id = uid + "-buscar";
-        buscar.placeholder = "taberna, Elara, deuda…";
+        buscar.placeholder = ocT("taberna, Elara, deuda…");
         buscar.autocomplete = "off";
         etBuscar.htmlFor = buscar.id;
         const donde = crear("p", "master-docs-donde");
-        const nuevaCarpeta = botonDe("oc-vida-accion", "＋ 📁 carpeta", () => {
-            pedirNombreDoc("carpeta nueva", "", nuevaCarpeta, (n) => {
+        const nuevaCarpeta = botonDe("oc-vida-accion", ocT("＋ 📁 carpeta"), () => {
+            pedirNombreDoc(ocT("carpeta nueva"), "", nuevaCarpeta, (n) => {
                 const c = { id: idDoc("c"), nombre: n, padre: aqui };
                 docsDe().carpetas.push(c);
                 if (aqui && d.abiertas.indexOf(aqui) < 0) {
@@ -11260,11 +11219,11 @@
                 }
                 guardar();
                 avisarDocs();
-                avisar("Carpeta nueva: " + n + ".");
+                avisar(ocT("Carpeta nueva: {n}.", { n: n }));
             });
         });
-        const nuevaNota = botonDe("oc-vida-accion es-principal", "＋ 📄 nota", () => {
-            const n = { id: idDoc("n"), titulo: "nota sin título", carpeta: aqui, html: "", cambiada: Date.now() };
+        const nuevaNota = botonDe("oc-vida-accion es-principal", ocT("＋ 📄 nota"), () => {
+            const n = { id: idDoc("n"), titulo: ocT("nota sin título"), carpeta: aqui, html: "", cambiada: Date.now() };
             docsDe().notas.push(n);
             if (aqui && d.abiertas.indexOf(aqui) < 0) {
                 d.abiertas.push(aqui);
@@ -11279,14 +11238,14 @@
         subir.accept = "image/*,application/pdf";
         subir.multiple = true;
         subir.hidden = true;
-        const nuevoArchivo = botonDe("oc-vida-accion", "＋ 📎 archivo", () => subir.click(), "Subir una imagen o un PDF");
-        nuevoArchivo.title = "Una imagen o un PDF de tu ordenador (se guarda en este navegador)";
+        const nuevoArchivo = botonDe("oc-vida-accion", ocT("＋ 📎 archivo"), () => subir.click(), ocT("Subir una imagen o un PDF"));
+        nuevoArchivo.title = ocT("Una imagen o un PDF de tu ordenador (se guarda en este navegador)");
         subir.addEventListener("change", () => {
             const lista = Array.from(subir.files || []);
             subir.value = "";
             const valen = lista.filter((f) => /^image\/|^application\/pdf$/.test(f.type) && f.size <= MAX_ARCHIVO);
             if (valen.length < lista.length) {
-                avisar("Sólo imágenes y PDF de hasta 50 MB.");
+                avisar(ocT("Sólo imágenes y PDF de hasta 50 MB."));
             }
             Promise.all(valen.map((f) => {
                 const id = idDoc("a");
@@ -11304,18 +11263,15 @@
                 }
                 guardar();
                 avisarDocs();
-                avisar("Subido a 📁 " + rutaDe(aqui) + ": " + nombres.join(", ") + ". Se queda sólo en este navegador: para no"
-                    + " perderlo, ⚙ → exportar.");
-            }).catch(() => avisar("No se ha podido guardar el archivo (este navegador no deja, o no cabe)."));
+                avisar(ocT("Subido a 📁 {rutaDe}: {join}. Se queda sólo en este navegador: para no perderlo, ⚙ → exportar.", { rutaDe: rutaDe(aqui), join: nombres.join(", ") }));
+            }).catch(() => avisar(ocT("No se ha podido guardar el archivo (este navegador no deja, o no cabe).")));
         });
         const botones = crear("div", "master-docs-botones");
         botones.append(nuevaNota, nuevaCarpeta, nuevoArchivo, subir);
         // Dónde se quedan las cosas (no en la web).
         const privado = crear("p", "oc-hoja-nota master-docs-aviso");
-        privado.append(crear("strong", "", "🔒 Todo se queda en este navegador: "),
-            document.createTextNode("las notas, los dibujos y lo que subes no se suben a la web ni los ve nadie más. Tampoco pasan"
-                + " solos a otro ordenador, y se pierden si se borran los datos del navegador: para guardarlos o llevarlos, ⚙ →"
-                + " exportar (y luego importar)."));
+        privado.append(crear("strong", "", ocT("🔒 Todo se queda en este navegador: ")),
+            document.createTextNode(ocT("las notas, los dibujos y lo que subes no se suben a la web ni los ve nadie más. Tampoco pasan solos a otro ordenador, y se pierden si se borran los datos del navegador: para guardarlos o llevarlos, ⚙ → exportar (y luego importar).")));
 
         const arbol = crear("div", "master-docs-arbol");
         const cuantos = crear("p", "visually-hidden");
@@ -11334,8 +11290,8 @@
                 if (!seguro) {
                     seguro = true;
                     b.classList.add("es-seguro");
-                    b.setAttribute("aria-label", "¿Seguro? Pulsa otra vez: " + etiqueta);
-                    avisar("Pulsa otra vez para borrar.");
+                    b.setAttribute("aria-label", ocT("¿Seguro? Pulsa otra vez: {etiqueta}", { etiqueta: etiqueta }));
+                    avisar(ocT("Pulsa otra vez para borrar."));
                     return;
                 }
                 alBorrar();
@@ -11344,15 +11300,15 @@
         };
         const filaNota = (n, conRuta, trozo) => {
             const li = crear("li", "master-docs-fila es-nota");
-            const abrir = botonDe("master-docs-abrir", "", () => abrirDocumento(n.id), "Abrir la nota " + n.titulo);
+            const abrir = botonDe("master-docs-abrir", "", () => abrirDocumento(n.id), ocT("Abrir la nota {titulo}", { titulo: n.titulo }));
             const em = crear("span", "master-docs-icono", iconoDoc(n));
             em.setAttribute("aria-hidden", "true");
             abrir.append(em, crear("span", "master-docs-nombre", n.titulo));
             if (n.tipo === "dibujo") {
-                abrir.setAttribute("aria-label", "Abrir el dibujo " + n.titulo);
+                abrir.setAttribute("aria-label", ocT("Abrir el dibujo {titulo}", { titulo: n.titulo }));
             } else if (n.tipo === "archivo" || n.tipo === "enlace") {
-                abrir.setAttribute("aria-label", "Abrir " + (n.tipo === "enlace" ? "el enlace " : (/pdf/.test(n.mime || "")
-                    ? "el PDF " : "la imagen ")) + n.titulo);
+                abrir.setAttribute("aria-label", ocT("Abrir {n}{titulo}", { n: n.tipo === "enlace" ? ocT("el enlace ") : (/pdf/.test(n.mime || "")
+                    ? ocT("el PDF ") : ocT("la imagen ")), titulo: n.titulo }));
             }
             if (conRuta) {
                 abrir.appendChild(crear("span", "master-docs-ruta", rutaDe(n.carpeta)));
@@ -11360,7 +11316,7 @@
             if (trozo) {
                 abrir.appendChild(crear("span", "master-docs-trozo", trozo));
             }
-            const quitar = borrador("Borrar la nota " + n.titulo, () => {
+            const quitar = borrador(ocT("Borrar la nota {titulo}", { titulo: n.titulo }), () => {
                 docsDe().notas = docsDe().notas.filter((x) => x !== n);
                 if (n.tipo === "archivo" && n.archivo) {
                     archivoBorrar(n.archivo);
@@ -11374,7 +11330,7 @@
                 });
                 guardar();
                 avisarDocs();
-                avisar("Borrada la nota " + n.titulo + ".");
+                avisar(ocT("Borrada la nota {titulo}.", { titulo: n.titulo }));
                 buscar.focus();
             });
             li.append(abrir, quitar);
@@ -11406,8 +11362,8 @@
                 const em = crear("span", "master-docs-icono", abierta ? "📂" : "📁");
                 em.setAttribute("aria-hidden", "true");
                 const n = notas.filter((x) => x.carpeta === c.id).length;
-                b.append(em, crear("span", "master-docs-nombre", c.nombre), crear("span", "master-docs-ruta", n + (n === 1 ? " documento" : " documentos")));
-                const cambiar = mando("✎", "Renombrar o mover la carpeta " + c.nombre, () => {
+                b.append(em, crear("span", "master-docs-nombre", c.nombre), crear("span", "master-docs-ruta", n + (n === 1 ? ocT(" documento") : ocT(" documentos"))));
+                const cambiar = mando("✎", ocT("Renombrar o mover la carpeta {nombre}", { nombre: c.nombre }), () => {
                     pedirNombreDoc("carpeta", c.nombre, cambiar, (nombre, padreNuevo) => {
                         c.nombre = nombre;
                         c.padre = padreNuevo;
@@ -11416,7 +11372,7 @@
                     }, { sin: dentroDe(c.id), valor: c.padre || "" });
                 });
                 cambiar.setAttribute("aria-haspopup", "dialog");
-                const quitar = borrador("Borrar la carpeta " + c.nombre + " (lo de dentro sube un nivel)", () => {
+                const quitar = borrador(ocT("Borrar la carpeta {nombre} (lo de dentro sube un nivel)", { nombre: c.nombre }), () => {
                     const docs = docsDe();
                     docs.carpetas.filter((x) => x.padre === c.id).forEach((x) => {
                         x.padre = c.padre || null;
@@ -11431,7 +11387,7 @@
                     }
                     guardar();
                     avisarDocs();
-                    avisar("Borrada la carpeta " + c.nombre + "; lo de dentro, un nivel más arriba.");
+                    avisar(ocT("Borrada la carpeta {nombre}; lo de dentro, un nivel más arriba.", { nombre: c.nombre }));
                     buscar.focus();
                 });
                 li.append(b, cambiar, quitar);
@@ -11465,20 +11421,20 @@
         };
         function pintar(foco) {
             const q = llano(buscar.value.trim());
-            donde.replaceChildren(crear("strong", "", "Las nuevas van en: "), document.createTextNode("📁 " + rutaDe(aqui)));
+            donde.replaceChildren(crear("strong", "", ocT("Las nuevas van en: ")), document.createTextNode("📁 " + rutaDe(aqui)));
             if (aqui) {
-                const raiz = botonDe("master-docs-mando es-texto", "↑ fuera", () => {
+                const raiz = botonDe("master-docs-mando es-texto", ocT("↑ fuera"), () => {
                     aqui = null;
                     d.aqui = null;
                     guardar();
                     pintar();
-                }, "Que las nuevas vayan fuera de las carpetas");
+                }, ocT("Que las nuevas vayan fuera de las carpetas"));
                 donde.append(" ", raiz);
             }
             const docs = docsDe();
             if (!q) {
                 arbol.replaceChildren(docs.carpetas.length || docs.notas.length ? lista(null, 0)
-                    : crear("p", "oc-vacio", "Todavía no hay nada: crea una nota o una carpeta, o sube una imagen o un PDF."));
+                    : crear("p", "oc-vacio", ocT("Todavía no hay nada: crea una nota o una carpeta, o sube una imagen o un PDF.")));
                 cuantos.textContent = "";
             } else {
                 const ul = crear("ul", "master-docs-lista");
@@ -11516,8 +11472,8 @@
                         ul.appendChild(filaNota(x, true, trozo));
                     }
                 });
-                arbol.replaceChildren(n ? ul : crear("p", "oc-vacio", "Nada con eso."));
-                cuantos.textContent = n ? n + (n === 1 ? " resultado" : " resultados") : "Nada con eso.";
+                arbol.replaceChildren(n ? ul : crear("p", "oc-vacio", ocT("Nada con eso.")));
+                cuantos.textContent = n ? n + (n === 1 ? ocT(" resultado") : ocT(" resultados")) : ocT("Nada con eso.");
             }
             if (foco) {
                 const b = arbol.querySelector("[data-carpeta='" + foco + "']");
@@ -11557,28 +11513,28 @@
         if (n.tipo === "enlace") {
             const u = urlImagenSegura(n.url);
             if (!u) {
-                caja.appendChild(crear("p", "oc-vacio", "La dirección no vale."));
+                caja.appendChild(crear("p", "oc-vacio", ocT("La dirección no vale.")));
                 return caja;
             }
             if (n.clase === "pdf") {
-                caja.appendChild(crear("p", "oc-hoja-nota", "Los PDF de otras webs no se pueden ver aquí dentro: se abren en otra pestaña."));
+                caja.appendChild(crear("p", "oc-hoja-nota", ocT("Los PDF de otras webs no se pueden ver aquí dentro: se abren en otra pestaña.")));
             } else {
                 const img = crear("img", "master-doc-imagen");
                 img.alt = n.titulo;
                 img.referrerPolicy = "no-referrer";
                 img.loading = "lazy";
                 img.src = urlImagenSegura(n.url);
-                img.addEventListener("error", () => img.replaceWith(crear("p", "oc-vacio", "No se ha podido cargar la imagen.")));
+                img.addEventListener("error", () => img.replaceWith(crear("p", "oc-vacio", ocT("No se ha podido cargar la imagen."))));
                 caja.appendChild(img);
             }
-            mandos.appendChild(enlace("↗ abrir el original", u, "Abrir " + n.titulo + " en otra pestaña"));
+            mandos.appendChild(enlace(ocT("↗ abrir el original"), u, ocT("Abrir {titulo} en otra pestaña", { titulo: n.titulo })));
             caja.appendChild(mandos);
             return caja;
         }
-        caja.appendChild(crear("p", "oc-hoja-nota", "Cargando…"));
+        caja.appendChild(crear("p", "oc-hoja-nota", ocT("Cargando…")));
         archivoLeer(n.archivo).then((blob) => {
             if (!blob) {
-                caja.replaceChildren(crear("p", "oc-vacio", "El archivo no está en este navegador (¿se importó sin él, o se borró?)."));
+                caja.replaceChildren(crear("p", "oc-vacio", ocT("El archivo no está en este navegador (¿se importó sin él, o se borró?).")));
                 return;
             }
             // Una dirección blob: que hace el propio navegador con el archivo.
@@ -11586,10 +11542,10 @@
             const esPdf = /pdf/.test(blob.type || n.mime || "");
             caja.replaceChildren();
             if (esPdf && EN_ANDROID) {
-                caja.appendChild(crear("p", "oc-hoja-nota", "En la tablet, el PDF se abre con su visor: «↗ abrir»."));
+                caja.appendChild(crear("p", "oc-hoja-nota", ocT("En la tablet, el PDF se abre con su visor: «↗ abrir».")));
             } else if (esPdf) {
                 const marco = crear("iframe", "master-doc-pdf");
-                marco.title = "PDF: " + n.titulo;
+                marco.title = ocT("PDF: {titulo}", { titulo: n.titulo });
                 marco.src = archivoBlob;
                 caja.appendChild(marco);
             } else {
@@ -11599,11 +11555,11 @@
                 caja.appendChild(img);
             }
             const ext = esPdf ? ".pdf" : "." + ((blob.type.split("/")[1] || "png").replace("jpeg", "jpg").replace("svg+xml", "svg"));
-            mandos.append(EN_ANDROID ? enlace("↗ abrir", archivoBlob, "Abrir " + n.titulo + " con otra app")
-                : enlace("↗ abrir en otra pestaña", archivoBlob, "Abrir " + n.titulo + " en otra pestaña"),
-                enlace("⬇ descargar", archivoBlob, "Descargar " + n.titulo, (n.titulo || "archivo").replace(/[^\p{L}\p{N} _-]+/gu, "") + ext));
+            mandos.append(EN_ANDROID ? enlace(ocT("↗ abrir"), archivoBlob, ocT("Abrir {titulo} con otra app", { titulo: n.titulo }))
+                : enlace(ocT("↗ abrir en otra pestaña"), archivoBlob, ocT("Abrir {titulo} en otra pestaña", { titulo: n.titulo })),
+                enlace(ocT("⬇ descargar"), archivoBlob, ocT("Descargar {titulo}", { titulo: n.titulo }), (n.titulo || "archivo").replace(/[^\p{L}\p{N} _-]+/gu, "") + ext));
             caja.appendChild(mandos);
-        }).catch(() => caja.replaceChildren(crear("p", "oc-vacio", "Este navegador no deja leer los archivos guardados.")));
+        }).catch(() => caja.replaceChildren(crear("p", "oc-vacio", ocT("Este navegador no deja leer los archivos guardados."))));
         return caja;
     }
 
@@ -11616,16 +11572,16 @@
         // Para el lector, qué es (dos con el mismo nombre no se confunden).
         const h2 = m.el && m.el.querySelector(".master-ventana-titulo");
         if (n && h2 && !h2.querySelector(".visually-hidden")) {
-            h2.appendChild(crear("span", "visually-hidden", n.tipo === "enlace" ? " (enlace)" : n.tipo === "archivo"
-                ? (/pdf/.test(n.mime || "") ? " (PDF)" : " (imagen)") : " (nota)"));
+            h2.appendChild(crear("span", "visually-hidden", n.tipo === "enlace" ? ocT(" (enlace)") : n.tipo === "archivo"
+                ? (/pdf/.test(n.mime || "") ? ocT(" (PDF)") : ocT(" (imagen)")) : ocT(" (nota)")));
         }
         if (!n) {
-            dentro.appendChild(crear("p", "oc-vacio", "Esta nota ya no está (se ha borrado, o es de otra campaña)."));
+            dentro.appendChild(crear("p", "oc-vacio", ocT("Esta nota ya no está (se ha borrado, o es de otra campaña).")));
             return;
         }
         const uid = "master-doc-" + m.id;
         const fila = crear("div", "master-doc-cabeza");
-        const etT = crear("label", "oc-dados-etiqueta", "título");
+        const etT = crear("label", "oc-dados-etiqueta", ocT("título"));
         const titulo = crear("input", "oc-dados-texto");
         titulo.id = uid + "-titulo";
         titulo.value = n.titulo;
@@ -11634,20 +11590,19 @@
         etT.htmlFor = titulo.id;
         const cajaT = crear("div", "master-campo");
         cajaT.append(etT, titulo);
-        const carpeta = elegirDe(uid + "-carpeta", "carpeta", opcionesCarpetas([]), n.carpeta || "");
+        const carpeta = elegirDe(uid + "-carpeta", ocT("carpeta"), opcionesCarpetas([]), n.carpeta || "");
         fila.append(cajaT, carpeta);
         const cuando = crear("p", "oc-hoja-nota master-doc-cuando");
         const pintarCuando = () => {
-            cuando.textContent = (esNota ? "Cambiada: " : "Añadido: ") + new Date(n.cambiada || Date.now()).toLocaleString("es-ES",
-                { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" }) + " · en 📁 " + rutaDe(n.carpeta) +
-                (n.tamano ? " · " + tamanoBonito(n.tamano) : "");
+            cuando.textContent = ocT("{n} · en 📁 {rutaDe}{n2}", { n: (esNota ? ocT("Cambiada: ") : ocT("Añadido: ")) + new Date(n.cambiada || Date.now()).toLocaleString("es-ES",
+                { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" }), rutaDe: rutaDe(n.carpeta), n2: n.tamano ? " · " + tamanoBonito(n.tamano) : "" });
         };
         pintarCuando();
         let espera = 0;
         if (!esNota) {
             const ver = montarArchivoDoc(n);
             titulo.addEventListener("input", () => {
-                n.titulo = titulo.value.trim() || "sin nombre";
+                n.titulo = titulo.value.trim() || ocT("sin nombre");
                 m.titulo = n.titulo;
                 ponerTitulo(m);
                 clearTimeout(espera);
@@ -11661,12 +11616,12 @@
                 pintarCuando();
                 guardar();
                 avisarDocs();
-                avisar("Ahora en: " + rutaDe(n.carpeta) + ".");
+                avisar(ocT("Ahora en: {rutaDe}.", { rutaDe: rutaDe(n.carpeta) }));
             });
             dentro.append(fila, cuando, ver);
             return;
         }
-        const { area, barra, leer } = editorRico("Lo que pone la nota " + n.titulo + " (se guarda sola)", () => {
+        const { area, barra, leer } = editorRico(ocT("Lo que pone la nota {titulo} (se guarda sola)", { titulo: n.titulo }), () => {
             clearTimeout(espera);
             espera = setTimeout(() => {
                 n.html = leer();
@@ -11679,7 +11634,7 @@
         area.classList.add("es-notas");
         area.innerHTML = sanearHtml(n.html) || "<p><br></p>";
         titulo.addEventListener("input", () => {
-            n.titulo = titulo.value.trim() || "nota sin título";
+            n.titulo = titulo.value.trim() || ocT("nota sin título");
             n.cambiada = Date.now();
             m.titulo = n.titulo;
             ponerTitulo(m);
@@ -11695,12 +11650,12 @@
             pintarCuando();
             guardar();
             avisarDocs();
-            avisar("Ahora en: " + rutaDe(n.carpeta) + ".");
+            avisar(ocT("Ahora en: {rutaDe}.", { rutaDe: rutaDe(n.carpeta) }));
         });
         // Si cambian las carpetas (en «documentos»), el desplegable al día.
         mientrasEste(dentro, "master:documentos", () => {
             if (!docsDe().notas.includes(n)) {
-                dentro.replaceChildren(crear("p", "oc-vacio", "Esta nota se ha borrado."));
+                dentro.replaceChildren(crear("p", "oc-vacio", ocT("Esta nota se ha borrado.")));
                 return;
             }
             const valor = n.carpeta || "";
@@ -11737,13 +11692,13 @@
         ["hoguera", "🔥", "hoguera", ["ambiences/fire"]],
         ["rio", "🏞️", "río", ["water/small_stream_flowing"]],
         ["mar", "🌊", "mar", ["water/waves_crashing_on_rock_beach"]],
-        ["carro", "🐴", "carro en marcha", ["transportation/horse_and_carriage"]],
+        ["carro", "🐴", ocT("carro en marcha"), ["transportation/horse_and_carriage"]],
         ["mercado", "🛒", "mercado", ["ambiences/small_outdoor_marketplace"]],
         ["taberna", "🍺", "taberna", ["crowds/murmuring_and_talking_men"]],
         ["noche", "🦗", "noche", ["ambiences/outside_night"]],
         ["bosque", "🐦", "bosque", ["ambiences/spring_day_forest"]],
-        ["mazmorra", "🕳️", "mazmorra (viento y goteo)", ["horror/hallow_wind", "water/water_leak"]],
-        ["barco", "⛵", "barco (madera que cruje)", ["transportation/wood_creak_on_old_ship_series"]],
+        ["mazmorra", "🕳️", ocT("mazmorra (viento y goteo)"), ["horror/hallow_wind", "water/water_leak"]],
+        ["barco", "⛵", ocT("barco (madera que cruje)"), ["transportation/wood_creak_on_old_ship_series"]],
         ["granja", "🐓", "granja", ["ambiences/morning_farm"]]];
     // Sólo las de esa biblioteca.
     function urlSonidoSegura(ruta) {
@@ -11901,7 +11856,7 @@
         d.vol = d.vol || {};
         d.propios = Array.isArray(d.propios) ? d.propios : [];
         if (!window.Audio) {
-            dentro.appendChild(crear("p", "oc-vacio", "Este navegador no puede poner sonidos."));
+            dentro.appendChild(crear("p", "oc-vacio", ocT("Este navegador no puede poner sonidos.")));
             return;
         }
         // EL VOLUMEN GENERAL y parar todo.
@@ -11912,9 +11867,9 @@
         general.min = 0;
         general.max = 100;
         general.value = d.general === undefined ? 80 : d.general;
-        general.setAttribute("aria-label", "Volumen general");
+        general.setAttribute("aria-label", ocT("Volumen general"));
         general.setAttribute("aria-valuetext", general.value + " %");
-        etG.append(crear("span", "", "🔊 general"), general);
+        etG.append(crear("span", "", ocT("🔊 general")), general);
         const ponerGeneral = () => volumenGeneral(general.value / 100);
         AMBIENTE.nivel = general.value / 100;
         general.addEventListener("input", () => {
@@ -11923,13 +11878,13 @@
             ponerGeneral();
             guardar();
         });
-        const parar = botonDe("oc-vida-accion", "■ silencio", () => {
+        const parar = botonDe("oc-vida-accion", ocT("■ silencio"), () => {
             callarTodo();
             d.sonando = [];
             guardar();
             pintar();
-            avisar("Silencio.");
-        }, "Parar todos los sonidos");
+            avisar(ocT("Silencio."));
+        }, ocT("Parar todos los sonidos"));
         arriba.append(etG, parar);
         // Lo que sonaba antes de recargar (el navegador no deja que suene
         // solo: hay que pulsar).
@@ -11939,7 +11894,7 @@
             pintar();
         });
         const lista = crear("ul", "master-ambiente-lista");
-        lista.setAttribute("aria-label", "Sonidos");
+        lista.setAttribute("aria-label", ocT("Sonidos"));
         const filas = [];
         const datosDe = (id) => {
             const p = d.propios.find((x) => "propio-" + x.id === id);
@@ -11954,14 +11909,14 @@
                 return archivoLeer(p.archivo).then((blob) => (blob ? blob.arrayBuffer() : null)).then((buf) => (buf
                     ? AMBIENTE.ctx.decodeAudioData(buf) : null)).then((audio) => {
                     if (!audio) {
-                        avisar("Ese sonido ya no está en este navegador.");
+                        avisar(ocT("Ese sonido ya no está en este navegador."));
                         return;
                     }
                     sonarPropio(id, audio, vol);
                     d.sonando = Array.from(new Set((d.sonando || []).concat(id)));
                     guardar();
                     pintar();
-                }).catch(() => avisar("No se ha podido poner ese sonido."));
+                }).catch(() => avisar(ocT("No se ha podido poner ese sonido.")));
             }
             const s = SONIDOS.find((x) => x[0] === id);
             if (s) {
@@ -11969,7 +11924,7 @@
                     d.sonando = (d.sonando || []).filter((x) => x !== id);
                     guardar();
                     pintar();
-                    avisar("No se ha podido poner «" + s[2] + "»: ¿hay conexión a internet?");
+                    avisar(ocT("No se ha podido poner «{n}»: ¿hay conexión a internet?", { n: s[2] }));
                 });
                 d.sonando = Array.from(new Set((d.sonando || []).concat(id)));
                 guardar();
@@ -11984,10 +11939,10 @@
                     callar(id);
                     d.sonando = (d.sonando || []).filter((x) => x !== id);
                     guardar();
-                    avisar("Parado: " + nombre + ".");
+                    avisar(ocT("Parado: {nombre}.", { nombre: nombre }));
                 } else {
                     encender(id);
-                    avisar("Suena: " + nombre + ".");
+                    avisar(ocT("Suena: {nombre}.", { nombre: nombre }));
                 }
                 pintar();
             });
@@ -11997,7 +11952,7 @@
             r.min = 0;
             r.max = 100;
             r.value = d.vol[id] === undefined ? 70 : d.vol[id];
-            r.setAttribute("aria-label", "Volumen de " + nombre);
+            r.setAttribute("aria-label", ocT("Volumen de {nombre}", { nombre: nombre }));
             r.setAttribute("aria-valuetext", r.value + " %");
             r.addEventListener("input", () => {
                 d.vol[id] = Number(r.value);
@@ -12016,7 +11971,7 @@
                     if (!seguro) {
                         seguro = true;
                         quitar.classList.add("es-seguro");
-                        avisar("Pulsa otra vez para quitar " + nombre + ".");
+                        avisar(ocT("Pulsa otra vez para quitar {nombre}.", { nombre: nombre }));
                         return;
                     }
                     callar(id);
@@ -12025,9 +11980,9 @@
                     d.propios = d.propios.filter((x) => x !== p);
                     guardar();
                     pintarFilas();
-                    avisar("Quitado: " + nombre + ".");
+                    avisar(ocT("Quitado: {nombre}.", { nombre: nombre }));
                     otro.focus();
-                }, "Quitar el sonido " + nombre);
+                }, ocT("Quitar el sonido {nombre}", { nombre: nombre }));
                 li.appendChild(quitar);
             }
             filas.push({ id, b, li });
@@ -12047,7 +12002,7 @@
                 li.classList.toggle("es-sonando", suena);
             });
             const antes = (d.sonando || []).filter((id) => !AMBIENTE.activos[id] && datosDe(id).length);
-            volver.textContent = "▶ volver a poner lo de antes (" + antes.map((id) => datosDe(id)[1]).join(", ") + ")";
+            volver.textContent = ocT("▶ volver a poner lo de antes ({join})", { join: antes.map((id) => datosDe(id)[1]).join(", ") });
             volver.hidden = !antes.length || Object.keys(AMBIENTE.activos).length > 0;
         }
         // LOS PROPIOS: un audio del ordenador, en bucle.
@@ -12055,13 +12010,13 @@
         subir.type = "file";
         subir.accept = "audio/*";
         subir.hidden = true;
-        const otro = botonDe("oc-vida-accion", "＋ 🎵 tu sonido", () => subir.click(), "Añadir un sonido tuyo (un audio, en bucle)");
-        otro.title = "Un audio de tu ordenador, en bucle (se queda sólo en este navegador)";
+        const otro = botonDe("oc-vida-accion", ocT("＋ 🎵 tu sonido"), () => subir.click(), ocT("Añadir un sonido tuyo (un audio, en bucle)"));
+        otro.title = ocT("Un audio de tu ordenador, en bucle (se queda sólo en este navegador)");
         subir.addEventListener("change", () => {
             const f = subir.files && subir.files[0];
             subir.value = "";
             if (!f || !/^audio\//.test(f.type) || f.size > MAX_ARCHIVO) {
-                avisar("Sólo audios de hasta 50 MB.");
+                avisar(ocT("Sólo audios de hasta 50 MB."));
                 return;
             }
             const id = idDoc("a");
@@ -12069,20 +12024,17 @@
                 d.propios.push({ id, archivo: id, nombre: f.name.replace(/\.[^.]+$/, "").slice(0, 40) || "sonido" });
                 guardar();
                 pintarFilas();
-                avisar("Añadido: " + f.name + ". Se queda sólo en este navegador (⚙ → exportar para no perderlo).");
-            }).catch(() => avisar("No se ha podido guardar el sonido."));
+                avisar(ocT("Añadido: {name}. Se queda sólo en este navegador (⚙ → exportar para no perderlo).", { name: f.name }));
+            }).catch(() => avisar(ocT("No se ha podido guardar el sonido.")));
         });
         const nota = crear("p", "oc-hoja-nota master-fuente");
-        const enlaceG = crear("a", "", "Google Sound Library");
+        const enlaceG = crear("a", "", ocT("Google Sound Library"));
         enlaceG.href = "https://developers.google.com/assistant/tools/sound-library";
         enlaceG.target = "_blank";
         enlaceG.rel = "noopener noreferrer";
-        enlaceG.setAttribute("aria-label", "Google Sound Library (se abre en otra pestaña)");
-        nota.append("Grabaciones de la ", enlaceG, " (Google, CC BY 4.0), incluidas en la app: suenan sin conexión. Se mezclan"
-            + " y siguen sonando al cambiar de pestaña; al quitar esta ventana, se paran. Los tuyos se quedan sólo en este"
-            + " dispositivo.");
-        const sinGrabaciones = crear("p", "oc-vacio", "Aún no hay grabaciones incluidas en la app. Añade las tuyas con «＋ 🎵 tu"
-            + " sonido».");
+        enlaceG.setAttribute("aria-label", ocT("Google Sound Library (se abre en otra pestaña)"));
+        nota.append(ocT("Grabaciones de la "), enlaceG, ocT(" (Google, CC BY 4.0), incluidas en la app: suenan sin conexión. Se mezclan y siguen sonando al cambiar de pestaña; al quitar esta ventana, se paran. Los tuyos se quedan sólo en este dispositivo."));
+        const sinGrabaciones = crear("p", "oc-vacio", ocT("Aún no hay grabaciones incluidas en la app. Añade las tuyas con «＋ 🎵 tu sonido»."));
         sinGrabaciones.hidden = true;
         dentro.append(arriba, volver, sinGrabaciones, lista, otro, subir, nota);
         pintarFilas();
@@ -12094,39 +12046,39 @@
     // (Google Sound Library, CC BY 4.0), enlazadas, no alojadas; y los
     // tuyos, guardados sólo en este navegador. ----
     const EFECTOS_SONOROS = [
-        ["🚪 Puertas y cerrojos", [["🚪", "puerta que cruje", "doors/creaking_wooden_door"],
-            ["🚪", "abrir una puerta", "doors/wood_door_open"], ["💥", "portazo", "doors/wood_door_close_hard"],
-            ["🏰", "portón pesado", "doors/heavy_door_close"], ["✊", "llamar a la puerta", "doors/knock_on_wooden_door"],
-            ["🗝️", "llave en la cerradura", "doors/key_in_lock"], ["🔒", "puerta cerrada (forcejeo)", "doors/locked_doorknob_jiggle"],
-            ["🔩", "cerrojo", "doors/deadbolt_lock"], ["📦", "tapa de cofre", "doors/lid_close_wood"]]],
-        ["⚔️ Combate", [["🌬️", "tajo al aire", "horror/swoosh"], ["🪓", "hachazo", "impacts/chop"],
-            ["🔨", "golpe de maza", "impacts/hit_with_club"], ["🛡️", "golpe en el escudo", "impacts/metal_strike_on_wood"],
-            ["⚔️", "choque de metal", "impacts/metal_crash"], ["🗡️", "estocada", "horror/puncture_pop"],
-            ["🥩", "golpe en carne", "horror/meat_punch"], ["👊", "puñetazos", "impacts/body_punch_series"],
-            ["🦴", "hueso roto", "horror/leg_bone_break"], ["🔪", "arma que cae", "impacts/knife_drop"],
+        ["🚪 Puertas y cerrojos", [["🚪", ocT("puerta que cruje"), "doors/creaking_wooden_door"],
+            ["🚪", ocT("abrir una puerta"), "doors/wood_door_open"], ["💥", "portazo", "doors/wood_door_close_hard"],
+            ["🏰", ocT("portón pesado"), "doors/heavy_door_close"], ["✊", ocT("llamar a la puerta"), "doors/knock_on_wooden_door"],
+            ["🗝️", ocT("llave en la cerradura"), "doors/key_in_lock"], ["🔒", ocT("puerta cerrada (forcejeo)"), "doors/locked_doorknob_jiggle"],
+            ["🔩", "cerrojo", "doors/deadbolt_lock"], ["📦", ocT("tapa de cofre"), "doors/lid_close_wood"]]],
+        ["⚔️ Combate", [["🌬️", ocT("tajo al aire"), "horror/swoosh"], ["🪓", "hachazo", "impacts/chop"],
+            ["🔨", ocT("golpe de maza"), "impacts/hit_with_club"], ["🛡️", ocT("golpe en el escudo"), "impacts/metal_strike_on_wood"],
+            ["⚔️", ocT("choque de metal"), "impacts/metal_crash"], ["🗡️", "estocada", "horror/puncture_pop"],
+            ["🥩", ocT("golpe en carne"), "horror/meat_punch"], ["👊", "puñetazos", "impacts/body_punch_series"],
+            ["🦴", ocT("hueso roto"), "horror/leg_bone_break"], ["🔪", ocT("arma que cae"), "impacts/knife_drop"],
             ["⛓️", "cadenas", "impacts/chain_jingle"], ["💣", "cañonazo", "weapons/howitzer_cannon_fire"]]],
         ["✨ Magia y explosiones", [["⚡", "rayo", "science_fiction/alien_beam"], ["🌀", "portal", "science_fiction/sci_fi_vortex"],
-            ["🔮", "encantamiento", "science_fiction/windchime_drone"], ["🌫️", "susurro mágico", "science_fiction/dream_breath"],
-            ["📉", "conjuro que se apaga", "science_fiction/high_to_low_sweep"], ["👁️", "presagio", "science_fiction/forboding_resonance"],
-            ["💨", "nube de humo", "weapons/smoke_bomb"], ["🔥", "bola de fuego", "weapons/explosion_hiss_bop_bang"],
-            ["💥", "explosión lejana", "weapons/big_explosion_distant"], ["🌩️", "trueno", "weather/thunder_crack"],
-            ["🪨", "derrumbe", "impacts/rubble_crash"], ["🪟", "cristal que estalla", "impacts/glass_shatters_into_debris"]]],
-        ["😱 Gritos y voces", [["😱", "grito de muerte", "human_voices/death_impact_yell_single"],
-            ["😵", "varios gritos", "human_voices/death_impact_yell_multiple"], ["💀", "último aliento", "human_voices/death_rattle_breath"],
-            ["📣", "grito de guerra", "crowds/battle_cry_high_pitch"], ["🙌", "gente que grita", "crowds/human_group_cry_out"],
-            ["😠", "multitud enfadada", "crowds/voices_angry"], ["🎉", "vítores", "crowds/battle_crowd_celebration"],
-            ["🤕", "heridos que gimen", "crowds/battle_agony_moans"], ["😏", "risita", "human_voices/male_chuckling"],
+            ["🔮", "encantamiento", "science_fiction/windchime_drone"], ["🌫️", ocT("susurro mágico"), "science_fiction/dream_breath"],
+            ["📉", ocT("conjuro que se apaga"), "science_fiction/high_to_low_sweep"], ["👁️", "presagio", "science_fiction/forboding_resonance"],
+            ["💨", ocT("nube de humo"), "weapons/smoke_bomb"], ["🔥", ocT("bola de fuego"), "weapons/explosion_hiss_bop_bang"],
+            ["💥", ocT("explosión lejana"), "weapons/big_explosion_distant"], ["🌩️", "trueno", "weather/thunder_crack"],
+            ["🪨", "derrumbe", "impacts/rubble_crash"], ["🪟", ocT("cristal que estalla"), "impacts/glass_shatters_into_debris"]]],
+        ["😱 Gritos y voces", [["😱", ocT("grito de muerte"), "human_voices/death_impact_yell_single"],
+            ["😵", ocT("varios gritos"), "human_voices/death_impact_yell_multiple"], ["💀", ocT("último aliento"), "human_voices/death_rattle_breath"],
+            ["📣", ocT("grito de guerra"), "crowds/battle_cry_high_pitch"], ["🙌", ocT("gente que grita"), "crowds/human_group_cry_out"],
+            ["😠", ocT("multitud enfadada"), "crowds/voices_angry"], ["🎉", "vítores", "crowds/battle_crowd_celebration"],
+            ["🤕", ocT("heridos que gimen"), "crowds/battle_agony_moans"], ["😏", "risita", "human_voices/male_chuckling"],
             ["😂", "carcajada", "human_voices/man_laugh_and_knee_slap"]]],
         ["🐺 Monstruos y animales", [["🧟", "zombi", "horror/aggressive_zombie_snarls"],
-            ["👹", "rugido de monstruo", "horror/female_monster_growls"], ["😾", "gruñido", "horror/monster_alien_growl_tense"],
-            ["🐍", "siseo", "horror/monster_alien_grunt_hiss"], ["🐕", "perro que gruñe", "animals/dog_growling"],
-            ["🪱", "cascabel de serpiente", "animals/animal_hiss_and_rattle"], ["🦉", "búho", "animals/owl_hooting"],
+            ["👹", ocT("rugido de monstruo"), "horror/female_monster_growls"], ["😾", "gruñido", "horror/monster_alien_growl_tense"],
+            ["🐍", "siseo", "horror/monster_alien_grunt_hiss"], ["🐕", ocT("perro que gruñe"), "animals/dog_growling"],
+            ["🪱", ocT("cascabel de serpiente"), "animals/animal_hiss_and_rattle"], ["🦉", "búho", "animals/owl_hooting"],
             ["🐦", "cuervo", "animals/crow_call"], ["🐝", "enjambre", "animals/swarming_bees"],
             ["🐙", "tentáculo", "animals/tentacle_flop_down"], ["🐀", "ratas", "animals/mouse_squeaking"],
             ["🐎", "caballos", "transportation/horse_team"]]],
         ["🎲 Otros", [["🪙", "monedas", "impacts/loose_change_on_wood"], ["🥂", "brindis", "impacts/silverware_on_glass_toast"],
-            ["🌲", "rama que se parte", "impacts/forest_wood_snapping"], ["🪵", "crujido de madera", "impacts/stress_creak"],
-            ["⚰️", "tierra sobre un ataúd", "impacts/dirt_on_coffin_lid"], ["💦", "algo cae al agua", "water/rocks_into_water"]]],
+            ["🌲", ocT("rama que se parte"), "impacts/forest_wood_snapping"], ["🪵", ocT("crujido de madera"), "impacts/stress_creak"],
+            ["⚰️", ocT("tierra sobre un ataúd"), "impacts/dirt_on_coffin_lid"], ["💦", ocT("algo cae al agua"), "water/rocks_into_water"]]],
     ];
     // Lo que está sonando ahora (para pararlo todo de golpe).
     const EFECTOS_SUENAN = new Set();
@@ -12182,7 +12134,7 @@
         const d = m.datos;
         d.propios = Array.isArray(d.propios) ? d.propios : [];
         if (!window.Audio) {
-            dentro.appendChild(crear("p", "oc-vacio", "Este navegador no puede poner sonidos."));
+            dentro.appendChild(crear("p", "oc-vacio", ocT("Este navegador no puede poner sonidos.")));
             return;
         }
         const arriba = crear("div", "master-ambiente-arriba");
@@ -12192,21 +12144,21 @@
         general.min = 0;
         general.max = 100;
         general.value = d.general === undefined ? 80 : d.general;
-        general.setAttribute("aria-label", "Volumen de los efectos");
+        general.setAttribute("aria-label", ocT("Volumen de los efectos"));
         general.setAttribute("aria-valuetext", general.value + " %");
-        etG.append(crear("span", "", "🔊 volumen"), general);
+        etG.append(crear("span", "", ocT("🔊 volumen")), general);
         general.addEventListener("input", () => {
             d.general = Number(general.value);
             general.setAttribute("aria-valuetext", general.value + " %");
             guardar();
         });
-        const parar = botonDe("oc-vida-accion", "■ parar", () => {
+        const parar = botonDe("oc-vida-accion", ocT("■ parar"), () => {
             EFECTOS_SUENAN.forEach((a) => a.pause());
             EFECTOS_SUENAN.clear();
             efectosCambian();
             dentro.querySelectorAll(".master-ambiente-fila.es-sonando").forEach((li) => li.classList.remove("es-sonando"));
-            avisar("Parados los efectos.");
-        }, "Parar los efectos que estén sonando");
+            avisar(ocT("Parados los efectos."));
+        }, ocT("Parar los efectos que estén sonando"));
         arriba.append(etG, parar);
         const vol = () => general.value / 100;
         function tarjeta(emoji, nombre, alPulsar, clave) {
@@ -12244,7 +12196,7 @@
             return [h, caja];
         }
         const partes = crear("div");
-        const sinEfectos = crear("p", "oc-vacio", "Aún no hay grabaciones incluidas en la app. Añade las tuyas abajo, en «Los tuyos».");
+        const sinEfectos = crear("p", "oc-vacio", ocT("Aún no hay grabaciones incluidas en la app. Añade las tuyas abajo, en «Los tuyos»."));
         sinEfectos.hidden = true;
         sonidosListos.then(() => EFECTOS_SONOROS.forEach(([tituloS, todos]) => {
             const lista = todos.filter((x) => sonidoEsta([x[2]]));
@@ -12258,7 +12210,7 @@
                 ul.appendChild(tarjeta(emoji, nombre, (acabar) => {
                     tocarEfecto(ruta, vol(), acabar).catch(() => {
                         acabar();
-                        avisar("No se ha podido poner «" + nombre + "».");
+                        avisar(ocT("No se ha podido poner «{nombre}».", { nombre: nombre }));
                     });
                 }, "efe:" + ruta));
             });
@@ -12268,8 +12220,8 @@
         });
         // LOS PROPIOS.
         const listaP = crear("ul", "master-ambiente-lista master-sonidos-lista");
-        listaP.setAttribute("aria-label", "Los tuyos");
-        const vacioP = crear("p", "oc-hoja-nota", "Aún no hay. Añade un audio de tu ordenador: sonará una vez al pulsarlo.");
+        listaP.setAttribute("aria-label", ocT("Los tuyos"));
+        const vacioP = crear("p", "oc-hoja-nota", ocT("Aún no hay. Añade un audio de tu ordenador: sonará una vez al pulsarlo."));
         function pintarPropios() {
             listaP.replaceChildren(...d.propios.map((p) => {
                 const li = tarjeta("🎵", p.nombre, (acabar) => {
@@ -12278,13 +12230,13 @@
                         ? AMBIENTE.ctx.decodeAudioData(buf) : null)).then((audio) => {
                         if (!audio) {
                             acabar();
-                            avisar("Ese sonido ya no está en este navegador.");
+                            avisar(ocT("Ese sonido ya no está en este navegador."));
                             return;
                         }
                         tocarEfectoPropio(audio, vol(), acabar);
                     }).catch(() => {
                         acabar();
-                        avisar("No se ha podido poner ese sonido.");
+                        avisar(ocT("No se ha podido poner ese sonido."));
                     });
                 }, "prop:" + p.id);
                 let seguro = false;
@@ -12292,7 +12244,7 @@
                     if (!seguro) {
                         seguro = true;
                         quitar.classList.add("es-seguro");
-                        avisar("Pulsa otra vez para quitar " + p.nombre + ".");
+                        avisar(ocT("Pulsa otra vez para quitar {nombre}.", { nombre: p.nombre }));
                         return;
                     }
                     archivoBorrar(p.archivo);
@@ -12300,9 +12252,9 @@
                     d.propios = d.propios.filter((x) => x !== p);
                     guardar();
                     pintarPropios();
-                    avisar("Quitado: " + p.nombre + ".");
+                    avisar(ocT("Quitado: {nombre}.", { nombre: p.nombre }));
                     otro.focus();
-                }, "Quitar el sonido " + p.nombre);
+                }, ocT("Quitar el sonido {nombre}", { nombre: p.nombre }));
                 li.appendChild(quitar);
                 return li;
             }));
@@ -12313,13 +12265,13 @@
         subir.type = "file";
         subir.accept = "audio/*";
         subir.hidden = true;
-        const otro = botonDe("oc-vida-accion", "＋ 🎵 tu efecto", () => subir.click(), "Añadir un efecto tuyo (un audio que suena una vez)");
-        otro.title = "Un audio de tu ordenador (se queda sólo en este navegador)";
+        const otro = botonDe("oc-vida-accion", ocT("＋ 🎵 tu efecto"), () => subir.click(), ocT("Añadir un efecto tuyo (un audio que suena una vez)"));
+        otro.title = ocT("Un audio de tu ordenador (se queda sólo en este navegador)");
         subir.addEventListener("change", () => {
             const f = subir.files && subir.files[0];
             subir.value = "";
             if (!f || !/^audio\//.test(f.type) || f.size > MAX_ARCHIVO) {
-                avisar("Sólo audios de hasta 50 MB.");
+                avisar(ocT("Sólo audios de hasta 50 MB."));
                 return;
             }
             const id = idDoc("a");
@@ -12327,18 +12279,17 @@
                 d.propios.push({ id, archivo: id, nombre: f.name.replace(/\.[^.]+$/, "").slice(0, 40) || "sonido" });
                 guardar();
                 pintarPropios();
-                avisar("Añadido: " + f.name + ". Se queda sólo en este navegador (⚙ → exportar para no perderlo).");
-            }).catch(() => avisar("No se ha podido guardar el sonido."));
+                avisar(ocT("Añadido: {name}. Se queda sólo en este navegador (⚙ → exportar para no perderlo).", { name: f.name }));
+            }).catch(() => avisar(ocT("No se ha podido guardar el sonido.")));
         });
         const nota = crear("p", "oc-hoja-nota master-fuente");
-        const enlaceG = crear("a", "", "Google Sound Library");
+        const enlaceG = crear("a", "", ocT("Google Sound Library"));
         enlaceG.href = "https://developers.google.com/assistant/tools/sound-library";
         enlaceG.target = "_blank";
         enlaceG.rel = "noopener noreferrer";
-        enlaceG.setAttribute("aria-label", "Google Sound Library (se abre en otra pestaña)");
-        nota.append("Grabaciones de la ", enlaceG, " (Google, CC BY 4.0), incluidas en la app: suenan sin conexión. Cada una"
-            + " suena una vez; se pueden pisar unas con otras. Los tuyos se quedan sólo en este dispositivo.");
-        dentro.append(arriba, sinEfectos, partes, ...seccion("🎵 Los tuyos", vacioP, listaP, otro, subir), nota);
+        enlaceG.setAttribute("aria-label", ocT("Google Sound Library (se abre en otra pestaña)"));
+        nota.append(ocT("Grabaciones de la "), enlaceG, ocT(" (Google, CC BY 4.0), incluidas en la app: suenan sin conexión. Cada una suena una vez; se pueden pisar unas con otras. Los tuyos se quedan sólo en este dispositivo."));
+        dentro.append(arriba, sinEfectos, partes, ...seccion(ocT("🎵 Los tuyos"), vacioP, listaP, otro, subir), nota);
         pintarPropios();
     }
 
@@ -12455,7 +12406,7 @@
             if (todas.length) {
                 musicaCarpeta(todas, "");
             } else {
-                avisar("Aún no hay canciones.");
+                avisar(ocT("Aún no hay canciones."));
             }
         } else if (MUSICA.audio.paused || MUSICA.pausando) {
             musicaReanudar();
@@ -12466,7 +12417,7 @@
     // El volumen y cómo se repite: en el reproductor y en las ventanas de
     // música (se guardan en ellas).
     const FUNDIDOS = [0, 1, 2, 3, 5];
-    const AGACHAR = [[1, "no se baja"], [0.6, "baja un poco"], [0.4, "baja bastante"], [0.15, "baja mucho"]];
+    const AGACHAR = [[1, ocT("no se baja")], [0.6, ocT("baja un poco")], [0.4, ocT("baja bastante")], [0.15, ocT("baja mucho")]];
     // El bucle de una canción: el del navegador (sin cortes) si se repite
     // entera; con puntos de inicio o final, lo hace musicaAlAcabar.
     function musicaBucle() {
@@ -12651,7 +12602,7 @@
                 return;
             }
             if (!blob) {
-                avisar("«" + c.nombre + "» ya no está en este navegador.");
+                avisar(ocT("«{nombre}» ya no está en este navegador.", { nombre: c.nombre }));
                 return;
             }
             if (MUSICA.url) {
@@ -12682,7 +12633,7 @@
                 vigilarMusica();
                 musicaAviso();
             });
-        }).catch(() => avisar("No se ha podido poner «" + c.nombre + "»."));
+        }).catch(() => avisar(ocT("No se ha podido poner «{nombre}».", { nombre: c.nombre })));
         }
     }
     // Hacia el final (el suyo o el que le has puesto), se va apagando; al
@@ -12829,7 +12780,7 @@
     function dialogoAspecto(cosa, titulo, alGuardar) {
         const vuelta = document.activeElement;
         const cuerpo = crear("form", "master-pegar");
-        const et = crear("label", "oc-dados-etiqueta", "emoji (o escribe el tuyo)");
+        const et = crear("label", "oc-dados-etiqueta", ocT("emoji (o escribe el tuyo)"));
         const input = crear("input", "oc-dados-texto");
         input.id = "master-musica-emoji";
         input.maxLength = 8;
@@ -12838,38 +12789,38 @@
         et.htmlFor = input.id;
         const muestras = crear("div", "master-musica-emojis");
         muestras.setAttribute("role", "group");
-        muestras.setAttribute("aria-label", "Emojis de muestra");
+        muestras.setAttribute("aria-label", ocT("Emojis de muestra"));
         EMOJIS_MUSICA.forEach((e2) => muestras.appendChild(botonDe("master-musica-emoji", e2, () => {
             input.value = e2;
             input.focus();
-        }, "Usar " + e2)));
+        }, ocT("Usar {e2}", { e2: e2 }))));
         const subirImg = crear("input");
         subirImg.type = "file";
         subirImg.accept = "image/*";
         subirImg.hidden = true;
-        const estado = crear("p", "oc-hoja-nota", cosa.imagen ? "Tiene una imagen tuya (va por delante del emoji)." : "Sin imagen.");
+        const estado = crear("p", "oc-hoja-nota", cosa.imagen ? ocT("Tiene una imagen tuya (va por delante del emoji).") : ocT("Sin imagen."));
         estado.setAttribute("role", "status");
         let imagen = cosa.imagen || "";
         let nuevaImagen = null;
-        const ponerImg = botonDe("oc-vida-accion", "🖼️ poner una imagen", () => subirImg.click(), "Poner una imagen de tu dispositivo");
-        const quitarImg = botonDe("oc-vida-accion", "✕ quitar la imagen", () => {
+        const ponerImg = botonDe("oc-vida-accion", ocT("🖼️ poner una imagen"), () => subirImg.click(), ocT("Poner una imagen de tu dispositivo"));
+        const quitarImg = botonDe("oc-vida-accion", ocT("✕ quitar la imagen"), () => {
             imagen = "";
             nuevaImagen = null;
-            estado.textContent = "Sin imagen (se verá el emoji).";
+            estado.textContent = ocT("Sin imagen (se verá el emoji).");
         });
         subirImg.addEventListener("change", () => {
             const f = subirImg.files && subirImg.files[0];
             subirImg.value = "";
             if (!f || !/^image\//.test(f.type) || f.size > 10 * 1024 * 1024) {
-                estado.textContent = "Sólo imágenes de hasta 10 MB.";
+                estado.textContent = ocT("Sólo imágenes de hasta 10 MB.");
                 return;
             }
             nuevaImagen = f;
-            estado.textContent = "Imagen elegida: " + f.name + ". Pulsa «✓ guardar».";
+            estado.textContent = ocT("Imagen elegida: {name}. Pulsa «✓ guardar».", { name: f.name });
         });
         const fila = crear("div", "master-creador-barra");
         fila.append(ponerImg, quitarImg, subirImg);
-        const ok = crear("button", "oc-vida-accion es-principal", "✓ guardar");
+        const ok = crear("button", "oc-vida-accion es-principal", ocT("✓ guardar"));
         ok.type = "submit";
         cuerpo.append(et, input, muestras, fila, estado, ok);
         cuerpo.addEventListener("submit", (e) => {
@@ -12878,7 +12829,7 @@
                 cosa.icono = input.value.trim();
                 cerrar();
                 alGuardar();
-                avisar("Aspecto guardado: " + cosa.nombre + ".");
+                avisar(ocT("Aspecto guardado: {nombre}.", { nombre: cosa.nombre }));
             };
             const antes = cosa.imagen;
             if (nuevaImagen) {
@@ -12890,7 +12841,7 @@
                     cosa.imagen = id;
                     fin();
                 }).catch(() => {
-                    estado.textContent = "No se ha podido guardar la imagen.";
+                    estado.textContent = ocT("No se ha podido guardar la imagen.");
                 });
             } else {
                 if (antes && !imagen) {
@@ -12956,7 +12907,7 @@
         return botonDe("master-docs-mando master-ambiente-aspecto", "🎨", () => {
             const todos = leerAspectos();
             const cosa = Object.assign({ nombre }, todos[clave] || {});
-            dialogoAspecto(cosa, "aspecto de " + nombre, () => {
+            dialogoAspecto(cosa, ocT("aspecto de {nombre}", { nombre: nombre }), () => {
                 const t = leerAspectos();
                 if (cosa.icono || cosa.imagen) {
                     t[clave] = { icono: cosa.icono || "", imagen: cosa.imagen || "" };
@@ -12966,13 +12917,13 @@
                 try {
                     localStorage.setItem(CLAVE_ASPECTOS, JSON.stringify(t));
                 } catch (e) {
-                    avisar("No se ha podido guardar.");
+                    avisar(ocT("No se ha podido guardar."));
                 }
                 const viejo = boton.querySelector(".master-ambiente-emoji");
                 viejo.replaceWith(iconoSonido(clave, emoji));
                 boton.focus();
             });
-        }, "Poner un emoji o una imagen a " + nombre);
+        }, ocT("Poner un emoji o una imagen a {nombre}", { nombre: nombre }));
     }
 
     const IMAGENES_MUSICA = new Map();
@@ -12994,26 +12945,26 @@
         MUSICA.agachar = AGACHAR.some((x) => x[0] === d.agachar) ? d.agachar : 0.4;
         const mu = musicaDe();
         if (!window.Audio) {
-            dentro.appendChild(crear("p", "oc-vacio", "Este navegador no puede poner música."));
+            dentro.appendChild(crear("p", "oc-vacio", ocT("Este navegador no puede poner música.")));
             return;
         }
         // EL REPRODUCTOR.
         const repro = crear("div", "master-musica-repro");
         const ahora = crear("p", "master-musica-ahora");
         const mandos = crear("div", "master-musica-mandos");
-        const ant = botonDe("master-musica-mando", "⏮", musicaAnterior, "Anterior");
-        const tocar = botonDe("master-musica-mando es-grande", "▶", musicaAlternar, "Reproducir");
-        const sig = botonDe("master-musica-mando", "⏭", () => musicaSiguiente(false), "Siguiente");
+        const ant = botonDe("master-musica-mando", "⏮", musicaAnterior, ocT("Anterior"));
+        const tocar = botonDe("master-musica-mando es-grande", "▶", musicaAlternar, ocT("Reproducir"));
+        const sig = botonDe("master-musica-mando", "⏭", () => musicaSiguiente(false), ocT("Siguiente"));
         const parar = botonDe("master-musica-mando", "■", () => {
             musicaParar(true);
-            avisar("Música parada.");
-        }, "Parar");
+            avisar(ocT("Música parada."));
+        }, ocT("Parar"));
         const barra = crear("input", "master-musica-barra");
         barra.type = "range";
         barra.min = 0;
         barra.max = 1000;
         barra.value = 0;
-        barra.setAttribute("aria-label", "Por dónde va");
+        barra.setAttribute("aria-label", ocT("Por dónde va"));
         // Mientras se arrastra con el ratón o el dedo, no se repinta (si no,
         // salta); al soltar, vuelve a seguir a la canción.
         let arrastrando = false;
@@ -13043,9 +12994,9 @@
         vol.min = 0;
         vol.max = 100;
         vol.value = d.vol === undefined ? 80 : d.vol;
-        vol.setAttribute("aria-label", "Volumen de la música");
+        vol.setAttribute("aria-label", ocT("Volumen de la música"));
         vol.setAttribute("aria-valuetext", vol.value + " %");
-        etV.append(crear("span", "", "🔊 volumen"), vol);
+        etV.append(crear("span", "", ocT("🔊 volumen")), vol);
         const ponerVol = () => {
             MUSICA.volumen = vol.value / 100;
             musicaVol();
@@ -13058,15 +13009,15 @@
         });
         const modos = crear("div", "master-musica-modos");
         modos.setAttribute("role", "group");
-        modos.setAttribute("aria-label", "Repetir");
-        const botonesModo = [["una", "🔂 la canción"], ["carpeta", "🔁 la carpeta"], ["nada", "➡️ sin repetir"]].map(([v, t]) => {
+        modos.setAttribute("aria-label", ocT("Repetir"));
+        const botonesModo = [["una", ocT("🔂 la canción")], ["carpeta", ocT("🔁 la carpeta")], ["nada", ocT("➡️ sin repetir")]].map(([v, t]) => {
             const b = botonDe("master-musica-modo", t, () => {
                 d.modo = v;
                 MUSICA.modo = v;
                 musicaBucle();
                 guardar();
                 pintarModo();
-                avisar(v === "una" ? "Se repite la canción." : v === "carpeta" ? "Se repite la carpeta entera." : "Sin repetir: al acabar la carpeta, se para.");
+                avisar(v === "una" ? ocT("Se repite la canción.") : v === "carpeta" ? ocT("Se repite la carpeta entera.") : ocT("Sin repetir: al acabar la carpeta, se para."));
             });
             b.dataset.modo = v;
             return b;
@@ -13077,20 +13028,20 @@
         }
         // Sacar el reproductor a su ventana (para compartirla en Discord
         // u OBS sin enseñar la pantalla).
-        const fuera = botonDe("oc-vida-accion", "🪟 en otra ventana", () => {
+        const fuera = botonDe("oc-vida-accion", ocT("🪟 en otra ventana"), () => {
             const w = window.open("reproductor.html", "pantalla-master-reproductor", "popup,width=440,height=640");
             if (w) {
                 w.focus();
-                avisar("El reproductor, en su ventana: compártela en Discord u OBS. La música sigue sonando aquí.");
+                avisar(ocT("El reproductor, en su ventana: compártela en Discord u OBS. La música sigue sonando aquí."));
             } else {
-                avisar("El navegador no ha dejado abrir la ventana: permite las ventanas emergentes de esta página.");
+                avisar(ocT("El navegador no ha dejado abrir la ventana: permite las ventanas emergentes de esta página."));
             }
-        }, "Abrir el reproductor en una ventana aparte (para compartirla en Discord u OBS)");
+        }, ocT("Abrir el reproductor en una ventana aparte (para compartirla en Discord u OBS)"));
         // 🔀 aleatorio, el fundido y cuánto baja con los efectos.
-        const alAzar = botonDe("master-musica-modo", "🔀 aleatorio", () => {
+        const alAzar = botonDe("master-musica-modo", ocT("🔀 aleatorio"), () => {
             musicaAjustar({ aleatorio: !MUSICA.aleatorio });
-            avisar(MUSICA.aleatorio ? "En aleatorio." : "En orden.");
-        }, "Aleatorio");
+            avisar(MUSICA.aleatorio ? ocT("En aleatorio.") : ocT("En orden."));
+        }, ocT("Aleatorio"));
         const elegirAjuste = (id, texto, opciones, valor, cambio) => {
             const caja = crear("label", "master-musica-ajuste");
             const sel = crear("select", "oc-dados-elegir");
@@ -13106,9 +13057,9 @@
             caja.sel = sel;
             return caja;
         };
-        const fundidoS = elegirAjuste("master-musica-fundido-", "🌫️ fundido", FUNDIDOS.map((x) => [x, x ? x + " s" : "sin fundido"]),
+        const fundidoS = elegirAjuste("master-musica-fundido-", ocT("🌫️ fundido"), FUNDIDOS.map((x) => [x, x ? x + " s" : ocT("sin fundido")]),
             MUSICA.fundido, (v) => musicaAjustar({ fundido: v }));
-        const agacharS = elegirAjuste("master-musica-agachar-", "💥 con efectos", AGACHAR, MUSICA.agachar,
+        const agacharS = elegirAjuste("master-musica-agachar-", ocT("💥 con efectos"), AGACHAR, MUSICA.agachar,
             (v) => musicaAjustar({ agachar: v }));
         const ajustes = crear("div", "master-musica-ajustes");
         ajustes.append(alAzar, fundidoS, agacharS);
@@ -13117,16 +13068,16 @@
 
         // LAS CARPETAS Y CANCIONES.
         const herramientas = crear("div", "master-musica-herramientas");
-        const nuevaCarpeta = botonDe("oc-vida-accion", "＋ 📁 carpeta", () => formulario({ tipo: "carpeta", padre: "" }),
-            "Nueva carpeta");
-        const subirRaiz = botonDe("oc-vida-accion", "＋ 🎵 canciones", () => subirA(""), "Añadir canciones (te pregunto la carpeta)");
+        const nuevaCarpeta = botonDe("oc-vida-accion", ocT("＋ 📁 carpeta"), () => formulario({ tipo: "carpeta", padre: "" }),
+            ocT("Nueva carpeta"));
+        const subirRaiz = botonDe("oc-vida-accion", ocT("＋ 🎵 canciones"), () => subirA(""), ocT("Añadir canciones (te pregunto la carpeta)"));
         // Dos vistas: TARJETAS (como un panel de sonidos: cada carpeta y
         // canción, un botón grande con su imagen o su emoji) y LISTA (el
         // árbol). Se recuerda en d.vista.
         const vistas = crear("div", "master-musica-modos");
         vistas.setAttribute("role", "group");
-        vistas.setAttribute("aria-label", "Vista");
-        const botonesVista = [["tarjetas", "▦ tarjetas"], ["lista", "☰ lista"]].map(([v, t]) => {
+        vistas.setAttribute("aria-label", ocT("Vista"));
+        const botonesVista = [["tarjetas", ocT("▦ tarjetas")], ["lista", ocT("☰ lista")]].map(([v, t]) => {
             const b = botonDe("master-musica-modo", t, () => {
                 d.vista = v;
                 guardar();
@@ -13142,13 +13093,13 @@
         const buscar = crear("input", "oc-dados-texto");
         buscar.type = "search";
         buscar.id = "master-musica-buscar-" + m.id;
-        buscar.placeholder = "🔍 buscar una canción…";
+        buscar.placeholder = ocT("🔍 buscar una canción…");
         buscar.autocomplete = "off";
-        const etBusca = crear("label", "visually-hidden", "Buscar una canción");
+        const etBusca = crear("label", "visually-hidden", ocT("Buscar una canción"));
         etBusca.htmlFor = buscar.id;
         busca.append(etBusca, buscar);
         const resultados = crear("ul", "master-musica-resultados");
-        resultados.setAttribute("aria-label", "Canciones encontradas");
+        resultados.setAttribute("aria-label", ocT("Canciones encontradas"));
         resultados.hidden = true;
         const cuantos = crear("p", "visually-hidden");
         cuantos.setAttribute("role", "status");
@@ -13183,7 +13134,7 @@
                     }
                     const cola = cancionesDe(c.carpeta || "");
                     musicaPoner(cola, cola.indexOf(c), c.carpeta || "");
-                    avisar("Suena: " + c.nombre + ".");
+                    avisar(ocT("Suena: {nombre}.", { nombre: c.nombre }));
                 });
                 b.dataset.cancion = c.id;
                 const em = crear("span", "master-ambiente-emoji", c.icono || "🎵");
@@ -13191,20 +13142,19 @@
                 const ruta = rutaDe(c.carpeta || "");
                 b.append(em, crear("span", "", c.nombre), crear("span", "master-musica-cuenta", ruta ? " · 📁 " + ruta : ""));
                 li.append(b, botonDe("master-docs-mando", "✎", () => formulario({ tipo: "cancion", id: c.id }),
-                    "Cambiar el nombre, la carpeta o los puntos de " + c.nombre));
+                    ocT("Cambiar el nombre, la carpeta o los puntos de {nombre}", { nombre: c.nombre })));
                 return li;
             }));
             if (!vistas2.length) {
-                resultados.appendChild(crear("li", "oc-vacio", "Ninguna canción con eso."));
+                resultados.appendChild(crear("li", "oc-vacio", ocT("Ninguna canción con eso.")));
             }
-            cuantos.textContent = vistas2.length + (vistas2.length === 1 ? " canción encontrada." : " canciones encontradas.");
+            cuantos.textContent = vistas2.length + (vistas2.length === 1 ? ocT(" canción encontrada.") : ocT(" canciones encontradas."));
         }
         const form = crear("form", "master-musica-form");
         form.hidden = true;
         const arbol = crear("ul", "master-musica-arbol");
-        arbol.setAttribute("aria-label", "Carpetas y canciones");
-        const vacio = crear("p", "oc-hoja-nota", "Aún no hay canciones. Haz carpetas (por ejemplo «combate» o «tabernas»,"
-            + " con subcarpetas) y añade tus audios.");
+        arbol.setAttribute("aria-label", ocT("Carpetas y canciones"));
+        const vacio = crear("p", "oc-hoja-nota", ocT("Aún no hay canciones. Haz carpetas (por ejemplo «combate» o «tabernas», con subcarpetas) y añade tus audios."));
         const subir = crear("input");
         subir.type = "file";
         subir.accept = "audio/*";
@@ -13220,11 +13170,11 @@
                 return;
             }
             volverA = document.activeElement;
-            const titulo = crear("p", "master-musica-form-titulo", "＋ 🎵 ¿en qué carpeta van?");
+            const titulo = crear("p", "master-musica-form-titulo", ocT("＋ 🎵 ¿en qué carpeta van?"));
             const nueva = "__nueva";
-            const donde = elegirDe("master-musica-destino", "carpeta", opcionesDeCarpeta("").slice(1)
-                .concat([[nueva, "＋ 📁 una carpeta nueva…"]]), mu.carpetas.length ? opcionesDeCarpeta("")[1][0] : nueva);
-            const etN = crear("label", "oc-dados-etiqueta", "nombre de la carpeta nueva");
+            const donde = elegirDe("master-musica-destino", ocT("carpeta"), opcionesDeCarpeta("").slice(1)
+                .concat([[nueva, ocT("＋ 📁 una carpeta nueva…")]]), mu.carpetas.length ? opcionesDeCarpeta("")[1][0] : nueva);
+            const etN = crear("label", "oc-dados-etiqueta", ocT("nombre de la carpeta nueva"));
             const nombre = crear("input", "oc-dados-texto");
             nombre.id = "master-musica-destino-nombre";
             nombre.maxLength = 80;
@@ -13237,10 +13187,10 @@
             };
             donde.elegir.addEventListener("change", verNueva);
             verNueva();
-            const ok = crear("button", "oc-vida-accion es-principal", "🎵 elegir los audios");
+            const ok = crear("button", "oc-vida-accion es-principal", ocT("🎵 elegir los audios"));
             ok.type = "submit";
             const fila = crear("div", "master-musica-form-botones");
-            fila.append(ok, botonDe("oc-vida-accion", "cancelar", cerrar));
+            fila.append(ok, botonDe("oc-vida-accion", ocT("cancelar"), cerrar));
             form.replaceChildren(titulo, donde, cajaN, fila);
             form.onsubmit = (e) => {
                 e.preventDefault();
@@ -13248,7 +13198,7 @@
                 if (id === nueva) {
                     const n = nombre.value.trim();
                     if (!n) {
-                        avisar("Ponle un nombre a la carpeta.");
+                        avisar(ocT("Ponle un nombre a la carpeta."));
                         nombre.focus();
                         return;
                     }
@@ -13256,7 +13206,7 @@
                     mu.carpetas.push({ id, nombre: n, padre: "" });
                     guardar();
                     pintarArbol();
-                    avisar("Carpeta creada: " + n + ".");
+                    avisar(ocT("Carpeta creada: {n}.", { n: n }));
                 }
                 form.hidden = true;
                 destino = id;
@@ -13276,7 +13226,7 @@
             subir.value = "";
             const buenos = fs.filter((f) => /^audio\//.test(f.type) && f.size <= MAX_ARCHIVO);
             if (buenos.length < fs.length) {
-                avisar("Sólo audios de hasta 50 MB cada uno.");
+                avisar(ocT("Sólo audios de hasta 50 MB cada uno."));
             }
             Promise.all(buenos.map((f) => {
                 const id = idDoc("a");
@@ -13291,13 +13241,12 @@
                 d.plegadas = d.plegadas.filter((x) => x !== destino);
                 guardar();
                 pintarArbol();
-                avisar("Añadidas " + buenos.length + " canciones (con ✎ les cambias el nombre). Se quedan sólo en este"
-                    + " dispositivo (⚙ → exportar para no perderlas).");
-            }).catch(() => avisar("No se han podido guardar (¿no queda sitio en el navegador?)."));
+                avisar(ocT("Añadidas {n} canciones (con ✎ les cambias el nombre). Se quedan sólo en este dispositivo (⚙ → exportar para no perderlas).", { n: buenos.length }));
+            }).catch(() => avisar(ocT("No se han podido guardar (¿no queda sitio en el navegador?).")));
         });
         // Las carpetas para elegir dónde va algo (sin la propia ni las de dentro).
         function opcionesDeCarpeta(sin) {
-            const salida = [["", "— ninguna (arriba del todo)"]];
+            const salida = [["", ocT("— ninguna (arriba del todo)")]];
             const meter = (padre, nivel) => mu.carpetas.filter((c) => (c.padre || "") === padre && c.id !== sin).forEach((c) => {
                 salida.push([c.id, "  ".repeat(nivel) + "📁 " + c.nombre]);
                 meter(c.id, nivel + 1);
@@ -13311,7 +13260,7 @@
             volverA = document.activeElement;
             const esCarpeta = x.tipo === "carpeta";
             const cosa = x.id ? (esCarpeta ? mu.carpetas : mu.canciones).find((c) => c.id === x.id) : null;
-            const titulo = crear("p", "master-musica-form-titulo", cosa ? "✎ " + cosa.nombre : "＋ 📁 nueva carpeta");
+            const titulo = crear("p", "master-musica-form-titulo", cosa ? "✎ " + cosa.nombre : ocT("＋ 📁 nueva carpeta"));
             const et = crear("label", "oc-dados-etiqueta", "nombre");
             const input = crear("input", "oc-dados-texto");
             input.id = "master-musica-nombre";
@@ -13323,11 +13272,11 @@
             if (!esCarpeta && cosa && cosa.carpeta && sitios.length > 1) {
                 sitios.shift();
             }
-            const donde = elegirDe("master-musica-donde", esCarpeta ? "dentro de" : "en la carpeta", sitios,
+            const donde = elegirDe("master-musica-donde", esCarpeta ? ocT("dentro de") : ocT("en la carpeta"), sitios,
                 cosa ? (esCarpeta ? cosa.padre : cosa.carpeta) || "" : x.padre || "");
-            const ok = crear("button", "oc-vida-accion es-principal", "✓ guardar");
+            const ok = crear("button", "oc-vida-accion es-principal", ocT("✓ guardar"));
             ok.type = "submit";
-            const no = botonDe("oc-vida-accion", "cancelar", cerrar);
+            const no = botonDe("oc-vida-accion", ocT("cancelar"), cerrar);
             const fila = crear("div", "master-musica-form-botones");
             fila.append(ok, no);
             // Los puntos de inicio y final de una canción (para saltarse
@@ -13336,8 +13285,8 @@
             const campos = {};
             if (!esCarpeta && cosa) {
                 const suena = () => musicaActual() && musicaActual().id === cosa.id && MUSICA.audio;
-                puntos.appendChild(crear("legend", "", "⏱ por dónde empieza y acaba (min:seg)"));
-                [["inicio", "empieza en", "0:00"], ["fin", "acaba en", "hasta el final"]].forEach(([k, t, ph]) => {
+                puntos.appendChild(crear("legend", "", ocT("⏱ por dónde empieza y acaba (min:seg)")));
+                [["inicio", ocT("empieza en"), "0:00"], ["fin", ocT("acaba en"), ocT("hasta el final")]].forEach(([k, t, ph]) => {
                     const caja = crear("div", "master-musica-punto");
                     const etP = crear("label", "oc-dados-etiqueta", t);
                     const inp = crear("input", "oc-dados-texto");
@@ -13347,14 +13296,14 @@
                     inp.placeholder = ph;
                     inp.value = cosa[k] ? minutos(cosa[k]) : "";
                     etP.htmlFor = inp.id;
-                    const yaB = botonDe("master-docs-mando es-texto", "⏱ ahora", () => {
+                    const yaB = botonDe("master-docs-mando es-texto", ocT("⏱ ahora"), () => {
                         if (!suena()) {
-                            avisar("Pon esta canción para coger el punto por donde va.");
+                            avisar(ocT("Pon esta canción para coger el punto por donde va."));
                             return;
                         }
                         inp.value = minutos(MUSICA.audio.currentTime);
                         avisar(t + ": " + inp.value + ".");
-                    }, t + ": por donde va ahora la canción");
+                    }, t + ocT(": por donde va ahora la canción"));
                     caja.append(etP, inp, yaB);
                     puntos.appendChild(caja);
                     campos[k] = inp;
@@ -13369,7 +13318,7 @@
                 e.preventDefault();
                 const nombre = input.value.trim();
                 if (!nombre) {
-                    avisar("Ponle un nombre.");
+                    avisar(ocT("Ponle un nombre."));
                     input.focus();
                     return;
                 }
@@ -13379,12 +13328,12 @@
                     const ini = segundosDe(campos.inicio.value);
                     const fin = segundosDe(campos.fin.value);
                     if (ini === null || fin === null) {
-                        avisar("Escribe los puntos como 1:30 (minutos y segundos) o déjalos en blanco.");
+                        avisar(ocT("Escribe los puntos como 1:30 (minutos y segundos) o déjalos en blanco."));
                         (ini === null ? campos.inicio : campos.fin).focus();
                         return;
                     }
                     if (fin && fin <= ini + 1) {
-                        avisar("El final tiene que ir después del inicio.");
+                        avisar(ocT("El final tiene que ir después del inicio."));
                         campos.fin.focus();
                         return;
                     }
@@ -13409,7 +13358,7 @@
                 guardar();
                 form.hidden = true;
                 pintarArbol();
-                avisar((cosa ? "Guardado: " : "Carpeta creada: ") + nombre + ".");
+                avisar((cosa ? ocT("Guardado: ") : ocT("Carpeta creada: ")) + nombre + ".");
                 const b = dentro.querySelector("[data-foco='" + id + "']:not([hidden] *)");
                 (b || nuevaCarpeta).focus();
             };
@@ -13437,11 +13386,11 @@
                 if (!seguro) {
                     seguro = true;
                     b.classList.add("es-seguro");
-                    avisar("Pulsa otra vez para quitar " + nombre + ".");
+                    avisar(ocT("Pulsa otra vez para quitar {nombre}.", { nombre: nombre }));
                     return;
                 }
                 hacer();
-            }, "Quitar " + nombre);
+            }, ocT("Quitar {nombre}", { nombre: nombre }));
             return b;
         }
         function quitarCarpeta(c) {
@@ -13460,7 +13409,7 @@
             mu.carpetas = mu.carpetas.filter((x) => !ids.includes(x.id));
             guardar();
             pintarArbol();
-            avisar("Quitada la carpeta " + c.nombre + (fuera.length ? " y sus " + fuera.length + " canciones." : "."));
+            avisar(ocT("Quitada la carpeta {nombre}{n}", { nombre: c.nombre, n: fuera.length ? ocT(" y sus {n} canciones.", { n: fuera.length }) : "." }));
             nuevaCarpeta.focus();
         }
         function filaCancion(c) {
@@ -13468,7 +13417,7 @@
             const b = botonDe("master-musica-tocar", "", () => {
                 const cola = cancionesDe(c.carpeta || "");
                 musicaPoner(cola, cola.indexOf(c), c.carpeta || "");
-                avisar("Suena: " + c.nombre + ".");
+                avisar(ocT("Suena: {nombre}.", { nombre: c.nombre }));
             });
             b.dataset.foco = c.id;
             b.dataset.cancion = c.id;
@@ -13476,7 +13425,7 @@
             em.setAttribute("aria-hidden", "true");
             b.append(em, crear("span", "", c.nombre));
             const editar = botonDe("master-docs-mando", "✎", () => formulario({ tipo: "cancion", id: c.id }),
-                "Cambiar el nombre, la carpeta o los puntos de " + c.nombre);
+                ocT("Cambiar el nombre, la carpeta o los puntos de {nombre}", { nombre: c.nombre }));
             const quitar = botonQuitar(c.nombre, () => {
                 if (musicaActual() && musicaActual().id === c.id) {
                     musicaParar();
@@ -13485,7 +13434,7 @@
                 mu.canciones = mu.canciones.filter((x) => x !== c);
                 guardar();
                 pintarArbol();
-                avisar("Quitada: " + c.nombre + ".");
+                avisar(ocT("Quitada: {nombre}.", { nombre: c.nombre }));
                 nuevaCarpeta.focus();
             });
             li.append(b, editar, quitar);
@@ -13515,18 +13464,18 @@
             const tocarC = botonDe("master-docs-mando", "▶", () => {
                 const cola = cancionesDe(c.id);
                 if (!cola.length) {
-                    avisar("La carpeta " + c.nombre + " está vacía.");
+                    avisar(ocT("La carpeta {nombre} está vacía.", { nombre: c.nombre }));
                     return;
                 }
                 musicaCarpeta(cola, c.id);
-                avisar("Suena la carpeta " + c.nombre + ": " + cola.length + " canciones.");
-            }, "Reproducir la carpeta " + c.nombre);
-            const mas = botonDe("master-docs-mando es-texto", "＋🎵", () => subirA(c.id), "Añadir canciones a " + c.nombre);
+                avisar(ocT("Suena la carpeta {nombre}: {n} canciones.", { nombre: c.nombre, n: cola.length }));
+            }, ocT("Reproducir la carpeta {nombre}", { nombre: c.nombre }));
+            const mas = botonDe("master-docs-mando es-texto", "＋🎵", () => subirA(c.id), ocT("Añadir canciones a {nombre}", { nombre: c.nombre }));
             const sub = botonDe("master-docs-mando es-texto", "＋📁", () => formulario({ tipo: "carpeta", padre: c.id }),
-                "Nueva subcarpeta en " + c.nombre);
+                ocT("Nueva subcarpeta en {nombre}", { nombre: c.nombre }));
             const editar = botonDe("master-docs-mando", "✎", () => formulario({ tipo: "carpeta", id: c.id }),
-                "Cambiar el nombre o el sitio de " + c.nombre);
-            cab.append(plegar, tocarC, mas, sub, editar, botonQuitar("la carpeta " + c.nombre, () => quitarCarpeta(c)));
+                ocT("Cambiar el nombre o el sitio de {nombre}", { nombre: c.nombre }));
+            cab.append(plegar, tocarC, mas, sub, editar, botonQuitar(ocT("la carpeta {nombre}", { nombre: c.nombre }), () => quitarCarpeta(c)));
             dentroUl.append(...ramas(c.id));
             li.append(cab, dentroUl);
             return li;
@@ -13540,7 +13489,7 @@
         // una imagen tuya. ----
         const tarjetas = crear("div", "master-musica-tarjetas-caja");
         const camino = crear("nav", "master-musica-camino");
-        camino.setAttribute("aria-label", "Dónde estás");
+        camino.setAttribute("aria-label", ocT("Dónde estás"));
         const rejilla = crear("ul", "master-musica-tarjetas");
         const enCarpeta = crear("div", "master-creador-barra");
         tarjetas.append(camino, enCarpeta, rejilla);
@@ -13586,23 +13535,23 @@
                 }
                 return b;
             };
-            camino.replaceChildren(ir("", "🏠 toda la música", !aqui), ...pasos.flatMap((c, i) => [crear("span", "master-musica-sep",
+            camino.replaceChildren(ir("", ocT("🏠 toda la música"), !aqui), ...pasos.flatMap((c, i) => [crear("span", "master-musica-sep",
                 "›"), ir(c.id, c.nombre, i === pasos.length - 1)]));
             camino.querySelectorAll(".master-musica-sep").forEach((sp) => sp.setAttribute("aria-hidden", "true"));
             // Lo de esta carpeta.
             const todas = cancionesDe(aqui);
-            const aquiNombre = aqui ? mu.carpetas.find((c) => c.id === aqui).nombre : "toda la música";
-            enCarpeta.replaceChildren(botonDe("oc-vida-accion", "▶ " + (aqui ? "esta carpeta" : "todo"), () => {
+            const aquiNombre = aqui ? mu.carpetas.find((c) => c.id === aqui).nombre : ocT("toda la música");
+            enCarpeta.replaceChildren(botonDe("oc-vida-accion", "▶ " + (aqui ? ocT("esta carpeta") : "todo"), () => {
                 if (!todas.length) {
-                    avisar("Aquí no hay canciones.");
+                    avisar(ocT("Aquí no hay canciones."));
                     return;
                 }
                 musicaCarpeta(todas, aqui);
-                avisar("Suena " + aquiNombre + ": " + todas.length + " canciones.");
-            }, "Poner " + aquiNombre + " entera (" + todas.length + " canciones)"),
-            botonDe("oc-vida-accion", "＋ 🎵 aquí", () => subirA(aqui), aqui ? "Añadir canciones a " + aquiNombre : "Añadir canciones (te pregunto la carpeta)"),
-            botonDe("oc-vida-accion", "＋ 📁 aquí", () => formulario({ tipo: "carpeta", padre: aqui }), "Nueva carpeta en " + aquiNombre));
-            rejilla.setAttribute("aria-label", "Carpetas y canciones de " + aquiNombre);
+                avisar(ocT("Suena {aquiNombre}: {n} canciones.", { aquiNombre: aquiNombre, n: todas.length }));
+            }, ocT("Poner {aquiNombre} entera ({n} canciones)", { aquiNombre: aquiNombre, n: todas.length })),
+            botonDe("oc-vida-accion", ocT("＋ 🎵 aquí"), () => subirA(aqui), aqui ? ocT("Añadir canciones a {aquiNombre}", { aquiNombre: aquiNombre }) : ocT("Añadir canciones (te pregunto la carpeta)")),
+            botonDe("oc-vida-accion", ocT("＋ 📁 aquí"), () => formulario({ tipo: "carpeta", padre: aqui }), ocT("Nueva carpeta en {aquiNombre}", { aquiNombre: aquiNombre })));
+            rejilla.setAttribute("aria-label", ocT("Carpetas y canciones de {aquiNombre}", { aquiNombre: aquiNombre }));
             const items = [];
             mu.carpetas.filter((c) => (c.padre || "") === aqui).forEach((c) => {
                 const li = crear("li", "master-musica-tarjeta es-carpeta");
@@ -13612,22 +13561,22 @@
                     guardar();
                     pintarArbol();
                     (rejilla.querySelector("button") || camino.querySelector("[aria-current]")).focus();
-                }, "Abrir la carpeta " + c.nombre + " (" + n + " canciones)");
+                }, ocT("Abrir la carpeta {nombre} ({n} canciones)", { nombre: c.nombre, n: n }));
                 b.dataset.foco = c.id;
                 b.append(aspecto(c, "📁"), crear("span", "master-musica-tarjeta-nombre", c.nombre), crear("span",
-                    "master-musica-cuenta", n + (n === 1 ? " canción" : " canciones")));
+                    "master-musica-cuenta", n + (n === 1 ? ocT(" canción") : ocT(" canciones"))));
                 const mandos2 = crear("div", "master-musica-tarjeta-mandos");
                 mandos2.append(botonDe("master-docs-mando", "▶", () => {
                     const cola = cancionesDe(c.id);
                     if (!cola.length) {
-                        avisar("La carpeta " + c.nombre + " está vacía.");
+                        avisar(ocT("La carpeta {nombre} está vacía.", { nombre: c.nombre }));
                         return;
                     }
                     musicaCarpeta(cola, c.id);
-                    avisar("Suena la carpeta " + c.nombre + ".");
-                }, "Poner la carpeta " + c.nombre + " entera"), botonDe("master-docs-mando", "🎨", () => cambiarAspecto(c, "carpeta"),
-                    "Poner un emoji o una imagen a " + c.nombre), botonDe("master-docs-mando", "✎", () => formulario({ tipo: "carpeta",
-                    id: c.id }), "Cambiar el nombre o el sitio de " + c.nombre), botonQuitar("la carpeta " + c.nombre,
+                    avisar(ocT("Suena la carpeta {nombre}.", { nombre: c.nombre }));
+                }, ocT("Poner la carpeta {nombre} entera", { nombre: c.nombre })), botonDe("master-docs-mando", "🎨", () => cambiarAspecto(c, "carpeta"),
+                    ocT("Poner un emoji o una imagen a {nombre}", { nombre: c.nombre })), botonDe("master-docs-mando", "✎", () => formulario({ tipo: "carpeta",
+                    id: c.id }), ocT("Cambiar el nombre o el sitio de {nombre}", { nombre: c.nombre })), botonQuitar(ocT("la carpeta {nombre}", { nombre: c.nombre }),
                     () => quitarCarpeta(c)));
                 li.append(b, mandos2);
                 items.push(li);
@@ -13642,15 +13591,14 @@
                     }
                     const cola = cancionesDe(c.carpeta || "");
                     musicaPoner(cola, cola.indexOf(c), c.carpeta || "");
-                    avisar("Suena: " + c.nombre + ".");
+                    avisar(ocT("Suena: {nombre}.", { nombre: c.nombre }));
                 });
                 b.dataset.foco = c.id;
                 b.dataset.cancion = c.id;
                 b.append(aspecto(c, "🎵"), crear("span", "master-musica-tarjeta-nombre", c.nombre));
                 const mandos2 = crear("div", "master-musica-tarjeta-mandos");
-                mandos2.append(botonDe("master-docs-mando", "🎨", () => cambiarAspecto(c, "cancion"), "Poner un emoji o una imagen a "
-                    + c.nombre), botonDe("master-docs-mando", "✎", () => formulario({ tipo: "cancion", id: c.id }),
-                    "Cambiar el nombre, la carpeta o los puntos de " + c.nombre), botonQuitar(c.nombre, () => {
+                mandos2.append(botonDe("master-docs-mando", "🎨", () => cambiarAspecto(c, "cancion"), ocT("Poner un emoji o una imagen a {nombre}", { nombre: c.nombre })), botonDe("master-docs-mando", "✎", () => formulario({ tipo: "cancion", id: c.id }),
+                    ocT("Cambiar el nombre, la carpeta o los puntos de {nombre}", { nombre: c.nombre })), botonQuitar(c.nombre, () => {
                     if (musicaActual() && musicaActual().id === c.id) {
                         musicaParar();
                     }
@@ -13661,7 +13609,7 @@
                     mu.canciones = mu.canciones.filter((x) => x !== c);
                     guardar();
                     pintarArbol();
-                    avisar("Quitada: " + c.nombre + ".");
+                    avisar(ocT("Quitada: {nombre}.", { nombre: c.nombre }));
                     nuevaCarpeta.focus();
                 }));
                 li.append(b, mandos2);
@@ -13669,11 +13617,11 @@
             });
             rejilla.replaceChildren(...items);
             if (!items.length) {
-                rejilla.appendChild(crear("li", "oc-vacio", "Carpeta vacía: añade canciones o subcarpetas con los botones de arriba."));
+                rejilla.appendChild(crear("li", "oc-vacio", ocT("Carpeta vacía: añade canciones o subcarpetas con los botones de arriba.")));
             }
         }
         function cambiarAspecto(cosa, tipo) {
-            dialogoAspecto(cosa, "aspecto de " + cosa.nombre + (tipo === "carpeta" ? " (carpeta)" : ""), () => {
+            dialogoAspecto(cosa, ocT("aspecto de {nombre}{n}", { nombre: cosa.nombre, n: tipo === "carpeta" ? ocT(" (carpeta)") : "" }), () => {
                 guardar();
                 pintarArbol();
                 const b = dentro.querySelector("[data-foco='" + cosa.id + "']:not([hidden] *)");
@@ -13716,8 +13664,7 @@
             const a = MUSICA.audio;
             const suena = !!(c && a && !a.paused);
             const carpeta = c && mu.carpetas.find((x) => x.id === MUSICA.origen);
-            ahora.textContent = c ? (suena ? "▶ " : "⏸ ") + c.nombre + (carpeta ? " · 📁 " + carpeta.nombre : "")
-                + " (" + (MUSICA.pos + 1) + " de " + MUSICA.cola.length + ")" : "Nada sonando.";
+            ahora.textContent = c ? ocT("{n} ({n2} de {n3})", { n: (suena ? "▶ " : "⏸ ") + c.nombre + (carpeta ? " · 📁 " + carpeta.nombre : ""), n2: MUSICA.pos + 1, n3: MUSICA.cola.length }) : ocT("Nada sonando.");
             tocar.textContent = suena ? "⏸" : "▶";
             tocar.setAttribute("aria-label", suena ? "Pausa" : "Reproducir");
             // Lo que se cambie desde la ventana aparte (volumen y repetir).
@@ -13738,7 +13685,7 @@
             if (!arrastrando) {
                 barra.value = dur ? Math.round(t / dur * 1000) : 0;
             }
-            barra.setAttribute("aria-valuetext", minutos(t) + " de " + minutos(dur));
+            barra.setAttribute("aria-valuetext", minutos(t) + ocT(" de ") + minutos(dur));
             tiempo.textContent = minutos(t) + " / " + minutos(dur);
             dentro.querySelectorAll("[data-cancion]").forEach((b) => {
                 const es = !!c && b.dataset.cancion === c.id;
@@ -13752,9 +13699,7 @@
         }
         MUSICA.alCambiar = pintar;
         ponerVol();
-        const nota = crear("p", "oc-hoja-nota master-fuente", "Tus canciones (y sus imágenes) se quedan sólo en este dispositivo: no"
-            + " se suben a ningún sitio. Para no perderlas (o llevarlas a otro ordenador), ⚙ → exportar. Siguen sonando al cambiar de pestaña;"
-            + " al quitar esta ventana, se paran.");
+        const nota = crear("p", "oc-hoja-nota master-fuente", ocT("Tus canciones (y sus imágenes) se quedan sólo en este dispositivo: no se suben a ningún sitio. Para no perderlas (o llevarlas a otro ordenador), ⚙ → exportar. Siguen sonando al cambiar de pestaña; al quitar esta ventana, se paran."));
         dentro.append(repro, herramientas, busca, cuantos, form, vacio, resultados, tarjetas, arbol, subir, nota);
         pintarModo();
         pintarArbol();
@@ -13771,7 +13716,7 @@
     function vdDe(cr) {
         const n = cr.indexOf("/") > 0 ? 0 : parseInt(cr, 10) || 0;
         const bc = n < 5 ? 2 : Math.min(9, 2 + Math.ceil((n - 4) / 4));
-        return cr + " (" + (CR_PX[cr] || 0).toLocaleString("es-ES") + " PX; BC +" + bc + ")";
+        return ocT("{cr} ({toLocaleString} PX; BC +{bc})", { cr: cr, toLocaleString: (CR_PX[cr] || 0).toLocaleString("es-ES"), bc: bc });
     }
     const PROPIO_TIPOS = ["Aberración", "Autómata", "Bestia", "Celestial", "Cieno", "Dragón", "Elemental", "Enjambre", "Feérico",
         "Gigante", "Humanoide", "Infernal", "Monstruosidad", "Muerto viviente", "Planta"];
@@ -13792,8 +13737,8 @@
     const PROPIO_RASGOS = ["rasgo de clase", "rasgo de especie", "dote de origen", "dote general", "estilo de combate", "don épico",
         "rasgo de trasfondo", "otro rasgo"];
     const PROPIO_OTROS = ["especie", "trasfondo", "dote", "clase", "subclase", "rasgo de clase", "regla", "lugar", "deidad", "otro"];
-    const SECCIONES_BICHO = [["rasgos", "Rasgos"], ["acciones", "Acciones"], ["adicionales", "Acciones adicionales"],
-        ["reacciones", "Reacciones"], ["legendarias", "Acciones legendarias"]];
+    const SECCIONES_BICHO = [["rasgos", ocT("Rasgos")], ["acciones", ocT("Acciones")], ["adicionales", ocT("Acciones adicionales")],
+        ["reacciones", ocT("Reacciones")], ["legendarias", ocT("Acciones legendarias")]];
 
     // Lo que entra (de un archivo o del formulario), limpio: sólo lo que
     // se usa, textos con tope y números de verdad. Sin nombre, nada.
@@ -13821,10 +13766,10 @@
                     o[k] = v;
                 }
             });
-            o.tipo = o.tipo || "Monstruosidad Mediano";
+            o.tipo = o.tipo || ocT("Monstruosidad Mediano");
             o.alin = o.alin || "neutral";
             o.ca = o.ca || "10";
-            o.vel = o.vel || "30 ft.";
+            o.vel = o.vel || ocT("30 ft.");
             o.pg = num(x.pg, 1, 9999, 10);
             const c = x.car && typeof x.car === "object" ? x.car : {};
             o.car = {};
@@ -13837,7 +13782,7 @@
                 const d = Math.floor((o.car.Des - 10) / 2);
                 o.ini = (d >= 0 ? "+" : "−") + Math.abs(d) + " (" + (10 + d) + ")";
             }
-            o.sent = o.sent || "Percepción pasiva " + (10 + Math.floor((o.car.Sab - 10) / 2));
+            o.sent = o.sent || ocT("Percepción pasiva {n}", { n: 10 + Math.floor((o.car.Sab - 10) / 2) });
             o.idio = o.idio || "—";
             o.habitat = (Array.isArray(x.habitat) ? x.habitat : []).map((h) => txt(h, 60)).filter(Boolean).slice(0, 20);
             SECCIONES_BICHO.forEach(([k]) => {
@@ -13951,10 +13896,10 @@
         }
         enlazarConjuros(t);
         cuerpo.appendChild(crear("p", "oc-hoja-nota master-fuente", fuenteDe(x)));
-        cuerpo.appendChild(botonDe("oc-vida-accion", "📌 al tablero", () => {
+        cuerpo.appendChild(botonDe("oc-vida-accion", ocT("📌 al tablero"), () => {
             cerrar();
             anadir("ficha", { titulo: x.nombre, datos: { que: "otro", id: x.id } });
-        }, "Poner " + x.nombre + " en el tablero"));
+        }, ocT("Poner {nombre} en el tablero", { nombre: x.nombre })));
         const cerrar = window.ocVentana.abrir({ titulo: x.nombre, cuerpo, vuelta, clase: "es-regla" });
     }
 
@@ -13972,25 +13917,25 @@
 
     // La plantilla: un ejemplo de cada (inventados), con todos los campos.
     const PLANTILLA_PROPIOS = { pantallaDeMasterPropios: 1,
-        ayuda: "Rellena las listas y cárgalo con ⬆ importar. Sólo «nombre» es obligatorio. Los textos admiten *cursiva* y **negrita**. Los ataques, con el formato «*Ataque cuerpo a cuerpo:* +4, alcance 5 ft. *Impacto:* 5 (1d6 + 2) de daño cortante.» salen en tabla con sus dados. Si algo va en inglés, se traducen los términos de reglas al importar.",
-        monstruos: [{ nombre: "Rata de alcantarilla gigante", en: "Giant Sewer Rat", libro: "inventado", tipo: "Bestia Pequeño",
-            alin: "sin alineamiento", ca: "12", pg: 9, pgf: "2d6 + 2", vel: "30 ft., trepar 20 ft.",
-            car: { Fue: 7, Des: 15, Con: 12, Int: 2, Sab: 10, Car: 4 }, hab: "Sigilo +4", sent: "visión en la oscuridad 60 ft.; Percepción pasiva 10",
+        ayuda: ocT("Rellena las listas y cárgalo con ⬆ importar. Sólo «nombre» es obligatorio. Los textos admiten *cursiva* y **negrita**. Los ataques, con el formato «*Ataque cuerpo a cuerpo:* +4, alcance 5 ft. *Impacto:* 5 (1d6 + 2) de daño cortante.» salen en tabla con sus dados. Si algo va en inglés, se traducen los términos de reglas al importar."),
+        monstruos: [{ nombre: ocT("Rata de alcantarilla gigante"), en: "Giant Sewer Rat", libro: "inventado", tipo: "Bestia Pequeño",
+            alin: "sin alineamiento", ca: "12", pg: 9, pgf: "2d6 + 2", vel: ocT("30 ft., trepar 20 ft."),
+            car: { Fue: 7, Des: 15, Con: 12, Int: 2, Sab: 10, Car: 4 }, hab: ocT("Sigilo +4"), sent: ocT("visión en la oscuridad 60 ft.; Percepción pasiva 10"),
             idio: "—", cr: "1/4", habitat: ["ciudad"],
-            rasgos: [{ n: "Olfato agudo", t: "La rata tiene ventaja en las pruebas de Sabiduría (Percepción) que dependen del olfato." }],
-            acciones: [{ n: "Mordisco", t: "*Ataque cuerpo a cuerpo:* +4, alcance 5 ft. *Impacto:* 4 (1d4 + 2) de daño perforante. Si el objetivo es una criatura, *Tirada de salvación de Constitución:* CD 11. *Fallo:* queda envenenado hasta el final de su siguiente turno." }],
-            reacciones: [{ n: "Escabullirse", t: "*Desencadenante:* Una criatura falla un ataque contra la rata. *Respuesta:* La rata se mueve 10 ft. sin provocar ataques de oportunidad." }] }],
-        objetos: [{ nombre: "Farol del vigía", en: "Watchman's Lantern", libro: "inventado", cat: "objeto maravilloso", rareza: "poco común",
-            sint: false, cp: 25000, peso: "2 lb.", tiendas: ["Tienda de magia"],
-            texto: "Mientras está encendido, las criaturas invisibles a 30 ft. o menos del farol dejan ver su silueta. Se enciende y se apaga con una acción adicional." }],
-        conjuros: [{ nombre: "Paso de niebla gris", en: "Grey Mist Step", libro: "inventado", nivel: 2, escuela: "Conjuración",
-            tiempo: "1 acción adicional", alcance: "Personal", comp: "V", dur: "Instantánea", clases: ["brujo", "hechicero", "mago"],
-            ritual: false, conc: false, texto: "Te envuelve una niebla gris y te teletransportas hasta 30 ft. a un espacio desocupado que veas. Cada criatura a 5 ft. del sitio del que te vas recibe 1d6 de daño de frío.",
-            superior: "**Con un espacio de nivel superior.** El daño aumenta en 1d6 por cada nivel por encima de 2." }],
-        rasgos: [{ nombre: "Marinero curtido", en: "Seasoned Sailor", libro: "inventado", tipo: "dote general", de: "dote",
-            texto: "**Piernas de mar.** No tienes desventaja por el balanceo de un barco.\n\n**Nudos.** Tienes ventaja en las pruebas para atar o desatar nudos." }],
-        otros: [{ nombre: "Dote: Centinela del puerto", libro: "inventado", cat: "dote",
-            texto: "*Requisito: nivel 4 o más.*\n\n**Ojo de marino.** Tienes ventaja en las pruebas de Sabiduría (Percepción) en barcos y muelles.\n\n**Amarre firme.** No pueden derribarte mientras estés sobre una cubierta." }] };
+            rasgos: [{ n: ocT("Olfato agudo"), t: ocT("La rata tiene ventaja en las pruebas de Sabiduría (Percepción) que dependen del olfato.") }],
+            acciones: [{ n: "Mordisco", t: ocT("*Ataque cuerpo a cuerpo:* +4, alcance 5 ft. *Impacto:* 4 (1d4 + 2) de daño perforante. Si el objetivo es una criatura, *Tirada de salvación de Constitución:* CD 11. *Fallo:* queda envenenado hasta el final de su siguiente turno.") }],
+            reacciones: [{ n: "Escabullirse", t: ocT("*Desencadenante:* Una criatura falla un ataque contra la rata. *Respuesta:* La rata se mueve 10 ft. sin provocar ataques de oportunidad.") }] }],
+        objetos: [{ nombre: ocT("Farol del vigía"), en: "Watchman's Lantern", libro: "inventado", cat: "objeto maravilloso", rareza: "poco común",
+            sint: false, cp: 25000, peso: ocT("2 lb."), tiendas: ["Tienda de magia"],
+            texto: ocT("Mientras está encendido, las criaturas invisibles a 30 ft. o menos del farol dejan ver su silueta. Se enciende y se apaga con una acción adicional.") }],
+        conjuros: [{ nombre: ocT("Paso de niebla gris"), en: "Grey Mist Step", libro: "inventado", nivel: 2, escuela: "Conjuración",
+            tiempo: ocT("1 acción adicional"), alcance: "Personal", comp: "V", dur: "Instantánea", clases: ["brujo", "hechicero", "mago"],
+            ritual: false, conc: false, texto: ocT("Te envuelve una niebla gris y te teletransportas hasta 30 ft. a un espacio desocupado que veas. Cada criatura a 5 ft. del sitio del que te vas recibe 1d6 de daño de frío."),
+            superior: ocT("**Con un espacio de nivel superior.** El daño aumenta en 1d6 por cada nivel por encima de 2.") }],
+        rasgos: [{ nombre: ocT("Marinero curtido"), en: "Seasoned Sailor", libro: "inventado", tipo: "dote general", de: "dote",
+            texto: ocT("**Piernas de mar.** No tienes desventaja por el balanceo de un barco.\n\n**Nudos.** Tienes ventaja en las pruebas para atar o desatar nudos.") }],
+        otros: [{ nombre: ocT("Dote: Centinela del puerto"), libro: "inventado", cat: "dote",
+            texto: ocT("*Requisito: nivel 4 o más.*\n\n**Ojo de marino.** Tienes ventaja en las pruebas de Sabiduría (Percepción) en barcos y muelles.\n\n**Amarre firme.** No pueden derribarte mientras estés sobre una cubierta.") }] };
 
 
     // ---- PEGAR UN BLOQUE: lo copiado de una página (D&D Beyond, un PDF…),
@@ -14292,50 +14237,40 @@
         // que hay que seleccionar marcado.
         const bloque = crear("div", "master-guia-bloque");
         bloque.setAttribute("role", "img");
-        bloque.setAttribute("aria-label", "Ejemplo: un bloque de estadísticas seleccionado entero, desde el nombre del monstruo"
-            + " hasta la última acción.");
-        const filas = [["es-nombre", "Rata de alcantarilla gigante"], ["es-cursiva", "Small Beast, Unaligned"],
-            ["", "AC 12   Initiative +2 (12)"], ["", "HP 9 (2d6 + 2)"], ["", "Speed 30 ft., Climb 20 ft."],
-            ["es-tabla", "Str 7 −2 −2 · Dex 15 +2 +2 · Con 12 +1 +1 …"], ["", "Senses Darkvision 60 ft.; Passive Perception 10"],
-            ["", "CR 1/4 (XP 50; PB +2)"], ["es-seccion", "Actions"],
-            ["", "Bite. Melee Attack Roll: +4, reach 5 ft. Hit: 4 (1d4 + 2) Piercing damage."]];
+        bloque.setAttribute("aria-label", ocT("Ejemplo: un bloque de estadísticas seleccionado entero, desde el nombre del monstruo hasta la última acción."));
+        const filas = [["es-nombre", ocT("Rata de alcantarilla gigante")], ["es-cursiva", ocT("Small Beast, Unaligned")],
+            ["", ocT("AC 12   Initiative +2 (12)")], ["", ocT("HP 9 (2d6 + 2)")], ["", ocT("Speed 30 ft., Climb 20 ft.")],
+            ["es-tabla", ocT("Str 7 −2 −2 · Dex 15 +2 +2 · Con 12 +1 +1 …")], ["", ocT("Senses Darkvision 60 ft.; Passive Perception 10")],
+            ["", ocT("CR 1/4 (XP 50; PB +2)")], ["es-seccion", "Actions"],
+            ["", ocT("Bite. Melee Attack Roll: +4, reach 5 ft. Hit: 4 (1d4 + 2) Piercing damage.")]];
         filas.forEach(([c, t]) => {
             const f = crear("p", "master-guia-fila " + c, t);
             f.setAttribute("aria-hidden", "true");
             bloque.appendChild(f);
         });
-        const desde = crear("span", "master-guia-marca es-desde", "▶ desde aquí");
-        const hasta = crear("span", "master-guia-marca es-hasta", "hasta aquí ◀");
+        const desde = crear("span", "master-guia-marca es-desde", ocT("▶ desde aquí"));
+        const hasta = crear("span", "master-guia-marca es-hasta", ocT("hasta aquí ◀"));
         desde.setAttribute("aria-hidden", "true");
         hasta.setAttribute("aria-hidden", "true");
         bloque.prepend(desde);
         bloque.appendChild(hasta);
-        cuerpo.appendChild(p("Para traer a tu mesa monstruos, objetos y conjuros de los libros que tienes en D&D Beyond (o de"
-            + " un PDF tuyo) sin escribirlos campo a campo. Se quedan sólo en este dispositivo."));
-        paso(1, "Ábrelo en D&D Beyond", p("Entra con tu cuenta y abre la página del monstruo, el objeto o el conjuro (de un libro"
-            + " que tengas)."));
-        paso(2, "Selecciona el bloque entero y cópialo", p("Arrastra desde el nombre hasta el final de la última acción (o del"
-            + " texto, en un objeto o un conjuro) y cópialo: Ctrl + C (en un Mac, ⌘ + C; en una tablet, mantén pulsado →"
-            + " Copiar)."), bloque, p("Si se cuela algo de más (botones, notas), no pasa nada: lo que no se reconoce se salta o"
-            + " se queda en el texto para repasarlo."));
-        paso(3, "Pégalo aquí", p("En 🛠️ tus creaciones, en la pestaña que toque (🐉 monstruos, 💰 objetos o ✨ conjuros), pulsa"
-            + " «📋 pegar un bloque», pega con Ctrl + V y pulsa «✓ rellenar»."), img("imagenes/guia/pegar.webp",
-            "La ventana «pegar un bloque» con el texto de un monstruo pegado y el botón «rellenar»."));
-        paso(4, "Repásalo y guarda", p("Se abre el formulario ya relleno, con los términos de reglas pasados al español si está"
-            + " marcado «🌐 traducir» (las frases se quedan en inglés: cámbialas si quieres). Mira el tipo, el tamaño y el VD,"
-            + " pon de qué libro sale y pulsa «✓ guardar»."), img("imagenes/guia/formulario.webp",
-            "El formulario de un monstruo relleno solo: nombre, tipo, tamaño, VD, CA, PG y sus acciones."));
-        paso(5, "Ya está en tu mesa", p("Sale en el bestiario, los encuentros, el buscador… como los del SRD, con «🛠️ tuyo». Los"
-            + " ataques, en su tabla con los dados para tirar."), img("imagenes/guia/resultado.webp",
-            "El monstruo en su ventana, con la tabla de ataques y los dados."));
-        window.ocVentana.abrir({ titulo: "cómo pegar desde D&D Beyond", cuerpo, vuelta, clase: "es-ancha" });
+        cuerpo.appendChild(p(ocT("Para traer a tu mesa monstruos, objetos y conjuros de los libros que tienes en D&D Beyond (o de un PDF tuyo) sin escribirlos campo a campo. Se quedan sólo en este dispositivo.")));
+        paso(1, ocT("Ábrelo en D&D Beyond"), p(ocT("Entra con tu cuenta y abre la página del monstruo, el objeto o el conjuro (de un libro que tengas).")));
+        paso(2, ocT("Selecciona el bloque entero y cópialo"), p(ocT("Arrastra desde el nombre hasta el final de la última acción (o del texto, en un objeto o un conjuro) y cópialo: Ctrl + C (en un Mac, ⌘ + C; en una tablet, mantén pulsado → Copiar).")), bloque, p(ocT("Si se cuela algo de más (botones, notas), no pasa nada: lo que no se reconoce se salta o se queda en el texto para repasarlo.")));
+        paso(3, ocT("Pégalo aquí"), p(ocT("En 🛠️ tus creaciones, en la pestaña que toque (🐉 monstruos, 💰 objetos o ✨ conjuros), pulsa «📋 pegar un bloque», pega con Ctrl + V y pulsa «✓ rellenar».")), img("imagenes/guia/pegar.webp",
+            ocT("La ventana «pegar un bloque» con el texto de un monstruo pegado y el botón «rellenar».")));
+        paso(4, ocT("Repásalo y guarda"), p(ocT("Se abre el formulario ya relleno, con los términos de reglas pasados al español si está marcado «🌐 traducir» (las frases se quedan en inglés: cámbialas si quieres). Mira el tipo, el tamaño y el VD, pon de qué libro sale y pulsa «✓ guardar».")), img("imagenes/guia/formulario.webp",
+            ocT("El formulario de un monstruo relleno solo: nombre, tipo, tamaño, VD, CA, PG y sus acciones.")));
+        paso(5, ocT("Ya está en tu mesa"), p(ocT("Sale en el bestiario, los encuentros, el buscador… como los del SRD, con «🛠️ tuyo». Los ataques, en su tabla con los dados para tirar.")), img("imagenes/guia/resultado.webp",
+            ocT("El monstruo en su ventana, con la tabla de ataques y los dados.")));
+        window.ocVentana.abrir({ titulo: ocT("cómo pegar desde D&D Beyond"), cuerpo, vuelta, clase: "es-ancha" });
     }
 
     function montarCreador(dentro, m) {
         m.datos = m.datos || {};
         const d = m.datos;
-        const TIPOS = [["monstruos", "🐉 monstruos", "monstruo"], ["objetos", "💰 objetos", "objeto"], ["conjuros", "✨ conjuros", "conjuro"],
-            ["rasgos", "⭐ rasgos y dotes", "rasgo"], ["otros", "📜 más cosas", "cosa"]];
+        const TIPOS = [["monstruos", ocT("🐉 monstruos"), "monstruo"], ["objetos", ocT("💰 objetos"), "objeto"], ["conjuros", ocT("✨ conjuros"), "conjuro"],
+            ["rasgos", ocT("⭐ rasgos y dotes"), "rasgo"], ["otros", ocT("📜 más cosas"), "cosa"]];
         const RUTA_DE = { monstruos: "datos/personajes/compendio/bestiario.json", objetos: "datos/personajes/compendio/tienda.json",
             conjuros: "datos/personajes/compendio/conjuros-srd.json", rasgos: RASGOS_SRD };
         const uid = "master-creador-" + m.id;
@@ -14349,29 +14284,27 @@
 
         // ARRIBA: el aviso, importar, exportar y la plantilla.
         const vista = crear("div", "master-creador-vista");
-        const nota = crear("p", "oc-hoja-nota", "Monstruos, objetos, conjuros y más cosas de otros manuales (cópialos de tu libro)"
-            + " o inventados. Salen en el bestiario, los encuentros, la tienda, el botín, los conjuros y el buscador, como los del SRD."
-            + " Se quedan sólo en este navegador: no se suben a la web. Para no perderlos o pasárselos a otro máster, ⬇ exportar.");
+        const nota = crear("p", "oc-hoja-nota", ocT("Monstruos, objetos, conjuros y más cosas de otros manuales (cópialos de tu libro) o inventados. Salen en el bestiario, los encuentros, la tienda, el botín, los conjuros y el buscador, como los del SRD. Se quedan sólo en este navegador: no se suben a la web. Para no perderlos o pasárselos a otro máster, ⬇ exportar."));
         const barra = crear("div", "master-creador-barra");
         const archivo = crear("input");
         archivo.type = "file";
         archivo.accept = ".json,application/json";
         archivo.hidden = true;
         const importar = botonDe("oc-vida-accion", "⬆ importar .json", () => archivo.click(), "Importar creaciones desde un archivo .json");
-        const exportar = botonDe("oc-vida-accion", "⬇ exportar", () => {
+        const exportar = botonDe("oc-vida-accion", ocT("⬇ exportar"), () => {
             const p = leerPropios();
             const n = p.monstruos.length + p.objetos.length + p.conjuros.length + p.rasgos.length + p.otros.length;
             if (!n) {
-                avisar("Aún no hay nada tuyo que exportar.");
+                avisar(ocT("Aún no hay nada tuyo que exportar."));
                 return;
             }
             bajarJson(Object.assign({ pantallaDeMasterPropios: 1 }, p), "mis-creaciones-" + new Date().toISOString().slice(0, 10) + ".json");
-            avisar("Exportadas " + n + " creaciones.");
+            avisar(ocT("Exportadas {n} creaciones.", { n: n }));
         }, "Exportar todas tus creaciones a un archivo .json");
-        const plantilla = botonDe("oc-vida-accion", "📄 plantilla", () => {
+        const plantilla = botonDe("oc-vida-accion", ocT("📄 plantilla"), () => {
             bajarJson(PLANTILLA_PROPIOS, "plantilla-creaciones.json");
-            avisar("Bajada la plantilla, con un ejemplo de cada.");
-        }, "Bajar una plantilla .json de ejemplo para rellenar");
+            avisar(ocT("Bajada la plantilla, con un ejemplo de cada."));
+        }, ocT("Bajar una plantilla .json de ejemplo para rellenar"));
         const etTr = crear("label", "master-creador-check");
         const conTraducir = crear("input");
         conTraducir.type = "checkbox";
@@ -14380,7 +14313,7 @@
             d.traducir = conTraducir.checked;
             guardar();
         });
-        etTr.append(conTraducir, " 🌐 traducir los términos al importar");
+        etTr.append(conTraducir, ocT(" 🌐 traducir los términos al importar"));
         barra.append(importar, exportar, plantilla, etTr, archivo);
         archivo.addEventListener("change", () => {
             const f = archivo.files && archivo.files[0];
@@ -14394,12 +14327,11 @@
                 try {
                     datos = JSON.parse(texto);
                 } catch (e) {
-                    informe.error = "No es un .json válido (no se puede leer).";
+                    informe.error = ocT("No es un .json válido (no se puede leer).");
                     return;
                 }
                 if (!datos || typeof datos !== "object" || Array.isArray(datos) || !TIPOS.some(([k]) => Array.isArray(datos[k]))) {
-                    informe.error = "No tiene el formato de la plantilla: no trae ninguna lista «monstruos», «objetos»,"
-                        + " «conjuros», «rasgos» ni «otros». Mira la 📄 plantilla para ver cómo tiene que ser.";
+                    informe.error = ocT("No tiene el formato de la plantilla: no trae ninguna lista «monstruos», «objetos», «conjuros», «rasgos» ni «otros». Mira la 📄 plantilla para ver cómo tiene que ser.");
                     return;
                 }
                 const p = leerPropios();
@@ -14441,16 +14373,16 @@
                 });
                 const total = Object.values(informe.tipos).reduce((n, t) => n + t.nuevos.length + t.cambiados.length, 0);
                 if (!total) {
-                    informe.error = "No había nada que se pudiera importar: a todo le faltaba el nombre o no se entendía.";
+                    informe.error = ocT("No había nada que se pudiera importar: a todo le faltaba el nombre o no se entendía.");
                     return;
                 }
                 if (!guardarPropios(p)) {
-                    informe.error = "No se ha podido guardar: no queda sitio en este navegador. No se ha importado nada.";
+                    informe.error = ocT("No se ha podido guardar: no queda sitio en este navegador. No se ha importado nada.");
                     return;
                 }
                 pintarListas();
             }).catch(() => {
-                informe.error = informe.error || "No se ha podido leer el archivo.";
+                informe.error = informe.error || ocT("No se ha podido leer el archivo.");
             }).then(() => verInforme(informe));
         });
 
@@ -14464,15 +14396,14 @@
             const cambiados = tipos.reduce((n, t) => n + t.cambiados.length, 0);
             const bien = !informe.error;
             const estado = crear("p", "master-informe-estado " + (bien ? "es-bien" : "es-mal"),
-                bien ? "✅ Importado: " + nuevos + (nuevos === 1 ? " nuevo" : " nuevos")
-                    + (cambiados ? " y " + cambiados + (cambiados === 1 ? " cambiado" : " cambiados") : "") + "."
-                    : "⚠️ No se ha importado nada.");
-            cuerpo.append(estado, crear("p", "oc-hoja-nota", "Archivo: " + informe.archivo));
+                bien ? ocT("✅ Importado: {nuevos}{n}{n2}.", { nuevos: nuevos, n: nuevos === 1 ? ocT(" nuevo") : ocT(" nuevos"), n2: cambiados ? ocT(" y {cambiados}{n}", { cambiados: cambiados, n: cambiados === 1 ? ocT(" cambiado") : ocT(" cambiados") }) : "" })
+                    : ocT("⚠️ No se ha importado nada."));
+            cuerpo.append(estado, crear("p", "oc-hoja-nota", ocT("Archivo: {archivo}", { archivo: informe.archivo })));
             if (!bien) {
                 cuerpo.appendChild(crear("p", "", informe.error));
             } else {
                 const tabla = crear("table", "master-informe-tabla");
-                tabla.appendChild(crear("caption", "visually-hidden", "Resumen de la importación"));
+                tabla.appendChild(crear("caption", "visually-hidden", ocT("Resumen de la importación")));
                 const cab = crear("tr");
                 ["qué", "nuevos", "cambiados", "saltados"].forEach((x) => {
                     const th = crear("th", "", x);
@@ -14495,11 +14426,10 @@
                 const saltados = tipos.reduce((n, t) => n + t.saltados, 0);
                 const demasiados = tipos.reduce((n, t) => n + t.demasiados, 0);
                 if (saltados) {
-                    cuerpo.appendChild(crear("p", "oc-hoja-nota", "Saltados: " + saltados + " sin nombre o que no se entendían."));
+                    cuerpo.appendChild(crear("p", "oc-hoja-nota", ocT("Saltados: {saltados} sin nombre o que no se entendían.", { saltados: saltados })));
                 }
                 if (demasiados) {
-                    cuerpo.appendChild(crear("p", "oc-hoja-nota", "Sólo entran 2.000 de cada tipo por archivo: " + demasiados
-                        + " se han quedado fuera."));
+                    cuerpo.appendChild(crear("p", "oc-hoja-nota", ocT("Sólo entran 2.000 de cada tipo por archivo: {demasiados} se han quedado fuera.", { demasiados: demasiados })));
                 }
                 tipos.forEach((t) => {
                     const lista = t.nuevos.concat(t.cambiados);
@@ -14511,17 +14441,17 @@
                     const ul = crear("ul");
                     lista.slice(0, 200).forEach((nombre) => ul.appendChild(crear("li", "", nombre)));
                     if (lista.length > 200) {
-                        ul.appendChild(crear("li", "", "…y " + (lista.length - 200) + " más."));
+                        ul.appendChild(crear("li", "", ocT("…y {n} más.", { n: lista.length - 200 })));
                     }
                     det.appendChild(ul);
                     cuerpo.appendChild(det);
                 });
                 if (conTraducir.checked) {
-                    cuerpo.appendChild(crear("p", "oc-hoja-nota", "🌐 Con los términos de reglas pasados al español."));
+                    cuerpo.appendChild(crear("p", "oc-hoja-nota", ocT("🌐 Con los términos de reglas pasados al español.")));
                 }
             }
             avisar(estado.textContent);
-            window.ocVentana.abrir({ titulo: "importar: " + (bien ? "hecho" : "no ha podido ser"), cuerpo, vuelta: importar });
+            window.ocVentana.abrir({ titulo: "importar: " + (bien ? "hecho" : ocT("no ha podido ser")), cuerpo, vuelta: importar });
         }
 
         // LAS LISTAS, una por pestaña.
@@ -14530,14 +14460,13 @@
         const paneles = TIPOS.map(([k, titulo, uno]) => {
             const panel = crear("div", "master-creador-panel");
             const botones = crear("div", "master-creador-barra");
-            botones.appendChild(botonDe("oc-vida-accion es-principal", "＋ " + uno + " nuevo", () => editar(k, null), "Crear " +
-                (k === "otros" ? "una cosa nueva (especie, dote…)" : "un " + uno + " nuevo")));
+            botones.appendChild(botonDe("oc-vida-accion es-principal", ocT("＋ {uno} nuevo", { uno: uno }), () => editar(k, null), ocT("Crear {n}", { n: k === "otros" ? ocT("una cosa nueva (especie, dote…)") : ocT("un {uno} nuevo", { uno: uno }) })));
             if (k !== "otros" && k !== "rasgos") {
-                const pegar = botonDe("oc-vida-accion", "📋 pegar un bloque", () => abrirPegar(k, pegar),
-                    "Pegar un bloque copiado (de D&D Beyond, un PDF…) para rellenar " + (k === "monstruos" ? "un monstruo"
-                        : k === "objetos" ? "un objeto" : "un conjuro"));
+                const pegar = botonDe("oc-vida-accion", ocT("📋 pegar un bloque"), () => abrirPegar(k, pegar),
+                    ocT("Pegar un bloque copiado (de D&D Beyond, un PDF…) para rellenar {n}", { n: k === "monstruos" ? ocT("un monstruo")
+                        : k === "objetos" ? ocT("un objeto") : ocT("un conjuro") }));
                 pegar.setAttribute("aria-haspopup", "dialog");
-                const guia = botonDe("oc-vida-accion", "❓ cómo", () => abrirGuiaPegar(guia), "Cómo pegar desde D&D Beyond (guía)");
+                const guia = botonDe("oc-vida-accion", ocT("❓ cómo"), () => abrirGuiaPegar(guia), ocT("Cómo pegar desde D&D Beyond (guía)"));
                 guia.setAttribute("aria-haspopup", "dialog");
                 botones.append(pegar, guia);
             }
@@ -14545,7 +14474,7 @@
                 // Partir de uno del SRD (para hacer una versión).
                 const sel = crear("select", "master-elegir");
                 sel.id = uid + "-base-" + k;
-                const etSel = crear("label", "oc-dados-etiqueta", "o partir de uno del SRD");
+                const etSel = crear("label", "oc-dados-etiqueta", ocT("o partir de uno del SRD"));
                 etSel.htmlFor = sel.id;
                 cargado.then(() => {
                     const clave = (x) => (k === "rasgos" ? x.en + "|" + x.de : x.en);
@@ -14555,23 +14484,23 @@
                         return o;
                     }));
                 });
-                const copiar = botonDe("oc-vida-accion", "⧉ copiar", () => {
+                const copiar = botonDe("oc-vida-accion", ocT("⧉ copiar"), () => {
                     const base = srd[k].find((x) => (k === "rasgos" ? x.en + "|" + x.de : x.en) === sel.value);
                     if (base) {
                         const x = JSON.parse(JSON.stringify(base));
                         delete x.ilus;
                         delete x.ilusDe;
                         x.libro = "";
-                        x.nombre = base.nombre + " (versión)";
-                        x.en = base.en + " (versión)";
+                        x.nombre = ocT("{nombre} (versión)", { nombre: base.nombre });
+                        x.en = ocT("{en} (versión)", { en: base.en });
                         editar(k, x, true);
                     }
-                }, "Copiar el elegido para hacer tu versión");
+                }, ocT("Copiar el elegido para hacer tu versión"));
                 const caja = crear("div", "master-creador-base");
                 caja.append(etSel, sel, copiar);
                 botones.appendChild(caja);
             }
-            const etF = crear("label", "oc-dados-etiqueta", "buscar entre los tuyos");
+            const etF = crear("label", "oc-dados-etiqueta", ocT("buscar entre los tuyos"));
             const filtro = crear("input", "oc-dados-texto");
             filtro.type = "search";
             filtro.id = uid + "-filtro-" + k;
@@ -14579,21 +14508,21 @@
             filtro.addEventListener("input", () => pintarLista(k));
             filtros[k] = filtro;
             const ul = crear("ul", "master-creador-lista");
-            ul.setAttribute("aria-label", titulo.replace(/^\S+\s/, "") + " tuyos");
+            ul.setAttribute("aria-label", ocT("{replace} tuyos", { replace: titulo.replace(/^\S+\s/, "") }));
             listas[k] = ul;
             panel.append(botones, etF, filtro, ul);
             if (k === "rasgos") {
                 // Los del SRD (rasgos de clase y especie, dotes y
                 // habilidades), para leerlos aquí mismo.
                 const srdCaja = crear("details", "master-creador-srd");
-                const resumen = crear("summary", "", "📖 los del SRD");
-                const etS = crear("label", "oc-dados-etiqueta", "buscar entre los del SRD");
+                const resumen = crear("summary", "", ocT("📖 los del SRD"));
+                const etS = crear("label", "oc-dados-etiqueta", ocT("buscar entre los del SRD"));
                 const buscaS = crear("input", "oc-dados-texto");
                 buscaS.type = "search";
                 buscaS.id = uid + "-srd-" + k;
                 etS.htmlFor = buscaS.id;
                 const ulS = crear("ul", "master-conjuros");
-                ulS.setAttribute("aria-label", "Rasgos, dotes y habilidades del SRD");
+                ulS.setAttribute("aria-label", ocT("Rasgos, dotes y habilidades del SRD"));
                 const pintarS = () => {
                     const q = llano(buscaS.value.trim());
                     const salen = srd.rasgos.filter((r) => !q || llano(r.nombre + " " + r.en + " " + r.de + " " + r.tipo).includes(q));
@@ -14606,7 +14535,7 @@
                         li.appendChild(b);
                         return li;
                     }));
-                    resumen.textContent = "📖 los del SRD (" + srd.rasgos.length + ")" + (q ? " · " + salen.length + " con eso" : "");
+                    resumen.textContent = ocT("📖 los del SRD ({n}){n2}", { n: srd.rasgos.length, n2: q ? ocT(" · {n} con eso", { n: salen.length }) : "" });
                 };
                 buscaS.addEventListener("input", pintarS);
                 cargado.then(pintarS);
@@ -14616,9 +14545,9 @@
             return [titulo, panel];
         });
         // La primera pestaña: cómo añadir cosas (el tutorial).
-        paneles.unshift(["❓ cómo añadir", panelTutorial()]);
+        paneles.unshift([ocT("❓ cómo añadir"), panelTutorial()]);
         const elegido = Math.min(d.pestana || 0, paneles.length - 1);
-        const { lista: pestanas, elegir } = pestanasDe(paneles, "Qué crear", uid, (i) => {
+        const { lista: pestanas, elegir } = pestanasDe(paneles, ocT("Qué crear"), uid, (i) => {
             d.pestana = i;
             guardar();
         });
@@ -14642,30 +14571,20 @@
                 return x;
             };
             const ir = (i, texto) => botonDe("oc-vida-accion", texto, () => elegir(i, true));
-            panel.appendChild(p("Aquí amplías los compendios con lo tuyo: monstruos, objetos, conjuros y más cosas (especies,"
-                + " dotes, trasfondos…), inventados o pasados de tus libros. Después salen en toda la app como los del SRD."));
+            panel.appendChild(p(ocT("Aquí amplías los compendios con lo tuyo: monstruos, objetos, conjuros y más cosas (especies, dotes, trasfondos…), inventados o pasados de tus libros. Después salen en toda la app como los del SRD.")));
             const irA = crear("div", "master-creador-barra");
-            irA.append(ir(1, "🐉 monstruos"), ir(2, "💰 objetos"), ir(3, "✨ conjuros"), ir(4, "📜 más cosas"));
-            paso(1, "Elige qué quieres añadir", p("Cada tipo tiene su pestaña aquí arriba, con la lista de lo que ya has añadido."),
+            irA.append(ir(1, ocT("🐉 monstruos")), ir(2, ocT("💰 objetos")), ir(3, ocT("✨ conjuros")), ir(4, ocT("📜 más cosas")));
+            paso(1, ocT("Elige qué quieres añadir"), p(ocT("Cada tipo tiene su pestaña aquí arriba, con la lista de lo que ya has añadido.")),
                 irA);
-            const guia = botonDe("oc-vida-accion", "❓ cómo pegar desde D&D Beyond", () => abrirGuiaPegar(guia));
+            const guia = botonDe("oc-vida-accion", ocT("❓ cómo pegar desde D&D Beyond"), () => abrirGuiaPegar(guia));
             guia.setAttribute("aria-haspopup", "dialog");
-            paso(2, "Añádelo de una de estas tres formas", p("<strong>＋ nuevo</strong>: rellenas el formulario desde cero.<br>"
-                + "<strong>⧉ copiar</strong> (partir de uno del SRD): una copia para hacer tu versión, con otros números o"
-                + " ataques.<br><strong>📋 pegar un bloque</strong>: pegas el bloque copiado de D&D Beyond o de un PDF y el"
-                + " formulario se rellena solo."), guia);
-            paso(3, "Repásalo y guarda", p("En el formulario, mira sobre todo el tipo, el tamaño y el VD (los encuentros los"
-                + " usan), pon <strong>de dónde sale</strong> y pulsa <strong>✓ guardar</strong>. Si algo viene en inglés,"
-                + " <strong>🌐 traducir términos</strong> pasa al español los de reglas (daños, estados, «Melee Attack Roll»…)."),
-                img2("imagenes/guia/formulario.webp", "El formulario de un monstruo relleno."));
-            paso(4, "Muchos a la vez: importar", p("Baja la <strong>📄 plantilla</strong> (un ejemplo de cada), rellénala y"
-                + " cárgala con <strong>⬆ importar .json</strong>: una ventana te dice qué ha entrado y qué no."
-                + " <strong>⬇ exportar</strong> guarda todo lo tuyo en un archivo, para tener copia o pasárselo a otro máster."));
-            paso(5, "Dónde sale", p("En el bestiario, los encuentros, la tienda y los negocios, el botín, los conjuros, la party"
-                + " y el buscador, con «🛠️ tuyo». Los ataques, en su tabla con los dados."),
-                img2("imagenes/guia/resultado.webp", "Un monstruo añadido, en su ventana con la tabla de ataques."));
-            paso(6, "Sólo en este dispositivo", p("Lo que añades se queda aquí: no se sube a ningún sitio. Los mismos en todas tus"
-                + " campañas."));
+            paso(2, ocT("Añádelo de una de estas tres formas"), p(ocT("<strong>＋ nuevo</strong>: rellenas el formulario desde cero.<br><strong>⧉ copiar</strong> (partir de uno del SRD): una copia para hacer tu versión, con otros números o ataques.<br><strong>📋 pegar un bloque</strong>: pegas el bloque copiado de D&D Beyond o de un PDF y el formulario se rellena solo.")), guia);
+            paso(3, ocT("Repásalo y guarda"), p(ocT("En el formulario, mira sobre todo el tipo, el tamaño y el VD (los encuentros los usan), pon <strong>de dónde sale</strong> y pulsa <strong>✓ guardar</strong>. Si algo viene en inglés, <strong>🌐 traducir términos</strong> pasa al español los de reglas (daños, estados, «Melee Attack Roll»…).")),
+                img2("imagenes/guia/formulario.webp", ocT("El formulario de un monstruo relleno.")));
+            paso(4, ocT("Muchos a la vez: importar"), p(ocT("Baja la <strong>📄 plantilla</strong> (un ejemplo de cada), rellénala y cárgala con <strong>⬆ importar .json</strong>: una ventana te dice qué ha entrado y qué no. <strong>⬇ exportar</strong> guarda todo lo tuyo en un archivo, para tener copia o pasárselo a otro máster.")));
+            paso(5, ocT("Dónde sale"), p(ocT("En el bestiario, los encuentros, la tienda y los negocios, el botín, los conjuros, la party y el buscador, con «🛠️ tuyo». Los ataques, en su tabla con los dados.")),
+                img2("imagenes/guia/resultado.webp", ocT("Un monstruo añadido, en su ventana con la tabla de ataques.")));
+            paso(6, ocT("Sólo en este dispositivo"), p(ocT("Lo que añades se queda aquí: no se sube a ningún sitio. Los mismos en todas tus campañas.")));
             return panel;
         }
         function img2(src, alt) {
@@ -14678,7 +14597,7 @@
 
         function detalleDe(k, x) {
             if (k === "monstruos") {
-                return "VD " + x.cr + " · " + x.tipo;
+                return ocT("VD {cr} · {tipo}", { cr: x.cr, tipo: x.tipo });
             }
             if (k === "objetos") {
                 return x.cat + (x.rareza ? " · " + x.rareza : "");
@@ -14704,7 +14623,7 @@
                 } else {
                     abrirOtro(x, vuelta);
                 }
-            }).catch(() => (k === "otros" ? abrirOtro(x, vuelta) : avisar("No he podido cargarlo.")));
+            }).catch(() => (k === "otros" ? abrirOtro(x, vuelta) : avisar(ocT("No he podido cargarlo."))));
         }
         function pintarLista(k) {
             const ul = listas[k];
@@ -14718,35 +14637,34 @@
                 ver.setAttribute("aria-haspopup", "dialog");
                 ver.append(crear("span", "master-creador-nombre", x.nombre), crear("span", "master-creador-detalle",
                     detalleDe(k, x) + (x.libro ? " · " + x.libro : "")));
-                const cambiar = botonDe("master-docs-mando", "✎", () => editar(k, x), "Cambiar " + x.nombre);
+                const cambiar = botonDe("master-docs-mando", "✎", () => editar(k, x), ocT("Cambiar {nombre}", { nombre: x.nombre }));
                 const duplicar = botonDe("master-docs-mando", "⧉", () => {
                     const y = JSON.parse(JSON.stringify(x));
                     delete y.id;
-                    y.nombre = x.nombre + " (copia)";
-                    y.en = x.en + " (copia)";
+                    y.nombre = ocT("{nombre} (copia)", { nombre: x.nombre });
+                    y.en = ocT("{en} (copia)", { en: x.en });
                     editar(k, y, true);
-                }, "Hacer una copia de " + x.nombre);
+                }, ocT("Hacer una copia de {nombre}", { nombre: x.nombre }));
                 let seguro = false;
                 const quitar = botonDe("master-docs-mando", "✕", () => {
                     if (!seguro) {
                         seguro = true;
                         quitar.classList.add("es-seguro");
-                        avisar("Pulsa otra vez para quitar " + x.nombre + ".");
+                        avisar(ocT("Pulsa otra vez para quitar {nombre}.", { nombre: x.nombre }));
                         return;
                     }
                     const p = leerPropios();
                     p[k] = p[k].filter((y) => y.id !== x.id);
                     guardarPropios(p);
                     pintarLista(k);
-                    avisar("Quitado: " + x.nombre + ".");
+                    avisar(ocT("Quitado: {nombre}.", { nombre: x.nombre }));
                     filtros[k].focus();
-                }, "Quitar " + x.nombre);
+                }, ocT("Quitar {nombre}", { nombre: x.nombre }));
                 li.append(ver, cambiar, duplicar, quitar);
                 return li;
             }));
             if (!salen.length) {
-                ul.appendChild(crear("li", "oc-vacio", todos.length ? "Nada con eso." : "Aún no hay. Crea uno, copia uno del SRD"
-                    + " o importa un .json."));
+                ul.appendChild(crear("li", "oc-vacio", todos.length ? ocT("Nada con eso.") : ocT("Aún no hay. Crea uno, copia uno del SRD o importa un .json.")));
             }
         }
         function pintarListas() {
@@ -14848,14 +14766,14 @@
             const filas = [];
             const fila = (r, foco) => {
                 const li = crear("li", "master-creador-entrada");
-                const nom = campo(li, "nombre", r.n);
-                const tex = campo(li, "texto", r.t, { filas: 3, ancho: true });
+                const nom = campo(li, ocT("nombre"), r.n);
+                const tex = campo(li, ocT("texto"), r.t, { filas: 3, ancho: true });
                 const quitar = botonDe("master-docs-mando", "✕", () => {
                     filas.splice(filas.indexOf(x), 1);
                     li.remove();
                     mas.focus();
-                    avisar("Quitado de " + titulo.toLowerCase() + ".");
-                }, "Quitar esta entrada de " + titulo.toLowerCase());
+                    avisar(ocT("Quitado de {toLowerCase}.", { toLowerCase: titulo.toLowerCase() }));
+                }, ocT("Quitar esta entrada de {toLowerCase}", { toLowerCase: titulo.toLowerCase() }));
                 li.appendChild(quitar);
                 const x = { nom, tex };
                 filas.push(x);
@@ -14866,15 +14784,15 @@
             };
             (lista || []).forEach((r) => fila(r));
             const botones = crear("div", "master-creador-barra");
-            const mas = botonDe("oc-vida-accion", "＋ añadir", () => fila({ n: "", t: "" }, true), "Añadir a " + titulo.toLowerCase());
+            const mas = botonDe("oc-vida-accion", ocT("＋ añadir"), () => fila({ n: "", t: "" }, true), ocT("Añadir a {toLowerCase}", { toLowerCase: titulo.toLowerCase() }));
             botones.appendChild(mas);
             if (conAtaque) {
-                botones.appendChild(botonDe("oc-vida-accion", "＋ ataque", () => fila({ n: "Ataque",
-                    t: "*Ataque cuerpo a cuerpo:* +4, alcance 5 ft. *Impacto:* 5 (1d6 + 2) de daño cortante." }, true),
-                "Añadir un ataque (con el formato que sale en tabla)"));
-                botones.appendChild(botonDe("oc-vida-accion", "＋ salvación", () => fila({ n: "Aliento",
-                    t: "*Tirada de salvación de Destreza:* CD 13, cada criatura en un cono de 15 ft. *Fallo:* 14 (4d6) de daño de fuego. *Éxito:* la mitad del daño." }, true),
-                "Añadir un efecto con tirada de salvación"));
+                botones.appendChild(botonDe("oc-vida-accion", ocT("＋ ataque"), () => fila({ n: "Ataque",
+                    t: ocT("*Ataque cuerpo a cuerpo:* +4, alcance 5 ft. *Impacto:* 5 (1d6 + 2) de daño cortante.") }, true),
+                ocT("Añadir un ataque (con el formato que sale en tabla)")));
+                botones.appendChild(botonDe("oc-vida-accion", ocT("＋ salvación"), () => fila({ n: "Aliento",
+                    t: ocT("*Tirada de salvación de Destreza:* CD 13, cada criatura en un cono de 15 ft. *Fallo:* 14 (4d6) de daño de fuego. *Éxito:* la mitad del daño.") }, true),
+                ocT("Añadir un efecto con tirada de salvación")));
             }
             fs.append(ul, botones);
             editor.appendChild(fs);
@@ -14884,26 +14802,26 @@
         // Pegar un bloque y, con lo que se entienda, el formulario relleno.
         function abrirPegar(k, vuelta) {
             const cuerpo = crear("form", "master-pegar");
-            const et = crear("label", "oc-dados-etiqueta", "pega aquí el bloque");
+            const et = crear("label", "oc-dados-etiqueta", ocT("pega aquí el bloque"));
             const area = crear("textarea", "oc-dados-texto master-pegar-area");
             area.id = uid + "-pegar";
             area.rows = 14;
-            area.placeholder = k === "monstruos" ? "Goblin Warrior\nSmall Fey (Goblinoid), Chaotic Neutral\nAC 15  Initiative +2…"
-                : k === "conjuros" ? "Fireball\nLevel 3 Evocation (Sorcerer, Wizard)\nCasting Time: Action…"
-                    : "Bag of Holding\nWondrous Item, Uncommon\nThis bag has…";
+            area.placeholder = k === "monstruos" ? ocT("Goblin Warrior\nSmall Fey (Goblinoid), Chaotic Neutral\nAC 15  Initiative +2…")
+                : k === "conjuros" ? ocT("Fireball\nLevel 3 Evocation (Sorcerer, Wizard)\nCasting Time: Action…")
+                    : ocT("Bag of Holding\nWondrous Item, Uncommon\nThis bag has…");
             et.htmlFor = area.id;
-            const nota = crear("p", "oc-hoja-nota", conTraducir.checked ? "🌐 Los términos de reglas en inglés se pasan al español."
-                : "Tal cual (sin traducir: está desmarcado «🌐 traducir»).");
-            const ok = crear("button", "oc-vida-accion es-principal", "✓ rellenar");
+            const nota = crear("p", "oc-hoja-nota", conTraducir.checked ? ocT("🌐 Los términos de reglas en inglés se pasan al español.")
+                : ocT("Tal cual (sin traducir: está desmarcado «🌐 traducir»)."));
+            const ok = crear("button", "oc-vida-accion es-principal", ocT("✓ rellenar"));
             ok.type = "submit";
-            const guia = botonDe("oc-vida-accion", "❓ cómo", () => abrirGuiaPegar(guia), "Cómo pegar desde D&D Beyond (guía)");
+            const guia = botonDe("oc-vida-accion", ocT("❓ cómo"), () => abrirGuiaPegar(guia), ocT("Cómo pegar desde D&D Beyond (guía)"));
             const fila = crear("div", "master-creador-barra");
             fila.append(ok, guia);
             cuerpo.append(et, area, nota, fila);
             cuerpo.addEventListener("submit", (e) => {
                 e.preventDefault();
                 if (!area.value.trim()) {
-                    avisar("Pega primero el bloque.");
+                    avisar(ocT("Pega primero el bloque."));
                     area.focus();
                     return;
                 }
@@ -14914,9 +14832,9 @@
                 }
                 cerrarPegar();
                 editar(k, x, true);
-                avisar("Relleno con lo pegado: repásalo y guarda.");
+                avisar(ocT("Relleno con lo pegado: repásalo y guarda."));
             });
-            const cerrarPegar = window.ocVentana.abrir({ titulo: "pegar un bloque", cuerpo, vuelta, foco: area });
+            const cerrarPegar = window.ocVentana.abrir({ titulo: ocT("pegar un bloque"), cuerpo, vuelta, foco: area });
         }
 
         function editar(k, x, esNuevo) {
@@ -14926,48 +14844,48 @@
             n = 0;
             editor.replaceChildren();
             const uno = TIPOS.find((t) => t[0] === k)[2];
-            editor.appendChild(crear("h3", "master-creador-titulo", actual ? "✎ " + actual.nombre : "＋ " + (k === "otros" ? "cosa nueva"
-                : uno + " nuevo")));
-            const base = grupo("Lo básico");
-            const nombre = campo(base, "nombre (en español)", v.nombre, { obligatorio: true });
-            const en = k === "otros" ? null : campo(base, "nombre original", v.en === v.nombre ? "" : v.en, { ayuda: "opcional" });
-            const libro = campo(base, "de dónde sale", v.libro, { ayuda: "Monster Manual 2025, p. 12 · inventado…" });
+            editor.appendChild(crear("h3", "master-creador-titulo", actual ? "✎ " + actual.nombre : "＋ " + (k === "otros" ? ocT("cosa nueva")
+                : ocT("{uno} nuevo", { uno: uno }))));
+            const base = grupo(ocT("Lo básico"));
+            const nombre = campo(base, ocT("nombre (en español)"), v.nombre, { obligatorio: true });
+            const en = k === "otros" ? null : campo(base, ocT("nombre original"), v.en === v.nombre ? "" : v.en, { ayuda: ocT("opcional") });
+            const libro = campo(base, ocT("de dónde sale"), v.libro, { ayuda: ocT("Monster Manual 2025, p. 12 · inventado…") });
             const leer = { comun: () => ({ nombre: nombre.value, en: (en && en.value.trim()) || nombre.value, libro: libro.value }) };
             if (k === "monstruos") {
                 const t = /^(.+?)(?: \(([^)]*)\))? ((?:Diminuto|Pequeño|Mediano|Grande|Enorme|Gargantuesco)(?: o \S+)?)$/
                     .exec(v.tipo || "") || [];
-                const tipo = campo(base, "tipo", t[1] || (v.tipo ? v.tipo : "Monstruosidad"), { opciones: PROPIO_TIPOS });
-                const etiqueta = campo(base, "etiqueta", t[2] || "", { ayuda: "opcional: goblinoide…" });
-                const tam = campo(base, "tamaño", t[3] || (v.tipo ? "" : "Mediano"), { opciones: PROPIO_TAMANOS });
-                const alin = campo(base, "alineamiento", v.alin || "neutral", { opciones: PROPIO_ALIN });
-                const cr = campo(base, "VD", v.cr || "1", { opciones: CR_LISTA });
-                const comb = grupo("Combate");
-                const ca = campo(comb, "CA", v.ca, { ayuda: "15 (cota de mallas)" });
-                const pg = campo(comb, "PG", v.pg, { tipo: "number", min: 1 });
-                const pgf = campo(comb, "dados de PG", v.pgf, { ayuda: "4d8 + 4" });
-                const ini = campo(comb, "iniciativa", v.ini, { ayuda: "vacío: la de su Destreza" });
-                const vel = campo(comb, "velocidad", v.vel, { ayuda: "30 ft., vuelo 60 ft.", ancho: true });
-                const ca2 = grupo("Características");
+                const tipo = campo(base, ocT("tipo"), t[1] || (v.tipo ? v.tipo : "Monstruosidad"), { opciones: PROPIO_TIPOS });
+                const etiqueta = campo(base, ocT("etiqueta"), t[2] || "", { ayuda: "opcional: goblinoide…" });
+                const tam = campo(base, ocT("tamaño"), t[3] || (v.tipo ? "" : "Mediano"), { opciones: PROPIO_TAMANOS });
+                const alin = campo(base, ocT("alineamiento"), v.alin || "neutral", { opciones: PROPIO_ALIN });
+                const cr = campo(base, ocT("VD"), v.cr || "1", { opciones: CR_LISTA });
+                const comb = grupo(ocT("Combate"));
+                const ca = campo(comb, ocT("CA"), v.ca, { ayuda: ocT("15 (cota de mallas)") });
+                const pg = campo(comb, ocT("PG"), v.pg, { tipo: "number", min: 1 });
+                const pgf = campo(comb, ocT("dados de PG"), v.pgf, { ayuda: "4d8 + 4" });
+                const ini = campo(comb, ocT("iniciativa"), v.ini, { ayuda: ocT("vacío: la de su Destreza") });
+                const vel = campo(comb, ocT("velocidad"), v.vel, { ayuda: ocT("30 ft., vuelo 60 ft."), ancho: true });
+                const ca2 = grupo(ocT("Características"));
                 const car = {};
                 ["Fue", "Des", "Con", "Int", "Sab", "Car"].forEach((c) => {
                     car[c] = campo(ca2, c, (v.car || {})[c] || 10, { tipo: "number", min: 1, max: 30 });
                 });
-                const mas = grupo("Más datos");
+                const mas = grupo(ocT("Más datos"));
                 const otros = {};
-                [["salv", "salvaciones", "Des +5, Sab +3"], ["hab", "habilidades", "Percepción +4, Sigilo +6"],
+                [["salv", "salvaciones", ocT("Des +5, Sab +3")], ["hab", "habilidades", ocT("Percepción +4, Sigilo +6")],
                     ["vuln", "vulnerabilidades", "fuego"], ["res", "resistencias", "frío; contundente"],
-                    ["inm", "inmunidades al daño", "veneno"], ["inmE", "inmunidades a estados", "envenenado, asustado"],
-                    ["sent", "sentidos", "visión en la oscuridad 60 ft.; Percepción pasiva 12"], ["idio", "idiomas", "común, dracónico"],
-                    ["equipo", "equipo", "espada larga, escudo"]].forEach(([c, et, ayuda]) => {
+                    ["inm", ocT("inmunidades al daño"), "veneno"], ["inmE", ocT("inmunidades a estados"), ocT("envenenado, asustado")],
+                    ["sent", "sentidos", ocT("visión en la oscuridad 60 ft.; Percepción pasiva 12")], ["idio", "idiomas", ocT("común, dracónico")],
+                    ["equipo", "equipo", ocT("espada larga, escudo")]].forEach(([c, et, ayuda]) => {
                     otros[c] = campo(mas, et, v[c], { ayuda, ancho: true });
                 });
-                const habitat = marcasDe("Hábitat (para los encuentros)", PROPIO_HABITATS, v.habitat);
+                const habitat = marcasDe(ocT("Hábitat (para los encuentros)"), PROPIO_HABITATS, v.habitat);
                 const secc = {};
                 SECCIONES_BICHO.forEach(([c, titulo]) => {
                     secc[c] = entradas(titulo, v[c], c === "acciones" || c === "adicionales" || c === "legendarias");
                 });
-                const legInfo = campo(grupo("Uso de las legendarias (si tiene)"), "cómo se usan", v.legInfo, { filas: 2, ancho: true,
-                    ayuda: "*Usos de acción legendaria:* 3. Justo después del turno de otra criatura, puede gastar un uso…" });
+                const legInfo = campo(grupo(ocT("Uso de las legendarias (si tiene)")), ocT("cómo se usan"), v.legInfo, { filas: 2, ancho: true,
+                    ayuda: ocT("*Usos de acción legendaria:* 3. Justo después del turno de otra criatura, puede gastar un uso…") });
                 leer.resto = () => {
                     const o = { tipo: tipo.value + (etiqueta.value.trim() ? " (" + etiqueta.value.trim() + ")" : "") + " " + tam.value,
                         alin: alin.value, cr: cr.value, vd: v.cr === cr.value ? v.vd : "", ca: ca.value, pg: pg.value, pgf: pgf.value,
@@ -14984,31 +14902,31 @@
                     return o;
                 };
             } else if (k === "objetos") {
-                const cat = campo(base, "categoría", v.cat || "objeto maravilloso", { lista: PROPIO_CATS });
-                const rareza = campo(base, "rareza", v.rareza || "", { opciones: [["", "— (no mágico)"]].concat(PROPIO_RAREZAS) });
-                const precio = campo(base, "precio (po)", v.cp ? v.cp / 100 : "", { tipo: "number", paso: "any" });
-                const peso = campo(base, "peso", v.peso, { ayuda: "2 lb." });
-                const det = campo(base, "detalles", v.det, { ayuda: "1d8 cortante, versátil…", ancho: true });
-                const nota2 = campo(base, "nota", v.nota, { ancho: true });
+                const cat = campo(base, ocT("categoría"), v.cat || "objeto maravilloso", { lista: PROPIO_CATS });
+                const rareza = campo(base, ocT("rareza"), v.rareza || "", { opciones: [["", ocT("— (no mágico)")]].concat(PROPIO_RAREZAS) });
+                const precio = campo(base, ocT("precio (po)"), v.cp ? v.cp / 100 : "", { tipo: "number", paso: "any" });
+                const peso = campo(base, ocT("peso"), v.peso, { ayuda: ocT("2 lb.") });
+                const det = campo(base, ocT("detalles"), v.det, { ayuda: ocT("1d8 cortante, versátil…"), ancho: true });
+                const nota2 = campo(base, ocT("nota"), v.nota, { ancho: true });
                 const etS = crear("label", "master-creador-check");
                 const sint = crear("input");
                 sint.type = "checkbox";
                 sint.checked = !!v.sint;
-                etS.append(sint, " requiere sintonía");
+                etS.append(sint, ocT(" requiere sintonía"));
                 base.appendChild(etS);
-                const tiendas = marcasDe("Se vende en (para la tienda y los negocios)", PROPIO_TIENDAS, v.tiendas);
-                const texto = campo(grupo("Qué hace"), "texto", v.texto, { filas: 8, ancho: true,
-                    ayuda: "Admite *cursiva* y **negrita**; los conjuros en cursiva se enlazan." });
+                const tiendas = marcasDe(ocT("Se vende en (para la tienda y los negocios)"), PROPIO_TIENDAS, v.tiendas);
+                const texto = campo(grupo(ocT("Qué hace")), ocT("texto"), v.texto, { filas: 8, ancho: true,
+                    ayuda: ocT("Admite *cursiva* y **negrita**; los conjuros en cursiva se enlazan.") });
                 leer.resto = () => ({ cat: cat.value, rareza: rareza.value, cp: Math.round((Number(precio.value) || 0) * 100),
                     peso: peso.value, det: det.value, nota: nota2.value, sint: sint.checked, tiendas: tiendas(), texto: texto.value });
             } else if (k === "conjuros") {
-                const nivel = campo(base, "nivel", v.nivel === undefined ? 1 : v.nivel, { opciones: [["0", "truco"]]
-                    .concat(Array.from({ length: 9 }, (x2, i) => [String(i + 1), "nivel " + (i + 1)])) });
-                const escuela = campo(base, "escuela", v.escuela || "Evocación", { opciones: PROPIO_ESCUELAS });
-                const tiempo = campo(base, "lanzamiento", v.tiempo, { ayuda: "1 acción" });
-                const alcance = campo(base, "alcance", v.alcance, { ayuda: "60 ft." });
-                const comp = campo(base, "componentes", v.comp, { ayuda: "V, S, M (una pluma)" });
-                const dur = campo(base, "duración", v.dur, { ayuda: "Concentración, hasta 1 minuto" });
+                const nivel = campo(base, ocT("nivel"), v.nivel === undefined ? 1 : v.nivel, { opciones: [["0", ocT("truco")]]
+                    .concat(Array.from({ length: 9 }, (x2, i) => [String(i + 1), ocT("nivel {n}", { n: i + 1 })])) });
+                const escuela = campo(base, ocT("escuela"), v.escuela || "Evocación", { opciones: PROPIO_ESCUELAS });
+                const tiempo = campo(base, ocT("lanzamiento"), v.tiempo, { ayuda: ocT("1 acción") });
+                const alcance = campo(base, ocT("alcance"), v.alcance, { ayuda: ocT("60 ft.") });
+                const comp = campo(base, ocT("componentes"), v.comp, { ayuda: ocT("V, S, M (una pluma)") });
+                const dur = campo(base, ocT("duración"), v.dur, { ayuda: ocT("Concentración, hasta 1 minuto") });
                 const marcas = crear("div", "master-creador-barra");
                 const caja = (texto, valor) => {
                     const et = crear("label", "master-creador-check");
@@ -15020,55 +14938,55 @@
                     return c;
                 };
                 const ritual = caja("ritual", v.ritual);
-                const conc = caja("concentración", v.conc);
+                const conc = caja(ocT("concentración"), v.conc);
                 base.appendChild(marcas);
                 const otrasClases = (v.clases || []).filter((c) => !PROPIO_CLASES.includes(c));
-                const clases = marcasDe("Clases", PROPIO_CLASES, v.clases);
-                const mas = campo(grupo("Otras clases o subclases"), "separadas por comas", otrasClases.join(", "), { ancho: true });
-                const tx = grupo("Qué hace");
-                const texto = campo(tx, "texto", v.texto, { filas: 8, ancho: true });
-                const superior = campo(tx, "a nivel superior / mejora del truco", v.superior, { filas: 2, ancho: true });
+                const clases = marcasDe(ocT("Clases"), PROPIO_CLASES, v.clases);
+                const mas = campo(grupo(ocT("Otras clases o subclases")), ocT("separadas por comas"), otrasClases.join(", "), { ancho: true });
+                const tx = grupo(ocT("Qué hace"));
+                const texto = campo(tx, ocT("texto"), v.texto, { filas: 8, ancho: true });
+                const superior = campo(tx, ocT("a nivel superior / mejora del truco"), v.superior, { filas: 2, ancho: true });
                 leer.resto = () => ({ nivel: nivel.value, escuela: escuela.value, tiempo: tiempo.value, alcance: alcance.value,
                     comp: comp.value, dur: dur.value, ritual: ritual.checked, conc: conc.checked,
                     clases: clases().concat(mas.value.split(",").map((c) => c.trim()).filter(Boolean)), texto: texto.value,
                     superior: superior.value });
             } else if (k === "rasgos") {
-                const tipo = campo(base, "qué es", v.tipo || "dote general", { opciones: PROPIO_RASGOS.map((t) => [t, t]) });
-                const de = campo(base, "de quién (clase, subclase o especie)", v.de === "dote" ? "" : v.de, { ayuda: "Pícaro (Ladrón) · Elfo" });
-                const nivel = campo(base, "nivel (si es de clase)", v.nivel || "", { tipo: "number", min: 0, max: 20 });
-                const texto = campo(grupo("Qué hace"), "texto", v.texto, { filas: 10, ancho: true,
-                    ayuda: "Admite **negrita**, *cursiva* (los conjuros en cursiva se enlazan), listas con «- » y párrafos." });
+                const tipo = campo(base, ocT("qué es"), v.tipo || "dote general", { opciones: PROPIO_RASGOS.map((t) => [t, t]) });
+                const de = campo(base, ocT("de quién (clase, subclase o especie)"), v.de === "dote" ? "" : v.de, { ayuda: ocT("Pícaro (Ladrón) · Elfo") });
+                const nivel = campo(base, ocT("nivel (si es de clase)"), v.nivel || "", { tipo: "number", min: 0, max: 20 });
+                const texto = campo(grupo(ocT("Qué hace")), ocT("texto"), v.texto, { filas: 10, ancho: true,
+                    ayuda: ocT("Admite **negrita**, *cursiva* (los conjuros en cursiva se enlazan), listas con «- » y párrafos.") });
                 leer.resto = () => ({ tipo: tipo.value, de: de.value.trim() || (/dote|estilo|don/.test(tipo.value) ? "dote" : ""),
                     nivel: nivel.value, texto: texto.value });
             } else {
-                const cat = campo(base, "qué es", v.cat || "dote", { lista: PROPIO_OTROS });
-                const texto = campo(grupo("Texto"), "texto", v.texto, { filas: 12, ancho: true,
-                    ayuda: "Admite **negrita**, *cursiva*, listas con «- » y párrafos." });
+                const cat = campo(base, ocT("qué es"), v.cat || "dote", { lista: PROPIO_OTROS });
+                const texto = campo(grupo(ocT("Texto")), ocT("texto"), v.texto, { filas: 12, ancho: true,
+                    ayuda: ocT("Admite **negrita**, *cursiva*, listas con «- » y párrafos.") });
                 leer.resto = () => ({ cat: cat.value, texto: texto.value });
             }
             // Los botones, abajo.
             const botones = crear("div", "master-creador-barra master-creador-final");
-            const ok = crear("button", "oc-vida-accion es-principal", "✓ guardar");
+            const ok = crear("button", "oc-vida-accion es-principal", ocT("✓ guardar"));
             ok.type = "submit";
-            const traducirB = botonDe("oc-vida-accion", "🌐 traducir términos", () => {
+            const traducirB = botonDe("oc-vida-accion", ocT("🌐 traducir términos"), () => {
                 editor.querySelectorAll("input[type=text], input:not([type]), textarea").forEach((c) => {
                     if (c !== nombre && c !== en && c !== libro) {
                         c.value = traducir(c.value);
                     }
                 });
                 if (k === "monstruos") {
-                    avisar("Términos traducidos. El tipo y el tamaño, en sus desplegables.");
+                    avisar(ocT("Términos traducidos. El tipo y el tamaño, en sus desplegables."));
                 } else {
-                    avisar("Términos traducidos (las frases se quedan como estaban).");
+                    avisar(ocT("Términos traducidos (las frases se quedan como estaban)."));
                 }
-            }, "Traducir al español los términos de reglas en inglés de este formulario");
-            const no = botonDe("oc-vida-accion", "cancelar", cerrar);
+            }, ocT("Traducir al español los términos de reglas en inglés de este formulario"));
+            const no = botonDe("oc-vida-accion", ocT("cancelar"), cerrar);
             botones.append(ok, traducirB, no);
             editor.appendChild(botones);
             editor.onsubmit = (e) => {
                 e.preventDefault();
                 if (!nombre.value.trim()) {
-                    avisar("Ponle un nombre.");
+                    avisar(ocT("Ponle un nombre."));
                     nombre.focus();
                     return;
                 }
@@ -15088,11 +15006,11 @@
                     p[k].push(o);
                 }
                 if (!guardarPropios(p)) {
-                    avisar("No se ha podido guardar: ¿no queda sitio en el navegador?");
+                    avisar(ocT("No se ha podido guardar: ¿no queda sitio en el navegador?"));
                     return;
                 }
                 cerrar(o.id);
-                avisar("Guardado: " + o.nombre + ".");
+                avisar(ocT("Guardado: {nombre}.", { nombre: o.nombre }));
             };
             editor.onkeydown = (e) => {
                 if (e.key === "Escape" && e.target.tagName !== "SELECT") {
@@ -15148,10 +15066,10 @@
         fondo.setAttribute("aria-modal", "true");
         fondo.setAttribute("aria-labelledby", "master-compendio-titulo");
         const cabeza = crear("div", "master-compendio-cabeza");
-        const titulo = crear("h2", "master-compendio-titulo", "＋ añadir al compendio");
+        const titulo = crear("h2", "master-compendio-titulo", ocT("＋ añadir al compendio"));
         titulo.id = "master-compendio-titulo";
-        const volver = botonDe("oc-vida-accion", "✕ volver al tablero", cerrar, "Cerrar el compendio y volver al tablero");
-        volver.title = "Volver al tablero (Esc)";
+        const volver = botonDe("oc-vida-accion", ocT("✕ volver al tablero"), cerrar, ocT("Cerrar el compendio y volver al tablero"));
+        volver.title = ocT("Volver al tablero (Esc)");
         cabeza.append(titulo, volver);
         const cuerpo = crear("div", "master-compendio-cuerpo");
         fondo.append(cabeza, cuerpo);
@@ -15183,7 +15101,7 @@
             // Al salir, la app se vuelve a cargar (como con F5), para que lo
             // nuevo salga en todas partes. Se guarda antes, y al volver no se
             // pregunta la campaña: sigue la misma.
-            avisar("Recargando…");
+            avisar(ocT("Recargando…"));
             try {
                 sessionStorage.setItem(CLAVE_RECARGA, "1");
             } catch (e) {
@@ -15217,7 +15135,7 @@
         fondo.addEventListener("click", () => setTimeout(recordar, 0));
         const tab = fondo.querySelector("[role=tab][aria-selected=true]");
         (tab || volver).focus();
-        avisar("Compendio abierto. Esc para volver al tablero.");
+        avisar(ocT("Compendio abierto. Esc para volver al tablero."));
     }
 
     // ---- LA PANTALLA DE JUGADORES (jugadores.html): una ventana aparte
@@ -15294,7 +15212,7 @@
                 }
                 cambio.imagen = id;
                 hecho();
-            }).catch(() => avisar("No se ha podido guardar la imagen."));
+            }).catch(() => avisar(ocT("No se ha podido guardar la imagen.")));
         }
         hecho();
         return Promise.resolve();
@@ -15303,9 +15221,9 @@
         const w = window.open("jugadores.html", "pantalla-master-jugadores", "popup,width=1100,height=720");
         if (w) {
             w.focus();
-            avisar("Pantalla de jugadores abierta: llévala a la tele o compártela.");
+            avisar(ocT("Pantalla de jugadores abierta: llévala a la tele o compártela."));
         } else {
-            avisar("El navegador no ha dejado abrir la ventana: permite las ventanas emergentes de esta página.");
+            avisar(ocT("El navegador no ha dejado abrir la ventana: permite las ventanas emergentes de esta página."));
         }
     }
     if (CANAL_JUG) {
@@ -15323,14 +15241,14 @@
 
     function montarJugadores(dentro, m) {
         const j = datosJug();
-        const abrir = botonDe("oc-vida-accion es-principal", "🪟 abrir la pantalla de jugadores", abrirJugadores,
-            "Abrir la pantalla de jugadores (una ventana aparte para la tele, Discord u OBS)");
+        const abrir = botonDe("oc-vida-accion es-principal", ocT("🪟 abrir la pantalla de jugadores"), abrirJugadores,
+            ocT("Abrir la pantalla de jugadores (una ventana aparte para la tele, Discord u OBS)"));
         const ahora = crear("p", "master-jug-ahora");
         ahora.setAttribute("aria-live", "polite");
-        const MODOS = [["espera", "⏸ espera"], ["imagen", "🖼️ imagen"], ["texto", "📜 texto"], ["iniciativa", "⏱️ iniciativa"]];
+        const MODOS = [["espera", ocT("⏸ espera")], ["imagen", ocT("🖼️ imagen")], ["texto", ocT("📜 texto")], ["iniciativa", ocT("⏱️ iniciativa")]];
         const modos = crear("div", "master-musica-modos");
         modos.setAttribute("role", "group");
-        modos.setAttribute("aria-label", "Qué ven los jugadores");
+        modos.setAttribute("aria-label", ocT("Qué ven los jugadores"));
         const bModos = MODOS.map(([v, t]) => {
             const b = botonDe("master-musica-modo", t, () => mostrarAJugadores({ modo: v }).then(pintar));
             b.dataset.modo = v;
@@ -15348,20 +15266,20 @@
         const tit = crear("input", "oc-dados-texto");
         tit.maxLength = 120;
         tit.autocomplete = "off";
-        tit.placeholder = "La cripta olvidada";
+        tit.placeholder = ocT("La cripta olvidada");
         const txt = crear("textarea", "oc-dados-texto");
         txt.rows = 5;
-        txt.placeholder = "Lo que leen (admite **negrita**, *cursiva* y listas «- »). En espera: lo que se ve en grande.";
-        const poner = crear("button", "oc-vida-accion es-principal", "📺 enseñar el título y el texto");
+        txt.placeholder = ocT("Lo que leen (admite **negrita**, *cursiva* y listas «- »). En espera: lo que se ve en grande.");
+        const poner = crear("button", "oc-vida-accion es-principal", ocT("📺 enseñar el título y el texto"));
         poner.type = "submit";
         const form = crear("form", "master-jug-form");
-        form.append(campoDe("título (arriba, en grande; opcional)", tit, "master-jug-titulo-"), campoDe("texto", txt, "master-jug-texto-"),
+        form.append(campoDe(ocT("título (arriba, en grande; opcional)"), tit, "master-jug-titulo-"), campoDe(ocT("texto"), txt, "master-jug-texto-"),
             poner);
         form.addEventListener("submit", (e) => {
             e.preventDefault();
             mostrarAJugadores({ titulo: tit.value.trim(), texto: txt.value, modo: j.modo === "imagen" || j.modo === "iniciativa" ? j.modo
                 : txt.value.trim() ? "texto" : "espera" }).then(pintar);
-            avisar("Enseñado.");
+            avisar(ocT("Enseñado."));
         });
         const archivo = crear("input");
         archivo.type = "file";
@@ -15375,21 +15293,21 @@
             }
             mostrarAJugadores({ modo: "imagen" }, f).then(pintar);
         });
-        const elegirImg = botonDe("oc-vida-accion", "🖼️ enseñar una imagen", () => archivo.click(),
-            "Enseñar una imagen de tu dispositivo a los jugadores");
+        const elegirImg = botonDe("oc-vida-accion", ocT("🖼️ enseñar una imagen"), () => archivo.click(),
+            ocT("Enseñar una imagen de tu dispositivo a los jugadores"));
         const etPg = crear("label", "master-jug-pg");
         const conPg = crear("input");
         conPg.type = "checkbox";
         conPg.checked = !!j.conPg;
         conPg.addEventListener("change", () => mostrarAJugadores({ conPg: conPg.checked }));
-        etPg.append(conPg, document.createTextNode(" en la iniciativa, los PG de la party (nunca los de los monstruos)"));
+        etPg.append(conPg, document.createTextNode(ocT(" en la iniciativa, los PG de la party (nunca los de los monstruos)")));
         const botones = crear("div", "master-creador-barra");
         botones.append(elegirImg, archivo);
         function pintar() {
             bModos.forEach((b) => b.setAttribute("aria-pressed", b.dataset.modo === j.modo ? "true" : "false"));
             const t = (MODOS.find((x) => x[0] === j.modo) || MODOS[0])[1];
-            ahora.textContent = "Ahora ven: " + t + (j.titulo ? " · «" + j.titulo + "»" : "") + (j.modo === "imagen" && !j.imagen
-                ? " (todavía no hay imagen: elige una o usa 📺 en un dibujo)" : "");
+            ahora.textContent = ocT("Ahora ven: {t}{n}{n2}", { t: t, n: j.titulo ? " · «" + j.titulo + "»" : "", n2: j.modo === "imagen" && !j.imagen
+                ? ocT(" (todavía no hay imagen: elige una o usa 📺 en un dibujo)") : "" });
             if (document.activeElement !== tit) {
                 tit.value = j.titulo || "";
             }
@@ -15397,9 +15315,7 @@
                 txt.value = j.texto || "";
             }
         }
-        dentro.replaceChildren(abrir, ahora, modos, botones, form, etPg, crear("p", "oc-hoja-nota", "Lo que elijas aquí es lo único"
-            + " que se ve en esa ventana: cambia de tablero tranquilamente. En un 🎨 dibujo, 📺 lo manda tal cual (sin las capas"
-            + " escondidas)."));
+        dentro.replaceChildren(abrir, ahora, modos, botones, form, etPg, crear("p", "oc-hoja-nota", ocT("Lo que elijas aquí es lo único que se ve en esa ventana: cambia de tablero tranquilamente. En un 🎨 dibujo, 📺 lo manda tal cual (sin las capas escondidas).")));
         pintar();
         mientrasEste(dentro, "master:jugadores", pintar);
     }
@@ -15420,7 +15336,7 @@
         try {
             localStorage.setItem(CLAVE_TABLAS, JSON.stringify(x));
         } catch (e) {
-            avisar("No se ha podido guardar la tabla.");
+            avisar(ocT("No se ha podido guardar la tabla."));
         }
         document.dispatchEvent(new CustomEvent("master:tablas"));
     };
@@ -15449,33 +15365,33 @@
         d.hist = Array.isArray(d.hist) ? d.hist : [];
         const sel = crear("select", "oc-dados-elegir");
         sel.id = "master-tablas-" + m.id;
-        const etSel = crear("label", "oc-dados-etiqueta", "tabla");
+        const etSel = crear("label", "oc-dados-etiqueta", ocT("tabla"));
         etSel.htmlFor = sel.id;
-        const tirar = crear("button", "oc-vida-accion es-principal", "🎲 tirar");
+        const tirar = crear("button", "oc-vida-accion es-principal", ocT("🎲 tirar"));
         tirar.type = "submit";
         const fila = crear("form", "master-tablas-fila");
         fila.append(etSel, sel, tirar);
         const sale = crear("p", "master-tablas-sale");
         sale.setAttribute("aria-live", "polite");
         const hist = crear("ol", "master-tablas-hist");
-        hist.setAttribute("aria-label", "Lo que ha salido antes");
-        const nueva = botonDe("oc-vida-accion", "＋ tabla nueva", () => editar(null), "Crear una tabla nueva");
-        const editarB = botonDe("oc-vida-accion", "✎ editar", () => editar(leerTablas().find((t) => t.id === sel.value)), "Editar la tabla elegida");
-        const quitar = botonDe("oc-vida-accion", "🗑️ quitar", () => {
+        hist.setAttribute("aria-label", ocT("Lo que ha salido antes"));
+        const nueva = botonDe("oc-vida-accion", ocT("＋ tabla nueva"), () => editar(null), ocT("Crear una tabla nueva"));
+        const editarB = botonDe("oc-vida-accion", ocT("✎ editar"), () => editar(leerTablas().find((t) => t.id === sel.value)), ocT("Editar la tabla elegida"));
+        const quitar = botonDe("oc-vida-accion", ocT("🗑️ quitar"), () => {
             const t = leerTablas().find((x) => x.id === sel.value);
             if (!t) {
                 return;
             }
             if (quitar.dataset.seguro !== "1") {
                 quitar.dataset.seguro = "1";
-                quitar.textContent = "🗑️ ¿seguro? pulsa otra vez";
+                quitar.textContent = ocT("🗑️ ¿seguro? pulsa otra vez");
                 return;
             }
             delete quitar.dataset.seguro;
-            quitar.textContent = "🗑️ quitar";
+            quitar.textContent = ocT("🗑️ quitar");
             guardarTablas(leerTablas().filter((x) => x.id !== t.id));
-            avisar("Quitada la tabla «" + t.nombre + "».");
-        }, "Quitar la tabla elegida");
+            avisar(ocT("Quitada la tabla «{nombre}».", { nombre: t.nombre }));
+        }, ocT("Quitar la tabla elegida"));
         const botones = crear("div", "master-creador-barra");
         botones.append(nueva, editarB, quitar);
         const form = crear("form", "master-tablas-editar");
@@ -15485,19 +15401,19 @@
             nombre.id = "master-tablas-nombre-" + m.id;
             nombre.maxLength = 80;
             nombre.value = t ? t.nombre : "";
-            nombre.placeholder = "Rumores de la taberna";
+            nombre.placeholder = ocT("Rumores de la taberna");
             const etN = crear("label", "oc-dados-etiqueta", "nombre");
             etN.htmlFor = nombre.id;
             const texto = crear("textarea", "oc-dados-texto");
             texto.id = "master-tablas-texto-" + m.id;
             texto.rows = 8;
             texto.value = t ? t.texto : "";
-            texto.placeholder = "El molinero esconde algo.\n2× Han visto lobos en el camino del norte.\nUn mercader paga {2d6} po por noticias.";
-            const etT = crear("label", "oc-dados-etiqueta", "una entrada por línea («3× » delante: sale más; «{2d6}»: se tira)");
+            texto.placeholder = ocT("El molinero esconde algo.\n2× Han visto lobos en el camino del norte.\nUn mercader paga {2d6} po por noticias.");
+            const etT = crear("label", "oc-dados-etiqueta", ocT("una entrada por línea («3× » delante: sale más; «{2d6}»: se tira)"));
             etT.htmlFor = texto.id;
-            const ok = crear("button", "oc-vida-accion es-principal", "✓ guardar");
+            const ok = crear("button", "oc-vida-accion es-principal", ocT("✓ guardar"));
             ok.type = "submit";
-            const no = botonDe("oc-vida-accion", "cancelar", () => {
+            const no = botonDe("oc-vida-accion", ocT("cancelar"), () => {
                 form.hidden = true;
                 (t ? editarB : nueva).focus();
             });
@@ -15508,7 +15424,7 @@
                 e.preventDefault();
                 const n = nombre.value.trim();
                 if (!n || !entradasDe({ texto: texto.value }).length) {
-                    avisar("Ponle nombre y al menos una entrada.");
+                    avisar(ocT("Ponle nombre y al menos una entrada."));
                     (n ? texto : nombre).focus();
                     return;
                 }
@@ -15525,7 +15441,7 @@
                 guardar();
                 form.hidden = true;
                 guardarTablas(todas);
-                avisar("Tabla guardada: " + n + " (" + entradasDe(x).length + " entradas).");
+                avisar(ocT("Tabla guardada: {n} ({n2} entradas).", { n: n, n2: entradasDe(x).length }));
                 tirar.focus();
             };
             form.hidden = false;
@@ -15535,7 +15451,7 @@
             e.preventDefault();
             const t = leerTablas().find((x) => x.id === sel.value);
             if (!t) {
-                avisar("Primero crea una tabla.");
+                avisar(ocT("Primero crea una tabla."));
                 return;
             }
             const r = tirarTabla(t);
@@ -15547,7 +15463,7 @@
             d.hist = d.hist.slice(0, 12);
             guardar();
             pintarHist();
-            sale.replaceChildren(crear("span", "master-tablas-de", t.nombre + (r.n ? " (" + r.n + " de " + r.de + ")" : "")),
+            sale.replaceChildren(crear("span", "master-tablas-de", t.nombre + (r.n ? ocT(" ({n} de {de})", { n: r.n, de: r.de }) : "")),
                 crear("strong", "", r.texto));
         });
         const pintarHist = () => {
@@ -15568,7 +15484,7 @@
             editarB.hidden = !ts.length;
             quitar.hidden = !ts.length;
             if (!ts.length) {
-                sale.textContent = "Todavía no tienes tablas: crea una (rumores, clima, encuentros de una zona…).";
+                sale.textContent = ocT("Todavía no tienes tablas: crea una (rumores, clima, encuentros de una zona…).");
             }
         }
         dentro.replaceChildren(fila, sale, hist, botones, form);
@@ -15601,35 +15517,35 @@
         };
         const cuando = crear("input", "oc-dados-texto");
         cuando.maxLength = 80;
-        cuando.placeholder = "Sesión 4 · 3 de Mirtul de 1492";
-        const hoy = botonDe("oc-vida-accion", "📅 la del calendario", () => {
+        cuando.placeholder = ocT("Sesión 4 · 3 de Mirtul de 1492");
+        const hoy = botonDe("oc-vida-accion", ocT("📅 la del calendario"), () => {
             const f = fechaDelCalendario();
             if (f) {
                 cuando.value = f;
             } else {
-                avisar("No hay ningún calendario con fecha en los tableros.");
+                avisar(ocT("No hay ningún calendario con fecha en los tableros."));
             }
-        }, "Poner la fecha de la partida del calendario");
+        }, ocT("Poner la fecha de la partida del calendario"));
         const titulo = crear("input", "oc-dados-texto");
         titulo.maxLength = 120;
-        titulo.placeholder = "Llegan a Phandalin";
+        titulo.placeholder = ocT("Llegan a Phandalin");
         const texto = crear("textarea", "oc-dados-texto");
         texto.rows = 3;
-        texto.placeholder = "Qué pasó (opcional)";
+        texto.placeholder = ocT("Qué pasó (opcional)");
         const sesion = crear("label", "master-linea-sesion");
         const sesionC = crear("input");
         sesionC.type = "checkbox";
-        sesion.append(sesionC, document.createTextNode(" es una sesión (resumen de la partida)"));
-        const ok = crear("button", "oc-vida-accion es-principal", "＋ apuntar");
+        sesion.append(sesionC, document.createTextNode(ocT(" es una sesión (resumen de la partida)")));
+        const ok = crear("button", "oc-vida-accion es-principal", ocT("＋ apuntar"));
         ok.type = "submit";
         const filaC = crear("div", "master-linea-cuando");
-        filaC.append(campoDe("cuándo", cuando, "master-linea-cuando-"), hoy);
-        form.append(filaC, campoDe("qué", titulo, "master-linea-titulo-"), campoDe("detalles", texto, "master-linea-texto-"), sesion, ok);
+        filaC.append(campoDe(ocT("cuándo"), cuando, "master-linea-cuando-"), hoy);
+        form.append(filaC, campoDe(ocT("qué"), titulo, "master-linea-titulo-"), campoDe(ocT("detalles"), texto, "master-linea-texto-"), sesion, ok);
         let editando = null;
         form.addEventListener("submit", (e) => {
             e.preventDefault();
             if (!titulo.value.trim()) {
-                avisar("Ponle qué pasó.");
+                avisar(ocT("Ponle qué pasó."));
                 titulo.focus();
                 return;
             }
@@ -15641,24 +15557,24 @@
                 todo.linea.push(x);
             }
             editando = null;
-            ok.textContent = "＋ apuntar";
+            ok.textContent = ocT("＋ apuntar");
             titulo.value = "";
             texto.value = "";
             sesionC.checked = false;
             guardar();
             pintar();
-            avisar("Apuntado: " + x.titulo + ".");
+            avisar(ocT("Apuntado: {titulo}.", { titulo: x.titulo }));
             titulo.focus();
         });
         const buscar = crear("input", "oc-dados-texto");
         buscar.type = "search";
-        buscar.placeholder = "buscar en la línea…";
+        buscar.placeholder = ocT("buscar en la línea…");
         buscar.addEventListener("input", () => pintar());
-        const copiar = botonDe("oc-vida-accion", "⧉ copiar como texto", () => copiarTexto(todo.linea.map((x) => "- " + (x.cuando ? "**"
+        const copiar = botonDe("oc-vida-accion", ocT("⧉ copiar como texto"), () => copiarTexto(todo.linea.map((x) => "- " + (x.cuando ? "**"
             + x.cuando + "** · " : "") + (x.sesion ? "🎲 " : "") + x.titulo + (x.texto ? ": " + x.texto.replace(/\n+/g, " ") : ""))
-            .join("\n"), "Copiada la línea temporal."), "Copiar la línea temporal como texto");
+            .join("\n"), ocT("Copiada la línea temporal.")), ocT("Copiar la línea temporal como texto"));
         const ol = crear("ol", "master-linea");
-        ol.setAttribute("aria-label", "Línea temporal");
+        ol.setAttribute("aria-label", ocT("Línea temporal"));
         function pintar() {
             const q = llano(buscar.value.trim());
             const ver = todo.linea.filter((x) => !q || llano(x.cuando + " " + x.titulo + " " + x.texto).includes(q));
@@ -15675,28 +15591,28 @@
                     li.appendChild(markdown(x.texto));
                 }
                 const mandos = crear("div", "master-linea-mandos");
-                mandos.append(botonDe("master-docs-mando", "↑", () => mover(i, -1), "Subir: " + x.titulo),
-                    botonDe("master-docs-mando", "↓", () => mover(i, 1), "Bajar: " + x.titulo),
+                mandos.append(botonDe("master-docs-mando", "↑", () => mover(i, -1), ocT("Subir: {titulo}", { titulo: x.titulo })),
+                    botonDe("master-docs-mando", "↓", () => mover(i, 1), ocT("Bajar: {titulo}", { titulo: x.titulo })),
                     botonDe("master-docs-mando", "✎", () => {
                         editando = x;
                         cuando.value = x.cuando;
                         titulo.value = x.titulo;
                         texto.value = x.texto;
                         sesionC.checked = !!x.sesion;
-                        ok.textContent = "✓ guardar el cambio";
+                        ok.textContent = ocT("✓ guardar el cambio");
                         titulo.focus();
-                    }, "Cambiar: " + x.titulo),
+                    }, ocT("Cambiar: {titulo}", { titulo: x.titulo })),
                     botonDe("master-docs-mando", "✕", () => {
                         todo.linea.splice(i, 1);
                         guardar();
                         pintar();
-                        avisar("Quitado: " + x.titulo + ".");
-                    }, "Quitar: " + x.titulo));
+                        avisar(ocT("Quitado: {titulo}.", { titulo: x.titulo }));
+                    }, ocT("Quitar: {titulo}", { titulo: x.titulo })));
                 li.appendChild(mandos);
                 return li;
             }));
             if (!ver.length) {
-                ol.appendChild(crear("li", "oc-vacio", todo.linea.length ? "Nada con eso." : "Todavía no hay nada: apunta la primera sesión."));
+                ol.appendChild(crear("li", "oc-vacio", todo.linea.length ? ocT("Nada con eso.") : ocT("Todavía no hay nada: apunta la primera sesión.")));
             }
         }
         function mover(i, paso) {
@@ -15713,7 +15629,7 @@
                 b.querySelectorAll("button")[paso < 0 ? 0 : 1].focus();
             }
         }
-        const etB = crear("label", "visually-hidden", "Buscar en la línea temporal");
+        const etB = crear("label", "visually-hidden", ocT("Buscar en la línea temporal"));
         buscar.id = "master-linea-buscar-" + m.id;
         etB.htmlFor = buscar.id;
         const barra = crear("div", "master-creador-barra");
@@ -15727,9 +15643,9 @@
     // arrastrando y la misma información en una lista. ----
     const TIPOS_NODO = [["pnj", "🧑", "PNJ"], ["pj", "🛡️", "PJ"], ["faccion", "🏰", "facción"], ["lugar", "📍", "lugar"],
         ["otro", "✳️", "otro"]];
-    const TIPOS_LAZO = [["aliado", "es aliado de", "#3fae5a"], ["enemigo", "es enemigo de", "#d23b3b"], ["familia", "es familia de", "#e6c229"],
-        ["trabaja", "trabaja para", "#3b7ddd"], ["ama", "está enamorado de", "#e05aa8"], ["desconfia", "desconfía de", "#e88a2a"],
-        ["otro", "está relacionado con", "#8a8a99"]];
+    const TIPOS_LAZO = [["aliado", ocT("es aliado de"), "#3fae5a"], ["enemigo", ocT("es enemigo de"), "#d23b3b"], ["familia", ocT("es familia de"), "#e6c229"],
+        ["trabaja", ocT("trabaja para"), "#3b7ddd"], ["ama", ocT("está enamorado de"), "#e05aa8"], ["desconfia", ocT("desconfía de"), "#e88a2a"],
+        ["otro", ocT("está relacionado con"), "#8a8a99"]];
     function montarRelaciones(dentro, m) {
         const r = todo.relaciones = todo.relaciones || {};
         r.nodos = Array.isArray(r.nodos) ? r.nodos : [];
@@ -15817,15 +15733,15 @@
         const nombreN = crear("input", "oc-dados-texto");
         nombreN.id = "master-rel-nombre-" + m.id;
         nombreN.maxLength = 60;
-        nombreN.placeholder = "Sildar, los Capas Rojas, Phandalin…";
-        const etN = crear("label", "oc-dados-etiqueta", "quién o qué");
+        nombreN.placeholder = ocT("Sildar, los Capas Rojas, Phandalin…");
+        const etN = crear("label", "oc-dados-etiqueta", ocT("quién o qué"));
         etN.htmlFor = nombreN.id;
         const cajaN = crear("div", "master-campo");
         cajaN.append(etN, nombreN);
         const tipoNsel = elegir(TIPOS_NODO.map(([k, e, t]) => [k, e + " " + t]), "master-rel-tipo-", "es");
-        const okN = crear("button", "oc-vida-accion es-principal", "＋ añadir");
+        const okN = crear("button", "oc-vida-accion es-principal", ocT("＋ añadir"));
         okN.type = "submit";
-        const party = botonDe("oc-vida-accion", "🛡️ ＋ la party", () => {
+        const party = botonDe("oc-vida-accion", ocT("🛡️ ＋ la party"), () => {
             let n = 0;
             (todo.pjs || []).forEach((pj) => {
                 if (pj.nombre && !r.nodos.some((x) => x.pjId === pj.id)) {
@@ -15837,8 +15753,8 @@
             });
             guardar();
             pintar();
-            avisar(n ? "Añadidos " + n + " PJ." : "La party ya estaba.");
-        }, "Añadir a los PJ de la party");
+            avisar(n ? ocT("Añadidos {n} PJ.", { n: n }) : ocT("La party ya estaba."));
+        }, ocT("Añadir a los PJ de la party"));
         formN.append(cajaN, tipoNsel, okN, party);
         formN.addEventListener("submit", (e) => {
             e.preventDefault();
@@ -15853,7 +15769,7 @@
             nombreN.value = "";
             guardar();
             pintar();
-            avisar("Añadido: " + nm + ".");
+            avisar(ocT("Añadido: {nm}.", { nm: nm }));
             nombreN.focus();
         });
         const formL = crear("form", "master-rel-form");
@@ -15863,29 +15779,29 @@
         const notaL = crear("input", "oc-dados-texto");
         notaL.id = "master-rel-nota-" + m.id;
         notaL.maxLength = 60;
-        notaL.placeholder = "le debe dinero, su hermana…";
-        const etL = crear("label", "oc-dados-etiqueta", "en corto (opcional)");
+        notaL.placeholder = ocT("le debe dinero, su hermana…");
+        const etL = crear("label", "oc-dados-etiqueta", ocT("en corto (opcional)"));
         etL.htmlFor = notaL.id;
         const cajaL = crear("div", "master-campo");
         cajaL.append(etL, notaL);
-        const okL = crear("button", "oc-vida-accion es-principal", "＋ unir");
+        const okL = crear("button", "oc-vida-accion es-principal", ocT("＋ unir"));
         okL.type = "submit";
         formL.append(deSel, tipoLsel, aSel, cajaL, okL);
         formL.addEventListener("submit", (e) => {
             e.preventDefault();
             if (!deSel.sel.value || !aSel.sel.value || deSel.sel.value === aSel.sel.value) {
-                avisar("Elige a dos distintos.");
+                avisar(ocT("Elige a dos distintos."));
                 return;
             }
             r.lazos.push({ id: idDoc("z"), de: deSel.sel.value, a: aSel.sel.value, tipo: tipoLsel.sel.value, texto: notaL.value.trim() });
             notaL.value = "";
             guardar();
             pintar();
-            avisar("Unidos: " + nodo(r.lazos[r.lazos.length - 1].de).nombre + " y " + nodo(r.lazos[r.lazos.length - 1].a).nombre + ".");
+            avisar(ocT("Unidos: {nombre} y {nombre2}.", { nombre: nodo(r.lazos[r.lazos.length - 1].de).nombre, nombre2: nodo(r.lazos[r.lazos.length - 1].a).nombre }));
         });
         // La lista (lo mismo que el dibujo, para leerlo y quitar).
         const lista = crear("ul", "master-rel-lista");
-        lista.setAttribute("aria-label", "Relaciones");
+        lista.setAttribute("aria-label", ocT("Relaciones"));
         function pintar() {
             const ops = r.nodos.map((n) => [n.id, tipoN(n.tipo)[1] + " " + n.nombre]);
             [deSel.sel, aSel.sel].forEach((sel, k) => {
@@ -15911,8 +15827,8 @@
                         r.lazos = r.lazos.filter((l) => l.de !== n.id && l.a !== n.id);
                         guardar();
                         pintar();
-                        avisar("Quitado: " + n.nombre + " (y sus lazos).");
-                    }, "Quitar a " + n.nombre + " y sus lazos"));
+                        avisar(ocT("Quitado: {nombre} (y sus lazos).", { nombre: n.nombre }));
+                    }, ocT("Quitar a {nombre} y sus lazos", { nombre: n.nombre })));
                 li.appendChild(cab);
                 const suyos = r.lazos.filter((l) => l.de === n.id || l.a === n.id);
                 if (suyos.length) {
@@ -15932,8 +15848,8 @@
                                 r.lazos = r.lazos.filter((x) => x !== l);
                                 guardar();
                                 pintar();
-                                avisar("Quitado el lazo.");
-                            }, "Quitar el lazo: " + n.nombre + " y " + otro.nombre));
+                                avisar(ocT("Quitado el lazo."));
+                            }, ocT("Quitar el lazo: {nombre} y {nombre2}", { nombre: n.nombre, nombre2: otro.nombre })));
                         ul.appendChild(lli);
                     });
                     li.appendChild(ul);
@@ -15941,7 +15857,7 @@
                 return li;
             }));
             if (!r.nodos.length) {
-                lista.appendChild(crear("li", "oc-vacio", "Todavía no hay nadie: añade PNJ, facciones, lugares o la party."));
+                lista.appendChild(crear("li", "oc-vacio", ocT("Todavía no hay nadie: añade PNJ, facciones, lugares o la party.")));
             }
             dibujar();
         }
@@ -15950,14 +15866,13 @@
                 colocar(n);
             }
         });
-        dentro.replaceChildren(formN, formL, svg, crear("p", "oc-hoja-nota", "Arrastra los círculos para ordenarlos. Debajo, lo mismo"
-            + " en una lista."), lista);
+        dentro.replaceChildren(formN, formL, svg, crear("p", "oc-hoja-nota", ocT("Arrastra los círculos para ordenarlos. Debajo, lo mismo en una lista.")), lista);
         pintar();
     }
 
     const MODULOS = {
         iniciativa: { nombre: "iniciativa", emoji: "⏱️", grupo: "combate", unico: true, w: 420, h: 520,
-            desc: "El orden de turnos, con rondas, PG y marcas.",
+            desc: ocT("El orden de turnos, con rondas, PG y marcas."),
             montar: (d) => window.ocMontar.iniciativa(d, { suelta: true, traerParty: () => {
                 const leer = () => {
                     try {
@@ -15968,97 +15883,97 @@
                 };
                 const ya = leer().map((x) => x.pj);
                 return todo.pjs.filter((pj) => !ya.includes(pj.id)).map((pj, i) => meterEnIniciativa(iniDePj(normalizarPj(pj),
-                    pj.nombre || "jugador " + (i + 1)))).filter(Boolean).join(", ");
+                    pj.nombre || ocT("jugador {n}", { n: i + 1 })))).filter(Boolean).join(", ");
             } }) },
-        condiciones: { nombre: "condiciones", emoji: "🙈", grupo: "combate", unico: true, w: 460, h: 420,
-            desc: "Los estados: agarrado, cegado, derribado…", montar: (d, m) => montarReglas(d, m, "Estados") },
+        condiciones: { nombre: ocT("condiciones"), emoji: "🙈", grupo: "combate", unico: true, w: 460, h: 420,
+            desc: ocT("Los estados: agarrado, cegado, derribado…"), montar: (d, m) => montarReglas(d, m, "Estados") },
         acciones: { nombre: "acciones", emoji: "⚔️", grupo: "combate", unico: true, w: 460, h: 420,
-            desc: "Lo que se puede hacer en un turno.", montar: (d, m) => montarReglas(d, m, "Acciones") },
-        turnos: { nombre: "turnos", emoji: "⏩", grupo: "turno", unico: true, w: 380, h: 640,
-            desc: "A quién le toca, en grande; quién va después, y pasar al turno siguiente o al anterior.", montar: montarTurnos },
-        criaturaTurno: { nombre: "criatura del turno", emoji: "🐲", grupo: "turno", unico: true, w: 520, h: 640,
-            desc: "El perfil de quien tiene el turno: su bloque del bestiario o la ficha resumida del personaje.",
+            desc: ocT("Lo que se puede hacer en un turno."), montar: (d, m) => montarReglas(d, m, "Acciones") },
+        turnos: { nombre: ocT("turnos"), emoji: "⏩", grupo: "turno", unico: true, w: 380, h: 640,
+            desc: ocT("A quién le toca, en grande; quién va después, y pasar al turno siguiente o al anterior."), montar: montarTurnos },
+        criaturaTurno: { nombre: ocT("criatura del turno"), emoji: "🐲", grupo: "turno", unico: true, w: 520, h: 640,
+            desc: ocT("El perfil de quien tiene el turno: su bloque del bestiario o la ficha resumida del personaje."),
             montar: montarCriaturaTurno },
-        reglas: { nombre: "todas las reglas", emoji: "📚", grupo: "consulta", unico: true, w: 480, h: 520,
-            desc: "Las reglas del SRD 5.2, por temas.", montar: (d, m) => montarReglas(d, m, null) },
-        homebrew: { nombre: "reglas propias", emoji: "🏠", grupo: "consulta", unico: true, w: 460, h: 460,
-            desc: "Las reglas de tu mesa (homebrew).", montar: montarHomebrew },
-        rasgos: { nombre: "rasgos, dotes y habilidades", emoji: "⭐", grupo: "consulta", unico: true, w: 440, h: 520,
-            desc: "Los rasgos de clase y especie, las dotes y las habilidades del SRD, y los tuyos.", montar: montarRasgos },
+        reglas: { nombre: ocT("todas las reglas"), emoji: "📚", grupo: "consulta", unico: true, w: 480, h: 520,
+            desc: ocT("Las reglas del SRD 5.2, por temas."), montar: (d, m) => montarReglas(d, m, null) },
+        homebrew: { nombre: ocT("reglas propias"), emoji: "🏠", grupo: "consulta", unico: true, w: 460, h: 460,
+            desc: ocT("Las reglas de tu mesa (homebrew)."), montar: montarHomebrew },
+        rasgos: { nombre: ocT("rasgos, dotes y habilidades"), emoji: "⭐", grupo: "consulta", unico: true, w: 440, h: 520,
+            desc: ocT("Los rasgos de clase y especie, las dotes y las habilidades del SRD, y los tuyos."), montar: montarRasgos },
         conjuros: { nombre: "conjuros", emoji: "✨", grupo: "consulta", unico: true, w: 420, h: 480,
-            desc: "Los 339 del SRD, por nivel, escuela y clase.", montar: montarConjuros },
-        bestiario: { nombre: "bestiario", emoji: "🐉", grupo: "consulta", unico: true, w: 460, h: 520,
-            desc: "Los 330 monstruos del SRD, con su perfil.", montar: montarBestiario },
-        visor: { nombre: "fichas de la party", emoji: "🧝", grupo: "mesa", unico: true, w: 1000, h: 640,
-            desc: "Cada personaje con su ficha entera, como un libro: historia, ficha, criaturas, PNJ, imágenes, extra…",
+            desc: ocT("Los 339 del SRD, por nivel, escuela y clase."), montar: montarConjuros },
+        bestiario: { nombre: ocT("bestiario"), emoji: "🐉", grupo: "consulta", unico: true, w: 460, h: 520,
+            desc: ocT("Los 330 monstruos del SRD, con su perfil."), montar: montarBestiario },
+        visor: { nombre: ocT("fichas de la party"), emoji: "🧝", grupo: "mesa", unico: true, w: 1000, h: 640,
+            desc: ocT("Cada personaje con su ficha entera, como un libro: historia, ficha, criaturas, PNJ, imágenes, extra…"),
             montar: montarVisor },
-        party: { nombre: "party (jugadores)", emoji: "🛡️", grupo: "mesa", unico: true, w: 600, h: 440,
-            desc: "Los personajes de los jugadores: de un vistazo, sus hechizos y su ficha entera (con pestañas).", montar: montarParty },
-        tienda: { nombre: "tienda", emoji: "💰", grupo: "mundo", w: 520, h: 560, desc: "Precios, rarezas y regateo.",
+        party: { nombre: ocT("party (jugadores)"), emoji: "🛡️", grupo: "mesa", unico: true, w: 600, h: 440,
+            desc: ocT("Los personajes de los jugadores: de un vistazo, sus hechizos y su ficha entera (con pestañas)."), montar: montarParty },
+        tienda: { nombre: ocT("tienda"), emoji: "💰", grupo: "mundo", w: 520, h: 560, desc: ocT("Precios, rarezas y regateo."),
             montar: montarTienda },
-        monedas: { nombre: "conversor de monedas", emoji: "🪙", grupo: "mundo", w: 420, h: 440,
-            desc: "Cambiar y repartir el botín.", montar: montarMonedas },
-        nombres: { nombre: "generador de nombres", emoji: "🎭", grupo: "mundo", w: 440, h: 560,
-            desc: "Personajes por especie y género, y lugares.", montar: montarNombres },
-        botin: { nombre: "botín", emoji: "💰", grupo: "mundo", w: 440, h: 560,
-            desc: "Monedas, gemas, arte y objetos mágicos según el VD.", montar: montarBotin },
-        encuentros: { nombre: "encuentros", emoji: "🗺️", grupo: "combate", w: 440, h: 620,
-            desc: "Monstruos del SRD por hábitat para tu party.", montar: montarEncuentros },
-        pnj: { nombre: "PNJ rápidos", emoji: "🧑", grupo: "mundo", w: 460, h: 620,
-            desc: "Un PNJ con oficio, aspecto, carácter, manía, lo que quiere y un secreto.", montar: montarPnj },
-        dungeon: { nombre: "generador de dungeons", emoji: "🗝️", grupo: "mundo", w: 680, h: 780,
-            desc: "Un mapa en cuadrícula con sus salas, monstruos, trampas y botín.", montar: montarDungeon },
+        monedas: { nombre: ocT("conversor de monedas"), emoji: "🪙", grupo: "mundo", w: 420, h: 440,
+            desc: ocT("Cambiar y repartir el botín."), montar: montarMonedas },
+        nombres: { nombre: ocT("generador de nombres"), emoji: "🎭", grupo: "mundo", w: 440, h: 560,
+            desc: ocT("Personajes por especie y género, y lugares."), montar: montarNombres },
+        botin: { nombre: ocT("botín"), emoji: "💰", grupo: "mundo", w: 440, h: 560,
+            desc: ocT("Monedas, gemas, arte y objetos mágicos según el VD."), montar: montarBotin },
+        encuentros: { nombre: ocT("encuentros"), emoji: "🗺️", grupo: "combate", w: 440, h: 620,
+            desc: ocT("Monstruos del SRD por hábitat para tu party."), montar: montarEncuentros },
+        pnj: { nombre: ocT("PNJ rápidos"), emoji: "🧑", grupo: "mundo", w: 460, h: 620,
+            desc: ocT("Un PNJ con oficio, aspecto, carácter, manía, lo que quiere y un secreto."), montar: montarPnj },
+        dungeon: { nombre: ocT("generador de dungeons"), emoji: "🗝️", grupo: "mundo", w: 680, h: 780,
+            desc: ocT("Un mapa en cuadrícula con sus salas, monstruos, trampas y botín."), montar: montarDungeon },
         calendario: { nombre: "calendario", emoji: "📅", grupo: "mundo", w: 520, h: 720,
-            desc: "Gregoriano, el de Harptos o uno propio, con la hora y apuntes.", montar: montarCalendario },
-        efectos: { nombre: "efectos con duración", emoji: "⌛", grupo: "combate", w: 460, h: 620,
-            desc: "Bendecir 1 minuto, Armadura de mago 8 horas…: se descuentan solos.", montar: montarEfectos },
-        taberna: { nombre: "negocios", emoji: "🏪", grupo: "mundo", w: 500, h: 760,
-            desc: "Tabernas y posadas, tiendas, templos, establos…: con lo que venden, sus precios y un gancho.", montar: montarNegocio },
-        ambiente: { nombre: "sonido ambiente", emoji: "🎧", grupo: "mesa", unico: true, w: 440, h: 640,
-            desc: "Lluvia, viento, hoguera, mercado, carro…: grabaciones de verdad en bucle, mezcladas (y tus audios).",
+            desc: ocT("Gregoriano, el de Harptos o uno propio, con la hora y apuntes."), montar: montarCalendario },
+        efectos: { nombre: ocT("efectos con duración"), emoji: "⌛", grupo: "combate", w: 460, h: 620,
+            desc: ocT("Bendecir 1 minuto, Armadura de mago 8 horas…: se descuentan solos."), montar: montarEfectos },
+        taberna: { nombre: ocT("negocios"), emoji: "🏪", grupo: "mundo", w: 500, h: 760,
+            desc: ocT("Tabernas y posadas, tiendas, templos, establos…: con lo que venden, sus precios y un gancho."), montar: montarNegocio },
+        ambiente: { nombre: ocT("sonido ambiente"), emoji: "🎧", grupo: "mesa", unico: true, w: 440, h: 640,
+            desc: ocT("Lluvia, viento, hoguera, mercado, carro…: grabaciones de verdad en bucle, mezcladas (y tus audios)."),
             montar: montarAmbiente },
-        sonidos: { nombre: "efectos de sonido", emoji: "🔔", grupo: "mesa", unico: true, w: 560, h: 680,
-            desc: "Puertas, tajos, conjuros, gritos, monstruos…: suenan una vez al pulsar (y tus audios).",
+        sonidos: { nombre: ocT("efectos de sonido"), emoji: "🔔", grupo: "mesa", unico: true, w: 560, h: 680,
+            desc: ocT("Puertas, tajos, conjuros, gritos, monstruos…: suenan una vez al pulsar (y tus audios)."),
             montar: montarSonidos },
-        tablas: { nombre: "tablas aleatorias", emoji: "🎲", grupo: "mundo", w: 460, h: 560,
-            desc: "Tus tablas (rumores, clima, encuentros de una zona…) y tirarlas con un clic.", montar: montarTablas },
-        linea: { nombre: "línea temporal", emoji: "🗓️", grupo: "apuntes", unico: true, w: 520, h: 680,
-            desc: "Las sesiones y lo que pasa en la campaña, en orden y con su fecha.", montar: montarLinea },
-        relaciones: { nombre: "mapa de relaciones", emoji: "🕸️", grupo: "apuntes", unico: true, w: 760, h: 760,
-            desc: "PNJ, facciones, lugares y la party, y cómo se llevan.", montar: montarRelaciones },
-        jugadores: { nombre: "pantalla de jugadores", emoji: "📺", grupo: "mesa", unico: true, w: 460, h: 620,
-            desc: "Una ventana aparte para la tele, Discord u OBS con sólo lo que tú elijas.", montar: montarJugadores },
-        musica: { nombre: "música", emoji: "🎶", grupo: "mesa", unico: true, w: 560, h: 720,
-            desc: "Tus canciones en carpetas y subcarpetas: una en bucle o la carpeta entera (se quedan en tu navegador).",
+        tablas: { nombre: ocT("tablas aleatorias"), emoji: "🎲", grupo: "mundo", w: 460, h: 560,
+            desc: ocT("Tus tablas (rumores, clima, encuentros de una zona…) y tirarlas con un clic."), montar: montarTablas },
+        linea: { nombre: ocT("línea temporal"), emoji: "🗓️", grupo: "apuntes", unico: true, w: 520, h: 680,
+            desc: ocT("Las sesiones y lo que pasa en la campaña, en orden y con su fecha."), montar: montarLinea },
+        relaciones: { nombre: ocT("mapa de relaciones"), emoji: "🕸️", grupo: "apuntes", unico: true, w: 760, h: 760,
+            desc: ocT("PNJ, facciones, lugares y la party, y cómo se llevan."), montar: montarRelaciones },
+        jugadores: { nombre: ocT("pantalla de jugadores"), emoji: "📺", grupo: "mesa", unico: true, w: 460, h: 620,
+            desc: ocT("Una ventana aparte para la tele, Discord u OBS con sólo lo que tú elijas."), montar: montarJugadores },
+        musica: { nombre: ocT("música"), emoji: "🎶", grupo: "mesa", unico: true, w: 560, h: 720,
+            desc: ocT("Tus canciones en carpetas y subcarpetas: una en bucle o la carpeta entera (se quedan en tu navegador)."),
             montar: montarMusica },
-        relojes: { nombre: "relojes", emoji: "⏳", grupo: "mesa", w: 440, h: 480,
-            desc: "Relojes de progreso: amenazas que avanzan, cuentas atrás…", montar: montarRelojes },
-        idiomas: { nombre: "notas en otros idiomas", emoji: "🪶", grupo: "mundo", w: 480, h: 680,
-            desc: "Escribe una nota y mírala en élfico, enano, infernal…", montar: montarIdiomas },
-        tarjeta: { nombre: "post-it", emoji: "🗒️", grupo: "apuntes", w: 420, h: 340,
-            desc: "Un texto con formato: negrita, listas, colores…", montar: montarTarjeta },
+        relojes: { nombre: ocT("relojes"), emoji: "⏳", grupo: "mesa", w: 440, h: 480,
+            desc: ocT("Relojes de progreso: amenazas que avanzan, cuentas atrás…"), montar: montarRelojes },
+        idiomas: { nombre: ocT("notas en otros idiomas"), emoji: "🪶", grupo: "mundo", w: 480, h: 680,
+            desc: ocT("Escribe una nota y mírala en élfico, enano, infernal…"), montar: montarIdiomas },
+        tarjeta: { nombre: ocT("post-it"), emoji: "🗒️", grupo: "apuntes", w: 420, h: 340,
+            desc: ocT("Un texto con formato: negrita, listas, colores…"), montar: montarTarjeta },
         dibujo: { nombre: "dibujo", emoji: "🎨", grupo: "apuntes", w: 900, h: 660,
-            desc: "Un Paint con capas, bote, selección y rejilla de rol.", montar: montarDibujo },
-        notas: { nombre: "notas", emoji: "📝", grupo: "apuntes", unico: true, w: 520, h: 480,
-            desc: "Las notas de la sesión, con formato (como un Word).", montar: montarNotas },
-        documentos: { nombre: "documentos", emoji: "🗂️", grupo: "apuntes", w: 420, h: 560,
-            desc: "Tus carpetas y notas: búscalas (nombre y contenido) y ábrelas en el tablero.", montar: montarDocumentos },
-        tabla: { nombre: "tabla para tirar", emoji: "🔮", grupo: "apuntes", w: 360, h: 380,
-            desc: "Una lista de la que sale una cosa al azar.", montar: montarTabla },
+            desc: ocT("Un Paint con capas, bote, selección y rejilla de rol."), montar: montarDibujo },
+        notas: { nombre: ocT("notas"), emoji: "📝", grupo: "apuntes", unico: true, w: 520, h: 480,
+            desc: ocT("Las notas de la sesión, con formato (como un Word)."), montar: montarNotas },
+        documentos: { nombre: ocT("documentos"), emoji: "🗂️", grupo: "apuntes", w: 420, h: 560,
+            desc: ocT("Tus carpetas y notas: búscalas (nombre y contenido) y ábrelas en el tablero."), montar: montarDocumentos },
+        tabla: { nombre: ocT("tabla para tirar"), emoji: "🔮", grupo: "apuntes", w: 360, h: 380,
+            desc: ocT("Una lista de la que sale una cosa al azar."), montar: montarTabla },
         criatura: { nombre: "criatura", emoji: "🐾", oculto: true, w: 440, h: 520, montar: montarCriatura },
-        ficha: { nombre: "ficha", emoji: "📖", oculto: true, w: 420, h: 420, montar: montarFicha },
-        pj: { nombre: "ficha de personaje", emoji: "🧝", oculto: true, w: 620, h: 720, montar: montarPj },
-        inventario: { nombre: "inventario de la party", emoji: "🎒", grupo: "mesa", unico: true, w: 520, h: 600,
-            desc: "Lo que lleva la party en común y su dinero; «dar a…» un personaje.", montar: montarInventario },
-        documento: { nombre: "nota", emoji: "📄", oculto: true, w: 560, h: 560, montar: montarDocumento },
+        ficha: { nombre: ocT("ficha"), emoji: "📖", oculto: true, w: 420, h: 420, montar: montarFicha },
+        pj: { nombre: ocT("ficha de personaje"), emoji: "🧝", oculto: true, w: 620, h: 720, montar: montarPj },
+        inventario: { nombre: ocT("inventario de la party"), emoji: "🎒", grupo: "mesa", unico: true, w: 520, h: 600,
+            desc: ocT("Lo que lleva la party en común y su dinero; «dar a…» un personaje."), montar: montarInventario },
+        documento: { nombre: ocT("nota"), emoji: "📄", oculto: true, w: 560, h: 560, montar: montarDocumento },
     };
-    const GRUPOS = [["combate", "⚔️ combate"], ["turno", "▶️ turno a turno"], ["consulta", "📚 consulta"], ["mesa", "🛡️ la mesa"], ["mundo", "🌍 el mundo"],
-        ["apuntes", "🗒️ apuntes"]];
+    const GRUPOS = [["combate", ocT("⚔️ combate")], ["turno", ocT("▶️ turno a turno")], ["consulta", ocT("📚 consulta")], ["mesa", ocT("🛡️ la mesa")], ["mundo", ocT("🌍 el mundo")],
+        ["apuntes", ocT("🗒️ apuntes")]];
 
     // ---- EL ESTADO (lo que se guarda) ----
     // Los colores de las ventanas, como post-its: fijos, iguales en todos
     // los temas de la web (la barra de ese color con letra oscura).
-    const COLORES = [["", "sin color"], ["amarillo", "amarillo", "#ffe873"], ["naranja", "naranja", "#ffb870"],
+    const COLORES = [["", ocT("sin color")], ["amarillo", "amarillo", "#ffe873"], ["naranja", "naranja", "#ffb870"],
         ["melocoton", "melocotón", "#ffcfa8"], ["rojo", "rojo", "#ff8f8f"], ["coral", "coral", "#ff7f6e"], ["rosa", "rosa", "#ffa6d5"],
         ["fucsia", "fucsia", "#ff6fcf"], ["morado", "morado", "#c9a2ff"], ["lavanda", "lavanda", "#ddd0ff"], ["azul", "azul", "#8fb8ff"],
         ["celeste", "celeste", "#7fdcff"], ["turquesa", "turquesa", "#5fe0c8"], ["menta", "menta", "#b8f5d0"], ["verde", "verde", "#8fe8a2"],
@@ -16081,15 +15996,15 @@
     // tapetes: fijos, iguales en todos los temas (o uno propio). Las rayas
     // de la cuadrícula, claras u oscuras según el fondo. La pestaña de
     // arriba se pinta del mismo color.
-    const TABLEROS = [["", "el del tema"], ["tapete", "tapete verde", "#1f4d36"], ["bosque", "bosque", "#2d5a27"],
-        ["musgo", "musgo", "#4a5d23"], ["vino", "rojo vino", "#5a1f2a"], ["carmesi", "carmesí", "#8b1e2d"],
-        ["teja", "teja", "#9c4a2f"], ["noche", "azul noche", "#1d2b4f"], ["oceano", "océano", "#1f5f7a"],
+    const TABLEROS = [["", ocT("el del tema")], ["tapete", ocT("tapete verde"), "#1f4d36"], ["bosque", "bosque", "#2d5a27"],
+        ["musgo", "musgo", "#4a5d23"], ["vino", ocT("rojo vino"), "#5a1f2a"], ["carmesi", "carmesí", "#8b1e2d"],
+        ["teja", "teja", "#9c4a2f"], ["noche", ocT("azul noche"), "#1d2b4f"], ["oceano", "océano", "#1f5f7a"],
         ["madera", "madera", "#5b3b22"], ["pizarra", "pizarra", "#2f3438"], ["ceniza", "ceniza", "#5c5c66"],
         ["negro", "negro", "#121212"], ["uva", "morado", "#3d2552"], ["pergamino", "pergamino", "#e8dcc0"],
         ["arena", "arena", "#d9c7a3"], ["crema", "crema", "#f4ecd8"], ["cielo", "cielo", "#bfd6e6"], ["menta", "menta", "#cde8d5"]];
     const hexTablero = (c) => hexPropio(c) || (TABLEROS.find((x) => x[0] === c) || [])[2] || "";
     // Las pestañas: los colores de los tableros y los de las ventanas.
-    const COLORES_PESTANA = [["", "sin color"]].concat(TABLEROS.slice(1),
+    const COLORES_PESTANA = [["", ocT("sin color")]].concat(TABLEROS.slice(1),
         COLORES.slice(1).filter((c) => !TABLEROS.some((t) => t[0] === c[0])));
     const hexPestana = (c) => hexPropio(c) || (COLORES_PESTANA.find((x) => x[0] === c) || [])[2] || "";
     // La de antes (sin su color propio) lleva el de su tablero.
@@ -16122,7 +16037,7 @@
         otro.id = idOtro;
         otro.value = hexPropio(elegido) || "#8fb8ff";
         etOtro.htmlFor = otro.id;
-        etOtro.append(otro, crear("span", "", "🎨 otro"));
+        etOtro.append(otro, crear("span", "", ocT("🎨 otro")));
         otro.addEventListener("input", () => {
             elegido = otro.value;
             marcar();
@@ -16243,26 +16158,26 @@
     // la campaña (todo.modos) y el de ahora, en todo.modoActivo.
     // Cada hueco: [columna, fila, ancho, alto] (de 1).
     const REJILLAS = {
-        combate: { nombre: "combate: lista, perfil y dos a la derecha",
+        combate: { nombre: ocT("combate: lista, perfil y dos a la derecha"),
             huecos: [[1, 1, 3, 6], [4, 1, 5, 6], [9, 1, 4, 2], [9, 3, 4, 4]] },
-        notas: { nombre: "lateral y seis", huecos: [[1, 1, 3, 6], [4, 1, 3, 3], [7, 1, 3, 3], [10, 1, 3, 3], [4, 4, 3, 3],
+        notas: { nombre: ocT("lateral y seis"), huecos: [[1, 1, 3, 6], [4, 1, 3, 3], [7, 1, 3, 3], [10, 1, 3, 3], [4, 4, 3, 3],
             [7, 4, 3, 3], [10, 4, 3, 3]] },
-        una: { nombre: "una, a toda la pantalla", huecos: [[1, 1, 12, 6]] },
-        dos: { nombre: "dos columnas", huecos: [[1, 1, 6, 6], [7, 1, 6, 6]] },
-        tres: { nombre: "tres columnas", huecos: [[1, 1, 4, 6], [5, 1, 4, 6], [9, 1, 4, 6]] },
-        lateral: { nombre: "lateral y dos", huecos: [[1, 1, 4, 6], [5, 1, 8, 3], [5, 4, 8, 3]] },
-        cuatro: { nombre: "cuatro (2 × 2)", huecos: [[1, 1, 6, 3], [7, 1, 6, 3], [1, 4, 6, 3], [7, 4, 6, 3]] },
-        seis: { nombre: "seis (3 × 2)", huecos: [[1, 1, 4, 3], [5, 1, 4, 3], [9, 1, 4, 3], [1, 4, 4, 3], [5, 4, 4, 3],
+        una: { nombre: ocT("una, a toda la pantalla"), huecos: [[1, 1, 12, 6]] },
+        dos: { nombre: ocT("dos columnas"), huecos: [[1, 1, 6, 6], [7, 1, 6, 6]] },
+        tres: { nombre: ocT("tres columnas"), huecos: [[1, 1, 4, 6], [5, 1, 4, 6], [9, 1, 4, 6]] },
+        lateral: { nombre: ocT("lateral y dos"), huecos: [[1, 1, 4, 6], [5, 1, 8, 3], [5, 4, 8, 3]] },
+        cuatro: { nombre: ocT("cuatro (2 × 2)"), huecos: [[1, 1, 6, 3], [7, 1, 6, 3], [1, 4, 6, 3], [7, 4, 6, 3]] },
+        seis: { nombre: ocT("seis (3 × 2)"), huecos: [[1, 1, 4, 3], [5, 1, 4, 3], [9, 1, 4, 3], [1, 4, 4, 3], [5, 4, 4, 3],
             [9, 4, 4, 3]] }
     };
     const esModo = (pf) => !!(pf && pf.rejilla);
     // Los de serie (los de Richi): [emoji, nombre, rejilla, ventanas], cada
     // ventana [tipo, hueco, color, grupo, delante].
     const MODOS_DE_SERIE = [
-        ["📝", "notas", "notas", [["documentos", 0, ""], ["tarjeta", 1, "amarillo"], ["tarjeta", 2, "verde"], ["tarjeta", 3, "celeste"],
+        ["📝", ocT("notas"), "notas", [["documentos", 0, ""], ["tarjeta", 1, "amarillo"], ["tarjeta", 2, "verde"], ["tarjeta", 3, "celeste"],
             ["tarjeta", 4, "coral"], ["tarjeta", 5, "rosa"], ["tarjeta", 6, "lima"]]],
-        ["🛡️", "party", "una", [["visor", 0, "verde"]]],
-        ["⚔️", "combate", "combate", [["turnos", 0, "#ca1c1c"], ["criaturaTurno", 1, "#151619"], ["condiciones", 2, "morado", "gmc", 1],
+        ["🛡️", ocT("party"), "una", [["visor", 0, "verde"]]],
+        ["⚔️", ocT("combate"), "combate", [["turnos", 0, "#ca1c1c"], ["criaturaTurno", 1, "#151619"], ["condiciones", 2, "morado", "gmc", 1],
             ["acciones", 2, "fucsia", "gmc", 0], ["reglas", 2, "naranja", "gmc", 0], ["iniciativa", 3, "lavanda"]]]
     ];
     function modosDeSerie() {
@@ -16287,18 +16202,18 @@
     }
     if (todas && Array.isArray(todas.modulos) && !todas.perfiles && !todas.campanas) {
         // Lo de antes de las pestañas: su primera pestaña.
-        todas = { perfiles: [{ id: "p1", nombre: "principal", modulos: todas.modulos }], activo: "p1" };
+        todas = { perfiles: [{ id: "p1", nombre: ocT("principal"), modulos: todas.modulos }], activo: "p1" };
     }
     if (todas && Array.isArray(todas.perfiles) && !todas.campanas) {
         // Lo de antes de las campañas: todo en la primera.
-        todas = { activa: "c1", campanas: [{ id: "c1", nombre: "mi campaña", activo: todas.activo, perfiles: todas.perfiles }] };
+        todas = { activa: "c1", campanas: [{ id: "c1", nombre: ocT("mi campaña"), activo: todas.activo, perfiles: todas.perfiles }] };
     }
     // La primera vez (sin nada guardado) no hay campañas: la entrada obliga
     // a crear una. Mientras, una de relleno que no se guarda.
     const sinCampanas = !todas || !Array.isArray(todas.campanas) || !todas.campanas.length;
     let sinGuardarTodavia = sinCampanas;
     if (sinCampanas) {
-        todas = { activa: "c1", campanas: [{ id: "c1", nombre: "mi campaña", perfiles: perfilesDeSerie() }] };
+        todas = { activa: "c1", campanas: [{ id: "c1", nombre: ocT("mi campaña"), perfiles: perfilesDeSerie() }] };
     }
     let siguienteId = 1;
     let siguientePerfil = 1;
@@ -16473,7 +16388,7 @@
     function personalizar(m, vuelta) {
         const def = MODULOS[m.tipo];
         const cuerpo = crear("form", "master-personalizar");
-        const et = crear("label", "oc-dados-etiqueta", "título");
+        const et = crear("label", "oc-dados-etiqueta", ocT("título"));
         const input = crear("input", "oc-dados-texto");
         input.id = "master-personalizar-" + m.id;
         input.value = m.titulo || "";
@@ -16484,7 +16399,7 @@
         const grupo = muestrasDe("color", COLORES, m.color || "", "master-personalizar-otro-" + m.id);
         // El tamaño de lo de dentro: se ve al momento.
         const tam = crear("fieldset", "master-colores master-escala");
-        tam.appendChild(crear("legend", "oc-dados-etiqueta", "tamaño del contenido"));
+        tam.appendChild(crear("legend", "oc-dados-etiqueta", ocT("tamaño del contenido")));
         const valor = crear("output", "master-escala-valor", Math.round((m.escala || 1) * 100) + " %");
         const paso = (d) => {
             m.escala = (m.escala || 1) + d;
@@ -16493,15 +16408,15 @@
             menos.disabled = e <= 0.6;
             mas.disabled = e >= 2;
             guardar();
-            avisar("Contenido al " + Math.round(e * 100) + " %.");
+            avisar(ocT("Contenido al {round} %.", { round: Math.round(e * 100) }));
         };
-        const menos = botonDe("master-pestana-mando", "A−", () => paso(-0.1), "Contenido más pequeño");
-        const mas = botonDe("master-pestana-mando", "A+", () => paso(0.1), "Contenido más grande");
-        const igual = botonDe("oc-vida-accion", "100 %", () => paso(1 - (m.escala || 1)), "Contenido a su tamaño normal");
+        const menos = botonDe("master-pestana-mando", ocT("A−"), () => paso(-0.1), ocT("Contenido más pequeño"));
+        const mas = botonDe("master-pestana-mando", ocT("A+"), () => paso(0.1), ocT("Contenido más grande"));
+        const igual = botonDe("oc-vida-accion", "100 %", () => paso(1 - (m.escala || 1)), ocT("Contenido a su tamaño normal"));
         menos.disabled = (m.escala || 1) <= 0.6;
         mas.disabled = (m.escala || 1) >= 2;
         tam.append(menos, valor, mas, igual);
-        const listo = crear("button", "oc-vida-accion es-principal", "guardar");
+        const listo = crear("button", "oc-vida-accion es-principal", ocT("guardar"));
         listo.type = "submit";
         // En pestañas, como un navegador: título, color y tamaño.
         const pTitulo = crear("div");
@@ -16514,9 +16429,9 @@
         const pGrupo = crear("div");
         const otras = estado.modulos.filter((x) => x !== m && (!x.grupo || x.delante) && (!m.grupo || x.grupo !== m.grupo));
         if (otras.length) {
-            const con = elegirDe("master-agrupar-" + m.id, "juntarla en pestañas con", otras.map((x) => [x.id, MODULOS[x.tipo].emoji + " "
-                + nombreDeVentana(x) + (x.grupo ? " (y las de su grupo)" : "")]), otras[0].id);
-            const juntar = botonDe("oc-vida-accion", "🗂️ agrupar", () => {
+            const con = elegirDe("master-agrupar-" + m.id, ocT("juntarla en pestañas con"), otras.map((x) => [x.id, MODULOS[x.tipo].emoji + " "
+                + nombreDeVentana(x) + (x.grupo ? ocT(" (y las de su grupo)") : "")]), otras[0].id);
+            const juntar = botonDe("oc-vida-accion", ocT("🗂️ agrupar"), () => {
                 const d = estado.modulos.find((x) => x.id === con.elegir.value);
                 cerrar();
                 if (d) {
@@ -16525,37 +16440,36 @@
             });
             pGrupo.append(con, juntar);
         } else {
-            pGrupo.appendChild(crear("p", "oc-hoja-nota", "No hay otras ventanas en esta pestaña."));
+            pGrupo.appendChild(crear("p", "oc-hoja-nota", ocT("No hay otras ventanas en esta pestaña.")));
         }
         if (m.grupo) {
-            pGrupo.appendChild(botonDe("oc-vida-accion", "⇱ sacarla del grupo", () => {
+            pGrupo.appendChild(botonDe("oc-vida-accion", ocT("⇱ sacarla del grupo"), () => {
                 cerrar();
                 sacarDelGrupo(m);
             }));
         }
-        pGrupo.appendChild(crear("p", "oc-hoja-nota", "También: mantén pulsada su barra y suéltala sobre la barra de otra."));
-        const opciones = [["📝 título", pTitulo], ["🎨 color", pColor], ["🔠 tamaño", pTam], ["🗂️ agrupar", pGrupo]];
+        pGrupo.appendChild(crear("p", "oc-hoja-nota", ocT("También: mantén pulsada su barra y suéltala sobre la barra de otra.")));
+        const opciones = [[ocT("📝 título"), pTitulo], [ocT("🎨 color"), pColor], [ocT("🔠 tamaño"), pTam], [ocT("🗂️ agrupar"), pGrupo]];
         // En un modo: cambiarla por otra, ponerle otra en pestaña, o
         // meterla en un hueco (las que van sueltas).
         if (esModo(estado)) {
             const pHueco = crear("div");
             const acciones = crear("div", "master-anadir-otras");
             if (Number.isInteger(m.hueco)) {
-                pHueco.appendChild(crear("p", "oc-hoja-nota", "Está en el hueco " + (m.hueco + 1) + " de "
-                    + huecosDe(estado).length + " del modo «" + estado.nombre + "»."));
-                acciones.append(botonDe("oc-vida-accion", "🔁 cambiarla por otra", () => {
+                pHueco.appendChild(crear("p", "oc-hoja-nota", ocT("Está en el hueco {n} de {n2} del modo «{nombre}».", { n: m.hueco + 1, n2: huecosDe(estado).length, nombre: estado.nombre })));
+                acciones.append(botonDe("oc-vida-accion", ocT("🔁 cambiarla por otra"), () => {
                     cerrar();
                     elegirParaHueco({ hueco: m.hueco, reemplazar: m, vuelta: focoDe(m) });
-                }), botonDe("oc-vida-accion", "＋ otra aquí, en pestaña", () => {
+                }), botonDe("oc-vida-accion", ocT("＋ otra aquí, en pestaña"), () => {
                     cerrar();
                     elegirParaHueco({ hueco: m.hueco, grupoCon: m, vuelta: focoDe(m) });
                 }));
             } else {
                 const libres = huecosDe(estado).map((h, i) => i).filter((i) => !estado.modulos.some((x) => x !== m && x.hueco === i));
                 if (libres.length) {
-                    const donde = elegirDe("master-a-hueco-" + m.id, "a qué hueco", libres.map((i) => [String(i), "hueco " + (i + 1)]),
+                    const donde = elegirDe("master-a-hueco-" + m.id, ocT("a qué hueco"), libres.map((i) => [String(i), ocT("hueco {n}", { n: i + 1 })]),
                         String(libres[0]));
-                    acciones.append(donde, botonDe("oc-vida-accion", "📌 meterla en el hueco", () => {
+                    acciones.append(donde, botonDe("oc-vida-accion", ocT("📌 meterla en el hueco"), () => {
                         cerrar();
                         delGrupo(m).forEach((x) => {
                             x.hueco = Number(donde.elegir.value);
@@ -16564,17 +16478,16 @@
                         pintarTodo();
                         guardar();
                         focoDe(m).focus();
-                        avisar(nombreDeVentana(m) + ": en el hueco " + (m.hueco + 1) + ".");
+                        avisar(ocT("{n}: en el hueco {n2}.", { n: nombreDeVentana(m), n2: m.hueco + 1 }));
                     }));
                 } else {
-                    pHueco.appendChild(crear("p", "oc-hoja-nota", "Todos los huecos de este modo están llenos: júntala en"
-                        + " pestañas con una de ellas (🗂️ agrupar)."));
+                    pHueco.appendChild(crear("p", "oc-hoja-nota", ocT("Todos los huecos de este modo están llenos: júntala en pestañas con una de ellas (🗂️ agrupar).")));
                 }
             }
             pHueco.appendChild(acciones);
-            opciones.push(["🧩 hueco", pHueco]);
+            opciones.push([ocT("🧩 hueco"), pHueco]);
         }
-        const { lista: pestanas, elegir } = pestanasDe(opciones, "Opciones de la ventana", "master-personalizar-" + m.id);
+        const { lista: pestanas, elegir } = pestanasDe(opciones, ocT("Opciones de la ventana"), "master-personalizar-" + m.id);
         cuerpo.append(pestanas, ...opciones.map((x) => x[1]), listo);
         elegir(0, false);
         cuerpo.addEventListener("submit", (e) => {
@@ -16597,9 +16510,9 @@
             if (m.alRenombrar) {
                 m.alRenombrar();
             }
-            avisar("Guardado.");
+            avisar(ocT("Guardado."));
         });
-        const cerrar = window.ocVentana.abrir({ titulo: "opciones de la ventana", cuerpo, vuelta, foco: input });
+        const cerrar = window.ocVentana.abrir({ titulo: ocT("opciones de la ventana"), cuerpo, vuelta, foco: input });
     }
 
     function colocar(m) {
@@ -16669,7 +16582,7 @@
         if (e.altKey) {
             m.w = Math.max(240, Math.min(anchoLienzo() - m.x - 4, m.w + d[0]));
             m.h = Math.max(120, m.h + d[1]);
-            avisar(m.w + " por " + m.h + " píxeles.");
+            avisar(ocT("{w} por {h} píxeles.", { w: m.w, h: m.h }));
         } else {
             m.x = Math.min(topeX(m), Math.max(0, m.x + d[0]));
             m.y = Math.max(0, m.y + d[1]);
@@ -16718,7 +16631,7 @@
         guardar();
         alFrente(m);
         m.el.querySelector(".master-grupo-pestana[aria-selected='true']").focus();
-        avisar("Juntas en pestañas: " + juntas.map(nombreDeVentana).join(", ") + ".");
+        avisar(ocT("Juntas en pestañas: {join}.", { join: juntas.map(nombreDeVentana).join(", ") }));
     }
     function sacarDelGrupo(m, sitio) {
         const resto = delGrupo(m).filter((x) => x !== m);
@@ -16756,7 +16669,7 @@
         guardar();
         alFrente(m);
         focoDe(m).focus();
-        avisar("Sacada del grupo: " + nombreDeVentana(m) + ".");
+        avisar(ocT("Sacada del grupo: {nombreDeVentana}.", { nombreDeVentana: nombreDeVentana(m) }));
     }
     // SEPARAR ARRASTRANDO: mantener pulsada la pestaña de una ventana de un
     // grupo la coge; soltada fuera de la barra, sale del grupo (donde se
@@ -16878,8 +16791,8 @@
             plegar.click();
         });
         titulo.append(em, nombre);
-        nombre.title = Number.isInteger(m.hueco) && esModo(estado) ? "Clic: plegar o desplegar"
-            : "Clic: plegar o desplegar · mantener pulsado: moverla · flechas: moverla (con Alt, el tamaño)";
+        nombre.title = Number.isInteger(m.hueco) && esModo(estado) ? ocT("Clic: plegar o desplegar")
+            : ocT("Clic: plegar o desplegar · mantener pulsado: moverla · flechas: moverla (con Alt, el tamaño)");
         // Con el teclado, las flechas en su nombre la mueven (con Mayús,
         // más deprisa; con Alt, cambian su tamaño).
         nombre.addEventListener("keydown", (e) => moverConTeclas(m, e));
@@ -16903,7 +16816,7 @@
             colocar(m);
             crecerLienzo();
             guardar();
-        }, "Plegar o desplegar");
+        }, ocT("Plegar o desplegar"));
         plegar.setAttribute("aria-expanded", m.plegado ? "false" : "true");
         nombre.setAttribute("aria-expanded", m.plegado ? "false" : "true");
         const quitar = botonDe("master-ventana-mando", "✕", () => {
@@ -16925,7 +16838,7 @@
                 pintarTodo();
             }
             guardar();
-            avisar("Quitado: " + (m.titulo || def.nombre) + ".");
+            avisar(ocT("Quitado: {n}.", { n: m.titulo || def.nombre }));
             const sigue = resto[0] && resto[0].el;
             if (!sigue && esModo(estado) && Number.isInteger(m.hueco)) {
                 pintarTodo();
@@ -16934,10 +16847,10 @@
                 return;
             }
             (sigue ? focoDe(resto[0]) : botonAnadir).focus();
-        }, "Quitar esta ventana");
+        }, ocT("Quitar esta ventana"));
         const cambiar = botonDe("master-ventana-mando", "✎", () => personalizar(m, cambiar),
-            "Opciones: título, color y tamaño del contenido");
-        cambiar.title = "Título, color y tamaño del contenido";
+            ocT("Opciones: título, color y tamaño del contenido"));
+        cambiar.title = ocT("Título, color y tamaño del contenido");
         cambiar.setAttribute("aria-haspopup", "dialog");
         const mandos = crear("div", "master-ventana-mandos");
         mandos.append(cambiar, plegar, quitar);
@@ -16955,7 +16868,7 @@
             titulo.replaceChildren(document.createTextNode(nombreDeVentana(m)));
             const tiras = crear("div", "master-grupo-pestanas");
             tiras.setAttribute("role", "tablist");
-            tiras.setAttribute("aria-label", "Ventanas juntas");
+            tiras.setAttribute("aria-label", ocT("Ventanas juntas"));
             const juntas = delGrupo(m);
             juntas.forEach((x, i) => {
                 const d = MODULOS[x.tipo];
@@ -16973,7 +16886,7 @@
                 const e2 = crear("span", "master-grupo-emoji", d.emoji);
                 e2.setAttribute("aria-hidden", "true");
                 t.append(e2, crear("span", "master-grupo-nombre", nombreDeVentana(x)));
-                t.title = nombreDeVentana(x) + (ahora ? " (clic: plegar; mantener y sacar: separarla)" : " (mantener y sacar: separarla)");
+                t.title = nombreDeVentana(x) + (ahora ? ocT(" (clic: plegar; mantener y sacar: separarla)") : ocT(" (mantener y sacar: separarla)"));
                 t.setAttribute("role", "tab");
                 // El nombre entero, también en las que sólo enseñan el icono.
                 t.setAttribute("aria-label", nombreDeVentana(x));
@@ -17024,7 +16937,7 @@
         // dedo o el lápiz (en las tabletas no vale el «resize» de CSS).
         const esquina = crear("span", "master-ventana-tamano");
         esquina.setAttribute("aria-hidden", "true");
-        esquina.title = "Arrastra para cambiar el tamaño";
+        esquina.title = ocT("Arrastra para cambiar el tamaño");
         esquina.addEventListener("pointerdown", (e) => {
             if (enMovil.matches || m.plegado || e.button > 0 || enHueco(m)) {
                 return;
@@ -17299,8 +17212,8 @@
         caja.dataset.hueco = String(i);
         const [col, fila, ancho, alto] = huecosDe(estado)[i];
         caja.style.gridArea = fila + " / " + col + " / span " + alto + " / span " + ancho;
-        const b = botonDe("oc-vida-accion", "＋ elegir ventana", () => elegirParaHueco({ hueco: i, vuelta: b }),
-            "Hueco " + (i + 1) + " de " + huecosDe(estado).length + ", vacío: elegir qué ventana va aquí");
+        const b = botonDe("oc-vida-accion", ocT("＋ elegir ventana"), () => elegirParaHueco({ hueco: i, vuelta: b }),
+            ocT("Hueco {n} de {n2}, vacío: elegir qué ventana va aquí", { n: i + 1, n2: huecosDe(estado).length }));
         b.setAttribute("aria-haspopup", "dialog");
         caja.appendChild(b);
         return caja;
@@ -17340,19 +17253,19 @@
                         vistos.add(k);
                         return !ya;
                     }).forEach((r) => deRasgos.push({ tipo: "rasgo", emoji: "⭐", nombre: r.nombre,
-                        detalle: datosRasgo(r).join(" · ") + (r.propio ? " · 🛠️ tuyo" : ""), buscar: llano(r.nombre + " " + r.en),
+                        detalle: datosRasgo(r).join(" · ") + (r.propio ? ocT(" · 🛠️ tuyo") : ""), buscar: llano(r.nombre + " " + r.en),
                         abrir: (v) => abrirRasgo(r, v, ras.fuente) }));
                     (conj.conjuros || []).forEach((c) => cosas.push({ tipo: "conjuro", emoji: "✨", nombre: c.nombre,
-                        detalle: nivelDe(c) + " · " + c.escuela + (c.propio ? " · 🛠️ tuyo" : ""), buscar: llano(c.nombre + " " + c.en),
+                        detalle: nivelDe(c) + " · " + c.escuela + (c.propio ? ocT(" · 🛠️ tuyo") : ""), buscar: llano(c.nombre + " " + c.en),
                         abrir: (v) => abrirConjuro(c, v, conj.fuente) }));
                     (best.monstruos || []).forEach((b) => cosas.push({ tipo: "monstruo", emoji: tokenDe(b).textContent, nombre: b.nombre,
-                        detalle: "VD " + b.cr + " · " + b.tipo + (b.propio ? " · 🛠️ tuyo" : ""), buscar: llano(b.nombre + " " + b.en),
+                        detalle: ocT("VD {cr} · {tipo}{n}", { cr: b.cr, tipo: b.tipo, n: b.propio ? ocT(" · 🛠️ tuyo") : "" }), buscar: llano(b.nombre + " " + b.en),
                         abrir: (v) => abrirBicho(b, v, best.fuente) }));
                     (reg.reglas || []).forEach((r) => cosas.push({ tipo: "regla", emoji: r.icono || "📚", nombre: r.nombre,
-                        detalle: "Regla · " + r.grupo, buscar: llano(r.nombre + " " + (r.alias || "")),
+                        detalle: ocT("Regla · {grupo}", { grupo: r.grupo }), buscar: llano(r.nombre + " " + (r.alias || "")),
                         abrir: (v) => abrirRegla(r, v, fuenteDeRegla(r, reg.fuente)) }));
                     (tienda.objetos || []).forEach((o) => cosas.push({ tipo: "objeto", emoji: "💰", nombre: o.nombre,
-                        detalle: "Objeto · " + o.cat + (o.rareza ? " · " + o.rareza : "") + (o.propio ? " · 🛠️ tuyo" : ""), buscar: llano(o.nombre + " " + o.en),
+                        detalle: ocT("Objeto · {cat}{n}{n2}", { cat: o.cat, n: o.rareza ? " · " + o.rareza : "", n2: o.propio ? ocT(" · 🛠️ tuyo") : "" }), buscar: llano(o.nombre + " " + o.en),
                         abrir: (v) => abrirObjeto(o, v, tienda.fuente) }));
                     return cosas.concat(deRasgos);
                 });
@@ -17363,11 +17276,11 @@
     function montarBuscador() {
         const caja = crear("div", "master-buscador");
         caja.setAttribute("role", "search");
-        const et = crear("label", "visually-hidden", "Buscar conjuros, monstruos, reglas, objetos, rasgos o dotes");
+        const et = crear("label", "visually-hidden", ocT("Buscar conjuros, monstruos, reglas, objetos, rasgos o dotes"));
         const input = crear("input", "master-buscador-texto");
         input.type = "search";
         input.id = "master-buscador";
-        input.placeholder = "buscar: bola de fuego, goblin, derribado…";
+        input.placeholder = ocT("buscar: bola de fuego, goblin, derribado…");
         input.autocomplete = "off";
         input.setAttribute("role", "combobox");
         input.setAttribute("aria-autocomplete", "list");
@@ -17377,7 +17290,7 @@
         const lista = crear("ul", "master-buscador-lista");
         lista.id = "master-buscador-lista";
         lista.setAttribute("role", "listbox");
-        lista.setAttribute("aria-label", "Resultados");
+        lista.setAttribute("aria-label", ocT("Resultados"));
         lista.hidden = true;
         const cuantos = crear("p", "visually-hidden");
         cuantos.setAttribute("role", "status");
@@ -17412,10 +17325,10 @@
             }
             cargarIndice().then((cosas) => {
                 const propias = leerHomebrew().map((r) => ({ tipo: "propia", emoji: r.icono || "🏠", nombre: r.nombre,
-                    detalle: "Regla propia", buscar: llano(r.nombre),
+                    detalle: ocT("Regla propia"), buscar: llano(r.nombre),
                     abrir: (v) => abrirRegla(Object.assign({ propia: true, grupo: "🏠 Reglas propias" }, r), v) }));
                 const otras = leerPropios().otros.map((x) => ({ tipo: "otro", emoji: "📜", nombre: x.nombre,
-                    detalle: x.cat + " · 🛠️ tuyo", buscar: llano(x.nombre + " " + x.cat), abrir: (v) => abrirOtro(x, v) }));
+                    detalle: ocT("{cat} · 🛠️ tuyo", { cat: x.cat }), buscar: llano(x.nombre + " " + x.cat), abrir: (v) => abrirOtro(x, v) }));
                 const todas = propias.concat(otras, cosas);
                 // Primero lo que empieza por lo buscado; luego lo que lo lleva.
                 const empieza = todas.filter((x) => x.buscar.startsWith(q));
@@ -17435,14 +17348,13 @@
                     return li;
                 }));
                 if (!salen.length) {
-                    const li = crear("li", "master-buscador-nada", "Nada con eso.");
+                    const li = crear("li", "master-buscador-nada", ocT("Nada con eso."));
                     lista.appendChild(li);
                 }
                 lista.hidden = false;
                 input.setAttribute("aria-expanded", "true");
                 activo = -1;
-                cuantos.textContent = salen.length ? salen.length + (salen.length === 1 ? " resultado" : " resultados")
-                    + "; con las flechas se elige" : "Nada con eso.";
+                cuantos.textContent = salen.length ? ocT("{n}; con las flechas se elige", { n: salen.length + (salen.length === 1 ? ocT(" resultado") : ocT(" resultados")) }) : ocT("Nada con eso.");
             });
         };
         input.addEventListener("input", () => {
@@ -17476,15 +17388,15 @@
     // ---- EL BOTÓN DE AÑADIR (y el de los dados, que pone personajes.js).
     // Su ventana tiene también «ordenar» y «quitar todas». ----
     let pestanaAnadir = 0;
-    const botonAnadir = botonDe("oc-vida-accion es-principal", "＋ añadir", () => {
+    const botonAnadir = botonDe("oc-vida-accion es-principal", ocT("＋ añadir"), () => {
         const cuerpo = crear("div", "master-anadir");
         // Un filtro arriba y las ventanas por grupos, como tarjetas con su
         // dibujo, su nombre y para qué son.
-        const etFiltro = crear("label", "oc-dados-etiqueta", "filtrar");
+        const etFiltro = crear("label", "oc-dados-etiqueta", ocT("filtrar"));
         const filtro = crear("input", "oc-dados-texto");
         filtro.type = "search";
         filtro.id = "master-anadir-filtro";
-        filtro.placeholder = "dados, monstruos, nombres…";
+        filtro.placeholder = ocT("dados, monstruos, nombres…");
         filtro.autocomplete = "off";
         etFiltro.htmlFor = filtro.id;
         const cuantas = crear("p", "visually-hidden");
@@ -17509,7 +17421,7 @@
                 const em = crear("span", "master-anadir-emoji", def.emoji);
                 em.setAttribute("aria-hidden", "true");
                 const nombre = crear("span", "master-anadir-nombre", def.nombre);
-                const desc = crear("span", "master-anadir-desc", ya ? "Ya está en el tablero." : def.desc);
+                const desc = crear("span", "master-anadir-desc", ya ? ocT("Ya está en el tablero.") : def.desc);
                 b.append(em, nombre, desc);
                 b.disabled = ya;
                 li.appendChild(b);
@@ -17519,7 +17431,7 @@
             seccion.appendChild(lista);
             return [titulo, seccion];
         });
-        const { lista: pestanasAnadir, elegir: elegirAnadir } = pestanasDe(paneles, "Grupos de ventanas", "master-anadir",
+        const { lista: pestanasAnadir, elegir: elegirAnadir } = pestanasDe(paneles, ocT("Grupos de ventanas"), "master-anadir",
             (i) => {
                 pestanaAnadir = i;
             });
@@ -17532,7 +17444,7 @@
                 t.li.hidden = !!q && !t.texto.includes(q);
                 n += t.li.hidden ? 0 : 1;
             });
-            cuantas.textContent = q ? (n ? n + (n === 1 ? " ventana" : " ventanas") : "Ninguna con eso.") : "";
+            cuantas.textContent = q ? (n ? n + (n === 1 ? ocT(" ventana") : ocT(" ventanas")) : ocT("Ninguna con eso.")) : "";
             // Filtrando: todos los grupos a la vista, sin pestañas.
             pestanasAnadir.hidden = !!q;
             if (q) {
@@ -17561,8 +17473,7 @@
         // Para un hueco de un modo: lo dice el título; si se cierra sin
         // elegir, el hueco se olvida (después de «anadir», que va antes).
         const paraHueco = huecoPendiente && esModo(estado);
-        const cerrar = window.ocVentana.abrir({ titulo: paraHueco ? "elegir la ventana del hueco " + (huecoPendiente.hueco + 1)
-            + " (" + estado.nombre + ")" : "añadir una ventana", cuerpo, vuelta: (paraHueco && huecoPendiente.vuelta) || botonAnadir,
+        const cerrar = window.ocVentana.abrir({ titulo: paraHueco ? ocT("elegir la ventana del hueco {n} ({nombre})", { n: huecoPendiente.hueco + 1, nombre: estado.nombre }) : ocT("añadir una ventana"), cuerpo, vuelta: (paraHueco && huecoPendiente.vuelta) || botonAnadir,
         foco: filtro, clase: "es-ancha", alCerrar: () => setTimeout(() => {
             huecoPendiente = null;
         }, 0) });
@@ -17573,7 +17484,7 @@
     // perfiles con sus ventanas, la iniciativa, las marcas propias y las
     // tiradas guardadas) a un archivo .json, y de vuelta. Para guardarlo,
     // pasarlo a otro navegador o compartir un tablero montado. ----
-    const CLAVES = (k) => k === CLAVE || k === CLAVE_HOMEBREW || k === CLAVE_IMAGENES || k === CLAVE_PLANTILLAS || k === CLAVE_PROPIOS || k === CLAVE_ASPECTOS || k === CLAVE_TABLAS || k === CLAVE_NOMBRES || k === window.ocReglas.CLAVE || k === CLAVE_ENCENDIDA || k === CLAVE_COPIA || k === "richi-master-modos-plegado" || /^richi-oc-(iniciativa|marcas|partida-pantalla-master)/.test(k);
+    const CLAVES = (k) => k === CLAVE || k === CLAVE_HOMEBREW || k === CLAVE_IMAGENES || k === CLAVE_PLANTILLAS || k === CLAVE_PROPIOS || k === CLAVE_ASPECTOS || k === CLAVE_TABLAS || k === CLAVE_NOMBRES || k === window.ocReglas.CLAVE || k === CLAVE_ENCENDIDA || k === CLAVE_COPIA || k === "richi-master-modos-plegado" || k === "richi-idioma" || k === "richi-idioma-prueba" || /^richi-oc-(iniciativa|marcas|partida-pantalla-master)/.test(k);
 
     // UNA COPIA DE SEGURIDAD: lo guardado (las claves de CLAVES) y, si se
     // pide, los archivos (imágenes, PDF, música) en «data:». La usan
@@ -17590,7 +17501,7 @@
                 }
             }
         } catch (e) {
-            return Promise.reject(new Error("sin almacenamiento"));
+            return Promise.reject(new Error(ocT("sin almacenamiento")));
         }
         const datos = { pantallaDeMaster: 1, fecha: new Date().toISOString(), claves };
         if (!conArchivos) {
@@ -17636,9 +17547,9 @@
 
     function copias(alTerminar) {
         const caja = crear("div", "master-anadir-otras");
-        const exportar = botonDe("oc-vida-accion", "⬇ exportar", () => {
+        const exportar = botonDe("oc-vida-accion", ocT("⬇ exportar"), () => {
             datosDeCopia(true).catch(() => {
-                avisar("Este navegador no deja leer lo guardado.");
+                avisar(ocT("Este navegador no deja leer lo guardado."));
                 return null;
             }).then((datos) => {
                 if (!datos) {
@@ -17655,24 +17566,24 @@
                 a.click();
                 a.remove();
                 setTimeout(() => URL.revokeObjectURL(archivoBlob), 1000);
-                avisar("Exportado: " + a.download + (lista.length ? " (con " + lista.length + " archivos)." : "."));
+                avisar(ocT("Exportado: {download}{n}", { download: a.download, n: lista.length ? ocT(" (con {n} archivos).", { n: lista.length }) : "." }));
             });
-        }, "Exportar todo a un archivo");
+        }, ocT("Exportar todo a un archivo"));
         exportar.title = "Guarda los perfiles, sus ventanas y la iniciativa en un archivo .json";
         const archivo = crear("input");
         archivo.type = "file";
         archivo.accept = ".json,application/json";
         archivo.hidden = true;
         let seguro = false;
-        const importar = botonDe("oc-vida-accion", "⬆ importar", () => {
+        const importar = botonDe("oc-vida-accion", ocT("⬆ importar"), () => {
             if (!seguro) {
                 seguro = true;
-                importar.textContent = "⬆ ¿reemplazar todo? pulsa otra vez";
+                importar.textContent = ocT("⬆ ¿reemplazar todo? pulsa otra vez");
                 return;
             }
             archivo.click();
-        }, "Importar desde un archivo (reemplaza lo de ahora)");
-        importar.title = "Carga un archivo exportado; reemplaza lo que hay ahora";
+        }, ocT("Importar desde un archivo (reemplaza lo de ahora)"));
+        importar.title = ocT("Carga un archivo exportado; reemplaza lo que hay ahora");
         archivo.addEventListener("change", () => {
             const f = archivo.files && archivo.files[0];
             if (!f) {
@@ -17681,13 +17592,13 @@
             f.text().then((texto) => {
                 const datos = JSON.parse(texto);
                 if (!esCopia(datos)) {
-                    throw new Error("no es");
+                    throw new Error(ocT("no es"));
                 }
                 alTerminar();
                 return importarCopia(datos);
             }).catch(() => {
-                avisar("Ese archivo no es una exportación de la pantalla de máster.");
-                importar.textContent = "⬆ importar";
+                avisar(ocT("Ese archivo no es una exportación de la pantalla de máster."));
+                importar.textContent = ocT("⬆ importar");
                 seguro = false;
             });
         });
@@ -17738,16 +17649,16 @@
             const partes = [];
             const donde = [];
             if (hechos.docs.length) {
-                donde.push(hechos.docs.join(", ") + " en 📂 documentos");
+                donde.push(ocT("{join} en 📂 documentos", { join: hechos.docs.join(", ") }));
             }
             if (hechos.audios.length) {
-                donde.push(hechos.audios.join(", ") + " en 🎵 música (carpeta «recibidas»)");
+                donde.push(ocT("{join} en 🎵 música (carpeta «recibidas»)", { join: hechos.audios.join(", ") }));
             }
             if (donde.length) {
-                partes.push("Recibido: " + donde.join("; ") + ".");
+                partes.push(ocT("Recibido: {join}.", { join: donde.join("; ") }));
             }
             if (fuera > 0) {
-                partes.push("Sólo valen imágenes, PDF y audios de hasta 50 MB, y copias de seguridad.");
+                partes.push(ocT("Sólo valen imágenes, PDF y audios de hasta 50 MB, y copias de seguridad."));
             }
             if (partes.length) {
                 avisar(partes.join(" "));
@@ -17756,20 +17667,18 @@
         json.slice(0, 1).forEach((f) => f.text().then((texto) => {
             const datos = JSON.parse(texto);
             if (!esCopia(datos)) {
-                throw new Error("no es");
+                throw new Error(ocT("no es"));
             }
             const cuerpo = crear("div", "master-anadir-otras");
             const fecha = new Date(datos.fecha);
-            const texto2 = crear("p", "oc-hoja-nota", "«" + f.name + "» es una copia de seguridad"
-                + (isNaN(fecha) ? "" : " del " + fecha.toLocaleDateString("es-ES", { day: "numeric", month: "long", year: "numeric" }))
-                + ". Importarla reemplaza todo lo que hay ahora (haz antes una copia si no quieres perderlo).");
+            const texto2 = crear("p", "oc-hoja-nota", ocT("«{name}» es una copia de seguridad{n}. Importarla reemplaza todo lo que hay ahora (haz antes una copia si no quieres perderlo).", { name: f.name, n: isNaN(fecha) ? "" : ocT(" del {toLocaleDateString}", { toLocaleDateString: fecha.toLocaleDateString("es-ES", { day: "numeric", month: "long", year: "numeric" }) }) }));
             const vuelta = document.activeElement;
             let cerrar = () => {};
-            const si = botonDe("oc-vida-accion", "⬆ importar (reemplaza todo)", () => {
+            const si = botonDe("oc-vida-accion", ocT("⬆ importar (reemplaza todo)"), () => {
                 si.disabled = true;
-                importarCopia(datos).catch(() => avisar("No se ha podido importar."));
+                importarCopia(datos).catch(() => avisar(ocT("No se ha podido importar.")));
             });
-            const no = botonDe("oc-vida-accion", "cancelar", () => cerrar());
+            const no = botonDe("oc-vida-accion", ocT("cancelar"), () => cerrar());
             cuerpo.append(texto2, si, no);
             // Con la entrada abierta (al abrir la app), la pregunta va dentro
             // de ella, arriba; si no, en una ventanita.
@@ -17778,7 +17687,7 @@
             if (entrada) {
                 const caja = crear("div", "master-entrada-traer");
                 caja.setAttribute("role", "group");
-                caja.setAttribute("aria-label", "Importar una copia de seguridad");
+                caja.setAttribute("aria-label", ocT("Importar una copia de seguridad"));
                 const botones = crear("div", "master-anadir-otras");
                 botones.append(si, no);
                 caja.append(texto2, botones);
@@ -17792,9 +17701,8 @@
                 si.focus();
                 return;
             }
-            cerrar = window.ocVentana.abrir({ titulo: "importar una copia de seguridad", cuerpo, vuelta, foco: si });
-        }).catch(() => avisar("«" + f.name + "» no es una copia de seguridad de la pantalla de máster. Si es un personaje de"
-            + " D&D Beyond, tráelo desde la party con «📄 desde un archivo».")));
+            cerrar = window.ocVentana.abrir({ titulo: ocT("importar una copia de seguridad"), cuerpo, vuelta, foco: si });
+        }).catch(() => avisar(ocT("«{name}» no es una copia de seguridad de la pantalla de máster. Si es un personaje de D&D Beyond, tráelo desde la party con «📄 desde un archivo».", { name: f.name }))));
     }
 
     function anadir(tipo, extra) {
@@ -17857,7 +17765,7 @@
         const primero = m.el.querySelector(".master-ventana-cuerpo button, .master-ventana-cuerpo input, .master-ventana-cuerpo textarea")
             || m.el.querySelector(".master-ventana-nombre");
         primero.focus();
-        avisar("Añadido: " + (m.titulo || def.nombre) + ".");
+        avisar(ocT("Añadido: {n}.", { n: m.titulo || def.nombre }));
     }
 
     // EL PRIMER HUECO LIBRE para una ventana de w × h: empezando por lo
@@ -17920,17 +17828,17 @@
     const pestanas = crear("div", "master-pestanas");
     const tablist = crear("div", "master-pestanas-lista");
     tablist.setAttribute("role", "tablist");
-    tablist.setAttribute("aria-label", "Perfiles de la pantalla de máster");
+    tablist.setAttribute("aria-label", ocT("Perfiles de la pantalla de máster"));
     lienzo.setAttribute("role", "tabpanel");
 
     // Los mandos del zoom (− 100 % +): el del medio lo deja en 100 %.
     const HAY_ZOOM = !!(window.CSS && CSS.supports && CSS.supports("zoom", "2"));
-    const menosZoom = botonDe("master-pestana-mando", "－", () => pasoZoom(-1), "Alejar el tablero");
-    const masZoom = botonDe("master-pestana-mando", "＋", () => pasoZoom(1), "Acercar el tablero");
-    const botonZoom = botonDe("master-zoom-valor", "100 %", () => ponerZoom(1, true), "Dejar el zoom del tablero en 100 %");
-    menosZoom.title = "Alejar (Ctrl + rueda)";
-    masZoom.title = "Acercar (Ctrl + rueda)";
-    botonZoom.title = "Volver al 100 %";
+    const menosZoom = botonDe("master-pestana-mando", "－", () => pasoZoom(-1), ocT("Alejar el tablero"));
+    const masZoom = botonDe("master-pestana-mando", "＋", () => pasoZoom(1), ocT("Acercar el tablero"));
+    const botonZoom = botonDe("master-zoom-valor", "100 %", () => ponerZoom(1, true), ocT("Dejar el zoom del tablero en 100 %"));
+    menosZoom.title = ocT("Alejar (Ctrl + rueda)");
+    masZoom.title = ocT("Acercar (Ctrl + rueda)");
+    botonZoom.title = ocT("Volver al 100 %");
     // Ctrl + rueda (o el pellizco del panel táctil) sobre el tablero.
     lienzo.addEventListener("wheel", (e) => {
         if (!e.ctrlKey || !HAY_ZOOM || enMovil.matches || esModo(estado)) {
@@ -18010,7 +17918,7 @@
         crecerLienzo();
         if (decirlo) {
             guardar();
-            avisar("Zoom del tablero: " + Math.round(z * 100) + " %.");
+            avisar(ocT("Zoom del tablero: {round} %.", { round: Math.round(z * 100) }));
         }
     }
     const pasoZoom = (sentido) => {
@@ -18042,7 +17950,7 @@
                 }
                 if (pf !== estado) {
                     activar(pf, true);
-                    avisar("Perfil: " + pf.nombre + ".");
+                    avisar(ocT("Perfil: {nombre}.", { nombre: pf.nombre }));
                 }
             });
             b.setAttribute("role", "tab");
@@ -18087,7 +17995,7 @@
             x.type = "button";
             x.tabIndex = -1;
             x.setAttribute("aria-hidden", "true");
-            x.title = "Cerrar «" + pf.nombre + "» (pulsa dos veces)";
+            x.title = ocT("Cerrar «{nombre}» (pulsa dos veces)", { nombre: pf.nombre });
             x.hidden = todo.perfiles.length < 2;
             x.addEventListener("click", (e) => {
                 e.stopPropagation();
@@ -18140,7 +18048,7 @@
         guardar();
         pintarPestanas(false);
         document.getElementById("master-pestana-" + pf.id).focus();
-        avisar(pf.nombre + ": pestaña " + (k + 1) + " de " + todo.perfiles.length + ".");
+        avisar(ocT("{nombre}: pestaña {n} de {length}.", { nombre: pf.nombre, n: k + 1, length: todo.perfiles.length }));
     }
     function cogerPestana(e, b) {
         if (e.button > 0 || todo.perfiles.length < 2) {
@@ -18244,7 +18152,7 @@
                 pestanaMovida = false;
                 pintarPestanas(false);
                 if (pf) {
-                    avisar(pf.nombre + ": pestaña " + (todo.perfiles.indexOf(pf) + 1) + " de " + todo.perfiles.length + ".");
+                    avisar(ocT("{nombre}: pestaña {n} de {length}.", { nombre: pf.nombre, n: todo.perfiles.indexOf(pf) + 1, length: todo.perfiles.length }));
                 }
             }, 0);
         };
@@ -18255,31 +18163,31 @@
 
     function renombrar() {
         const cuerpo = crear("form", "master-personalizar");
-        const et = crear("label", "oc-dados-etiqueta", "nombre del perfil");
+        const et = crear("label", "oc-dados-etiqueta", ocT("nombre del perfil"));
         // Dos colores, por separado: el de la pestaña y el del fondo del
         // tablero.
-        const grupoPestana = muestrasDe("color de la pestaña", COLORES_PESTANA, colorDePestana(estado), "master-perfil-otro-pestana");
-        const grupo = muestrasDe("color del fondo del tablero", TABLEROS, estado.color || "", "master-perfil-otro");
+        const grupoPestana = muestrasDe(ocT("color de la pestaña"), COLORES_PESTANA, colorDePestana(estado), "master-perfil-otro-pestana");
+        const grupo = muestrasDe(ocT("color del fondo del tablero"), TABLEROS, estado.color || "", "master-perfil-otro");
         const input = crear("input", "oc-dados-texto");
         input.id = "master-perfil-nombre";
         input.value = estado.nombre;
         input.maxLength = 30;
         input.autocomplete = "off";
         et.htmlFor = input.id;
-        const listo = crear("button", "oc-vida-accion es-principal", "guardar");
+        const listo = crear("button", "oc-vida-accion es-principal", ocT("guardar"));
         listo.type = "submit";
-        const comoPlantilla = botonDe("oc-vida-accion", "💾 guardar como plantilla", () => {
+        const comoPlantilla = botonDe("oc-vida-accion", ocT("💾 guardar como plantilla"), () => {
             const lista = leerPlantillas();
             lista.push({ id: Date.now().toString(36), nombre: input.value.trim() || estado.nombre,
                 ventanas: estado.modulos.map((x) => ({ tipo: x.tipo, x: x.x, y: x.y, w: x.w, h: x.h, titulo: x.titulo || "",
                     color: x.color || "", escala: x.escala || 1, plegado: !!x.plegado, grupo: x.grupo, delante: x.delante })) });
             guardarPlantillas(lista);
-            avisar("Guardada la plantilla «" + (input.value.trim() || estado.nombre) + "»: sale al crear un perfil con ＋.");
-        }, "Guardar las ventanas de este perfil como plantilla");
-        comoPlantilla.title = "Las ventanas, donde están, sin lo que tienen dentro";
-        const cerrarEsta = botonDe("oc-vida-accion", "🗑️ cerrar esta pestaña", () => {
+            avisar(ocT("Guardada la plantilla «{n}»: sale al crear un perfil con ＋.", { n: input.value.trim() || estado.nombre }));
+        }, ocT("Guardar las ventanas de este perfil como plantilla"));
+        comoPlantilla.title = ocT("Las ventanas, donde están, sin lo que tienen dentro");
+        const cerrarEsta = botonDe("oc-vida-accion", ocT("🗑️ cerrar esta pestaña"), () => {
             if (porCerrar !== estado) {
-                cerrarEsta.textContent = "🗑️ ¿seguro? pulsa otra vez";
+                cerrarEsta.textContent = ocT("🗑️ ¿seguro? pulsa otra vez");
             } else {
                 cerrar();
             }
@@ -18298,18 +18206,17 @@
             guardar();
             cerrar();
             pintarPestanas(true);
-            avisar("Perfil: " + estado.nombre + ".");
+            avisar(ocT("Perfil: {nombre}.", { nombre: estado.nombre }));
         });
-        const cerrar = window.ocVentana.abrir({ titulo: "nombre y colores de la pestaña", cuerpo, vuelta: botonRenombrar, foco: input });
+        const cerrar = window.ocVentana.abrir({ titulo: ocT("nombre y colores de la pestaña"), cuerpo, vuelta: botonRenombrar, foco: input });
     }
 
     // LAS PLANTILLAS DE PERFIL: las de aquí (unas ventanas que se ponen
     // ordenadas) y las propias («💾 guardar como plantilla» en el ✎ del
     // perfil: sus ventanas, donde estaban, sin lo que tienen dentro;
     // «richi-master-plantillas»).
-    const PLANTILLAS = [["vacio", "⬜ vacío", "Sin ventanas.", -1]].concat(PERFILES_DE_SERIE.map(([nombre, color, , ventanas], i) =>
-        ["serie" + i, nombre, ventanas.length + " ventanas, donde van" + (color ? " · tablero " +
-            ((TABLEROS.find((t) => t[0] === color) || [])[1] || color) : "") + ".", i]));
+    const PLANTILLAS = [["vacio", ocT("⬜ vacío"), ocT("Sin ventanas."), -1]].concat(PERFILES_DE_SERIE.map(([nombre, color, , ventanas], i) =>
+        ["serie" + i, nombre, ocT("{n} ventanas, donde van{n2}.", { n: ventanas.length, n2: color ? ocT(" · tablero {n}", { n: (TABLEROS.find((t) => t[0] === color) || [])[1] || color }) : "" }), i]));
     const leerPlantillas = () => {
         try {
             const x = JSON.parse(localStorage.getItem(CLAVE_PLANTILLAS) || "[]");
@@ -18322,16 +18229,16 @@
         try {
             localStorage.setItem(CLAVE_PLANTILLAS, JSON.stringify(lista));
         } catch (e) {
-            avisar("No se ha podido guardar la plantilla.");
+            avisar(ocT("No se ha podido guardar la plantilla."));
         }
     };
 
     function perfilNuevo() {
         const cuerpo = crear("form", "master-personalizar");
-        const et = crear("label", "oc-dados-etiqueta", "nombre del perfil");
+        const et = crear("label", "oc-dados-etiqueta", ocT("nombre del perfil"));
         const input = crear("input", "oc-dados-texto");
         input.id = "master-perfil-nuevo";
-        input.value = "perfil " + (todo.perfiles.length + 1);
+        input.value = ocT("perfil ") + (todo.perfiles.length + 1);
         input.maxLength = 30;
         input.autocomplete = "off";
         et.htmlFor = input.id;
@@ -18341,7 +18248,7 @@
             nombreTocado = true;
         });
         const grupo = crear("fieldset", "master-plantillas");
-        grupo.appendChild(crear("legend", "oc-dados-etiqueta", "con qué ventanas"));
+        grupo.appendChild(crear("legend", "oc-dados-etiqueta", ocT("con qué ventanas")));
         const propias = leerPlantillas();
         const opcion = (valor, nombre, desc, borrable) => {
             const caja = crear("div", "master-plantilla");
@@ -18358,24 +18265,24 @@
                 const quitar = botonDe("master-nombre-boton", "✕", () => {
                     guardarPlantillas(leerPlantillas().filter((x) => x.id !== borrable));
                     caja.remove();
-                    avisar("Plantilla quitada: " + nombre + ".");
-                }, "Quitar la plantilla " + nombre);
+                    avisar(ocT("Plantilla quitada: {nombre}.", { nombre: nombre }));
+                }, ocT("Quitar la plantilla {nombre}", { nombre: nombre }));
                 caja.appendChild(quitar);
             }
             grupo.appendChild(caja);
             return radio;
         };
         const radios = PLANTILLAS.map(([v, n, desc]) => opcion(v, n, desc));
-        propias.forEach((pl) => radios.push(opcion("propia-" + pl.id, "💾 " + pl.nombre, pl.ventanas.length + " ventanas, donde las dejaste.",
+        propias.forEach((pl) => radios.push(opcion("propia-" + pl.id, "💾 " + pl.nombre, ocT("{n} ventanas, donde las dejaste.", { n: pl.ventanas.length }),
             pl.id)));
         radios[0].checked = true;
-        const listo = crear("button", "oc-vida-accion es-principal", "＋ crear");
+        const listo = crear("button", "oc-vida-accion es-principal", ocT("＋ crear"));
         listo.type = "submit";
         cuerpo.append(et, input, grupo, listo);
         cuerpo.addEventListener("submit", (e) => {
             e.preventDefault();
             const elegida = (grupo.querySelector("input:checked") || radios[0]).value;
-            const pf = { id: "p" + siguientePerfil++, nombre: input.value.trim() || "perfil " + (todo.perfiles.length + 1), modulos: [] };
+            const pf = { id: "p" + siguientePerfil++, nombre: input.value.trim() || ocT("perfil {n}", { n: todo.perfiles.length + 1 }), modulos: [] };
             const propia = propias.find((x) => "propia-" + x.id === elegida);
             if (propia) {
                 pf.modulos = propia.ventanas.filter((v) => MODULOS[v.tipo]).map((v) => Object.assign({}, v, { id: "m" + siguienteId++ }));
@@ -18394,16 +18301,16 @@
             cerrar();
             todo.perfiles.push(pf);
             activar(pf, true);
-            avisar("Perfil nuevo: " + pf.nombre + (pf.modulos.length ? ", con " + pf.modulos.length + " ventanas." : "."));
+            avisar(ocT("Perfil nuevo: {nombre}{n}", { nombre: pf.nombre, n: pf.modulos.length ? ocT(", con {n} ventanas.", { n: pf.modulos.length }) : "." }));
         });
-        const cerrar = window.ocVentana.abrir({ titulo: "perfil nuevo", cuerpo, vuelta: botonNueva, foco: input });
+        const cerrar = window.ocVentana.abrir({ titulo: ocT("perfil nuevo"), cuerpo, vuelta: botonNueva, foco: input });
     }
 
-    const botonNueva = botonDe("master-pestana-mando", "＋", () => perfilNuevo(), "Perfil nuevo");
-    botonNueva.title = "Perfil nuevo";
+    const botonNueva = botonDe("master-pestana-mando", "＋", () => perfilNuevo(), ocT("Perfil nuevo"));
+    botonNueva.title = ocT("Perfil nuevo");
     const botonRenombrar = botonDe("master-pestana-mando", "✎", () => (esModo(estado) ? editarModo(estado, botonRenombrar) : renombrar()),
-        "Nombre y colores de esta pestaña");
-    botonRenombrar.title = "Nombre, color de la pestaña y fondo del tablero";
+        ocT("Nombre y colores de esta pestaña"));
+    botonRenombrar.title = ocT("Nombre, color de la pestaña y fondo del tablero");
     botonRenombrar.setAttribute("aria-haspopup", "dialog");
     // CERRAR UNA PESTAÑA (la ✕ de cada una, Supr o «cerrar» en su ✎):
     // pide pulsar dos veces; la última no se cierra.
@@ -18411,7 +18318,7 @@
     let esperaCerrar = 0;
     function cerrarPerfil(pf, quien) {
         if (todo.perfiles.length < 2) {
-            avisar("Es la única pestaña: no se puede cerrar.");
+            avisar(ocT("Es la única pestaña: no se puede cerrar."));
             return;
         }
         if (porCerrar !== pf) {
@@ -18419,7 +18326,7 @@
             if (quien) {
                 quien.classList.add("es-seguro");
             }
-            avisar("Pulsa otra vez para cerrar la pestaña " + pf.nombre + " y sus ventanas.");
+            avisar(ocT("Pulsa otra vez para cerrar la pestaña {nombre} y sus ventanas.", { nombre: pf.nombre }));
             clearTimeout(esperaCerrar);
             esperaCerrar = setTimeout(() => {
                 porCerrar = null;
@@ -18441,7 +18348,7 @@
         }
         guardar();
         pintarPestanas(true);
-        avisar("Cerrada: " + pf.nombre + ".");
+        avisar(ocT("Cerrada: {nombre}.", { nombre: pf.nombre }));
     }
     const mandosPestanas = crear("div", "master-pestanas-mandos");
     mandosPestanas.append(botonNueva, botonRenombrar);
@@ -18452,10 +18359,10 @@
         const reducir = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
         tablist.scrollBy({ left: s * Math.max(120, Math.round(tablist.clientWidth * 0.7)), behavior: reducir ? "auto" : "smooth" });
     };
-    const flechaIzq = botonDe("master-pestana-mando master-pestanas-flecha", "‹", () => desliza(-1), "Ver las pestañas de la izquierda");
-    const flechaDer = botonDe("master-pestana-mando master-pestanas-flecha", "›", () => desliza(1), "Ver las pestañas de la derecha");
-    flechaIzq.title = "Pestañas de la izquierda";
-    flechaDer.title = "Pestañas de la derecha";
+    const flechaIzq = botonDe("master-pestana-mando master-pestanas-flecha", "‹", () => desliza(-1), ocT("Ver las pestañas de la izquierda"));
+    const flechaDer = botonDe("master-pestana-mando master-pestanas-flecha", "›", () => desliza(1), ocT("Ver las pestañas de la derecha"));
+    flechaIzq.title = ocT("Pestañas de la izquierda");
+    flechaDer.title = ocT("Pestañas de la derecha");
     function pintarFlechas() {
         const sobra = tablist.scrollWidth > tablist.clientWidth + 1;
         flechaIzq.hidden = !sobra;
@@ -18475,9 +18382,9 @@
     // uno nuevo y ✎ para el de ahora. Se puede plegar (se recuerda). ----
     const CLAVE_MODOS_PLEGADO = "richi-master-modos-plegado";
     const menuModos = crear("nav", "master-modos");
-    menuModos.setAttribute("aria-label", "Modos");
+    menuModos.setAttribute("aria-label", ocT("Modos"));
     const cabezaModos = crear("div", "master-modos-cabeza");
-    const tituloModos = crear("span", "master-modos-titulo", "modos");
+    const tituloModos = crear("span", "master-modos-titulo", ocT("modos"));
     tituloModos.setAttribute("aria-hidden", "true");
     const listaModos = crear("ul", "master-modos-lista");
     listaModos.id = "master-modos-lista";
@@ -18490,7 +18397,7 @@
         }
         pintarModos();
         plegarModos.focus();
-    }, "Plegar o desplegar el menú de los modos");
+    }, ocT("Plegar o desplegar el menú de los modos"));
     plegarModos.setAttribute("aria-controls", listaModos.id);
     cabezaModos.append(tituloModos, plegarModos);
     menuModos.append(cabezaModos, listaModos);
@@ -18506,7 +18413,7 @@
         plegarModos.setAttribute("aria-expanded", String(!plegado));
         menuModos.classList.toggle("es-plegado", plegado);
         const ahora = esModo(estado);
-        tituloModos.textContent = plegado ? (ahora ? estado.emoji + " " + estado.nombre : "▦ tableros") : "modos";
+        tituloModos.textContent = plegado ? (ahora ? estado.emoji + " " + estado.nombre : ocT("▦ tableros")) : "modos";
         const foco = listaModos.contains(document.activeElement) ? document.activeElement.dataset.modo : null;
         const boton = (texto, alPulsar, etiqueta, apretado, clave) => {
             const li = crear("li");
@@ -18519,11 +18426,11 @@
             return li;
         };
         listaModos.replaceChildren(...todo.modos.map((mo) => {
-            const li = boton(mo.emoji + " " + mo.nombre, () => activarModo(mo), "Modo " + mo.nombre, estado === mo, mo.id);
+            const li = boton(mo.emoji + " " + mo.nombre, () => activarModo(mo), ocT("Modo {nombre}", { nombre: mo.nombre }), estado === mo, mo.id);
             li.firstChild.id = "master-modo-b-" + mo.id;
             return li;
-        }), boton("▦ tableros", volverATableros, "Volver a los tableros (las pestañas de arriba)", !ahora, "tableros"),
-        boton("＋", () => editarModo(null, menuModos.querySelector("[data-modo=nuevo]")), "Crear un modo nuevo", null, "nuevo"));
+        }), boton(ocT("▦ tableros"), volverATableros, ocT("Volver a los tableros (las pestañas de arriba)"), !ahora, "tableros"),
+        boton("＋", () => editarModo(null, menuModos.querySelector("[data-modo=nuevo]")), ocT("Crear un modo nuevo"), null, "nuevo"));
         listaModos.lastChild.firstChild.setAttribute("aria-haspopup", "dialog");
         if (foco) {
             const b = listaModos.querySelector("[data-modo='" + foco + "']");
@@ -18537,8 +18444,8 @@
         if (ahora) {
             lienzo.setAttribute("aria-labelledby", "master-modo-b-" + estado.id);
         }
-        botonRenombrar.setAttribute("aria-label", ahora ? "Nombre, dibujo y huecos de este modo" : "Nombre y colores de esta pestaña");
-        botonRenombrar.title = ahora ? "Este modo: nombre, dibujo y huecos" : "Esta pestaña: nombre y colores";
+        botonRenombrar.setAttribute("aria-label", ahora ? ocT("Nombre, dibujo y huecos de este modo") : ocT("Nombre y colores de esta pestaña"));
+        botonRenombrar.title = ahora ? ocT("Este modo: nombre, dibujo y huecos") : ocT("Esta pestaña: nombre y colores");
     }
     function activarModo(mo) {
         if (estado === mo) {
@@ -18547,7 +18454,7 @@
         activar(mo, false);
         window.scrollTo(0, 0);
         crecerLienzo();
-        avisar("Modo " + mo.nombre + ".");
+        avisar(ocT("Modo {nombre}.", { nombre: mo.nombre }));
     }
     function volverATableros() {
         if (!esModo(estado)) {
@@ -18555,7 +18462,7 @@
         }
         const pf = todo.perfiles.find((x) => x.id === todo.activo) || todo.perfiles[0];
         activar(pf, false);
-        avisar("Tablero: " + pf.nombre + ".");
+        avisar(ocT("Tablero: {nombre}.", { nombre: pf.nombre }));
     }
     // CREAR O CAMBIAR UN MODO: su nombre, su dibujo y su rejilla (con un
     // dibujito de cada una); al crearlo, también desde uno de serie. Al
@@ -18576,16 +18483,16 @@
             cuerpo.append(et, x);
             return x;
         };
-        const nombre = campo("nombre del modo", mo ? mo.nombre : "", 24, "nombre");
-        const emoji = campo("dibujo (un emoji)", mo ? mo.emoji : "🧩", 8, "emoji");
+        const nombre = campo(ocT("nombre del modo"), mo ? mo.nombre : "", 24, "nombre");
+        const emoji = campo(ocT("dibujo (un emoji)"), mo ? mo.emoji : "🧩", 8, "emoji");
         let desde = null;
         if (nuevo) {
-            desde = elegirDe(uid + "-desde", "empezar", [["", "vacío (eliges la rejilla y luego sus ventanas)"]].concat(MODOS_DE_SERIE
-                .map((x, i) => [String(i), "como el de serie: " + x[0] + " " + x[1]])), "");
+            desde = elegirDe(uid + "-desde", ocT("empezar"), [["", ocT("vacío (eliges la rejilla y luego sus ventanas)")]].concat(MODOS_DE_SERIE
+                .map((x, i) => [String(i), ocT("como el de serie: {n} {n2}", { n: x[0], n2: x[1] })])), "");
             cuerpo.appendChild(desde);
         }
         const rejillas = crear("fieldset", "master-colores master-rejillas");
-        rejillas.appendChild(crear("legend", "oc-dados-etiqueta", "huecos"));
+        rejillas.appendChild(crear("legend", "oc-dados-etiqueta", ocT("huecos")));
         let elegida = mo ? mo.rejilla : "dos";
         Object.keys(REJILLAS).forEach((k) => {
             const op = crear("label", "master-rejilla");
@@ -18605,7 +18512,7 @@
                 dibujo.appendChild(h);
             });
             op.append(radio, dibujo, crear("span", "", REJILLAS[k].nombre + " (" + REJILLAS[k].huecos.length
-                + (REJILLAS[k].huecos.length === 1 ? " hueco)" : " huecos)")));
+                + (REJILLAS[k].huecos.length === 1 ? ocT(" hueco)") : ocT(" huecos)"))));
             rejillas.appendChild(op);
         });
         cuerpo.appendChild(rejillas);
@@ -18624,16 +18531,16 @@
             });
         }
         const botones = crear("div", "master-anadir-otras");
-        const listo = crear("button", "oc-vida-accion es-principal", nuevo ? "＋ crear el modo" : "guardar");
+        const listo = crear("button", "oc-vida-accion es-principal", nuevo ? ocT("＋ crear el modo") : "guardar");
         listo.type = "submit";
         botones.appendChild(listo);
         if (!nuevo) {
             let seguro = false;
-            const borrar = botonDe("oc-vida-accion", "🗑️ borrar este modo", () => {
+            const borrar = botonDe("oc-vida-accion", ocT("🗑️ borrar este modo"), () => {
                 if (!seguro) {
                     seguro = true;
-                    borrar.textContent = "🗑️ ¿seguro? pulsa otra vez";
-                    avisar("Pulsa otra vez para borrar el modo " + mo.nombre + " (con sus ventanas).");
+                    borrar.textContent = ocT("🗑️ ¿seguro? pulsa otra vez");
+                    avisar(ocT("Pulsa otra vez para borrar el modo {nombre} (con sus ventanas).", { nombre: mo.nombre }));
                     return;
                 }
                 cerrar();
@@ -18650,7 +18557,7 @@
                 guardar();
                 pintarModos();
                 menuModos.querySelector("[data-modo=tableros]").focus();
-                avisar("Modo borrado: " + mo.nombre + ".");
+                avisar(ocT("Modo borrado: {nombre}.", { nombre: mo.nombre }));
             });
             botones.appendChild(borrar);
         }
@@ -18659,7 +18566,7 @@
             e.preventDefault();
             const n = nombre.value.trim();
             if (!n) {
-                avisar("Ponle un nombre.");
+                avisar(ocT("Ponle un nombre."));
                 nombre.focus();
                 return;
             }
@@ -18673,7 +18580,7 @@
                 });
                 todo.modos.push(x);
                 activarModo(x);
-                avisar("Modo creado: " + n + (x.modulos.length ? "." : ". Pulsa «＋ elegir ventana» en cada hueco."));
+                avisar(ocT("Modo creado: {n}{n2}", { n: n, n2: x.modulos.length ? "." : ocT(". Pulsa «＋ elegir ventana» en cada hueco.") }));
                 return;
             }
             mo.nombre = n;
@@ -18695,9 +18602,9 @@
                 pintarTodo();
             }
             pintarModos();
-            avisar("Guardado: " + mo.nombre + ".");
+            avisar(ocT("Guardado: {nombre}.", { nombre: mo.nombre }));
         });
-        const cerrar = window.ocVentana.abrir({ titulo: nuevo ? "modo nuevo" : "el modo " + mo.nombre, cuerpo,
+        const cerrar = window.ocVentana.abrir({ titulo: nuevo ? ocT("modo nuevo") : ocT("el modo {nombre}", { nombre: mo.nombre }), cuerpo,
             vuelta: vuelta || botonRenombrar, foco: nombre });
     }
 
@@ -18709,8 +18616,8 @@
     botonCampana.setAttribute("aria-keyshortcuts", "C");
     function pintarCampana() {
         botonCampana.textContent = "📚";
-        botonCampana.setAttribute("aria-label", "Campaña: " + todo.nombre + " (cambiar de campaña)");
-        botonCampana.title = "Campaña: " + todo.nombre + " — cambiar, crear o renombrar";
+        botonCampana.setAttribute("aria-label", ocT("Campaña: {nombre} (cambiar de campaña)", { nombre: todo.nombre }));
+        botonCampana.title = ocT("Campaña: {nombre} — cambiar, crear o renombrar", { nombre: todo.nombre });
         aplicarUnidades();
         aplicarEdicion();
     }
@@ -18727,117 +18634,44 @@
         pintarPestanas(false);
         pintarTodo();
         pintarModos();
-        avisar("Campaña: " + c.nombre + ".");
+        avisar(ocT("Campaña: {nombre}.", { nombre: c.nombre }));
     }
     // EL TABLERO DE TUTORIAL: unos post-its que explican las opciones. Va
     // el primero en cada campaña nueva (se puede quitar como cualquiera).
     // Uno para el ordenador y otro para la tableta (la app de Android: con
     // el dedo, sin teclado), con las tarjetas en el mismo orden.
     // La de los modos, igual en los dos.
-    const TARJETA_MODOS = ["🧩 Los modos", "lima", "<p>Abajo a la derecha está el menú de los <strong>modos</strong>: pantallas"
-        + " que se llenan solas, sin mover ventanas.</p><ul><li><strong>⚔️ combate</strong>: a quién le toca y quién va después, el"
-        + " perfil de la criatura del turno, condiciones y reglas, y la iniciativa.</li><li><strong>📝 notas</strong>: tus"
-        + " documentos y seis post-its.</li><li><strong>🛡️ party</strong>: la ficha de cada personaje, como un libro.</li><li>En"
-        + " un hueco vacío, <strong>＋ elegir ventana</strong>; en el ✎ de una ventana, «🧩 hueco» la cambia por otra o le pone"
-        + " otra en pestaña.</li><li><strong>＋</strong> crea un modo tuyo, <strong>✎</strong> (junto a las pestañas) cambia el de"
-        + " ahora y <strong>▦ tableros</strong> vuelve a las pestañas.</li></ul>"];
+    const TARJETA_MODOS = [ocT("🧩 Los modos"), "lima", ocT("<p>Abajo a la derecha está el menú de los <strong>modos</strong>: pantallas que se llenan solas, sin mover ventanas.</p><ul><li><strong>⚔️ combate</strong>: a quién le toca y quién va después, el perfil de la criatura del turno, condiciones y reglas, y la iniciativa.</li><li><strong>📝 notas</strong>: tus documentos y seis post-its.</li><li><strong>🛡️ party</strong>: la ficha de cada personaje, como un libro.</li><li>En un hueco vacío, <strong>＋ elegir ventana</strong>; en el ✎ de una ventana, «🧩 hueco» la cambia por otra o le pone otra en pestaña.</li><li><strong>＋</strong> crea un modo tuyo, <strong>✎</strong> (junto a las pestañas) cambia el de ahora y <strong>▦ tableros</strong> vuelve a las pestañas.</li></ul>")];
     const TUTORIAL_ORDENADOR = [
-        ["👋 Bienvenida", "amarillo", "<p>Esto es tu <strong>pantalla de máster</strong>: un tablero con ventanas que pones, mueves y"
-            + " quitas a tu gusto.</p><ul><li>Las <strong>pestañas de arriba</strong> son tus tableros (por ejemplo, uno para"
-            + " combate y otro para la ciudad).</li><li>Cada ventana es una herramienta: la iniciativa, el bestiario, las"
-            + " reglas, notas…</li><li>Este tablero es el tutorial: cuando ya no lo necesites, quítalo con <strong>✎</strong>"
-            + " (arriba, junto a las pestañas).</li></ul>"],
-        ["🪟 Las ventanas", "celeste", "<ul><li><strong>Toca la barra</strong> de una ventana para plegarla o desplegarla.</li>"
-            + "<li><strong>Mantén pulsada la barra</strong> y arrastra para moverla.</li><li>La esquina de abajo a la derecha"
-            + " cambia su <strong>tamaño</strong>.</li><li><strong>✎</strong> le cambia el nombre, el color y el tamaño de la"
-            + " letra; <strong>−</strong> la pliega y <strong>✕</strong> la quita.</li><li>Suelta una ventana sobre la barra"
-            + " de otra y se <strong>juntan en pestañas</strong>; ⇱ la vuelve a sacar.</li></ul>"],
-        ["🗂️ Tableros y campañas", "verde", "<ul><li><strong>＋</strong> (junto a las pestañas) crea un tablero nuevo, vacío o"
-            + " desde una plantilla; <strong>✎</strong> cambia el de ahora: nombre, colores o quitarlo.</li><li>Mantén pulsada"
-            + " una pestaña para <strong>cambiarla de sitio</strong>.</li><li><strong>📚</strong> son tus campañas: cada una con"
-            + " sus tableros, su party y sus documentos, sin mezclarse.</li></ul>"],
-        ["🧰 Añadir herramientas", "naranja", "<p>El botón <strong>🧰</strong> (arriba a la izquierda) abre todas las"
-            + " ventanas que puedes poner, por grupos:</p><ul><li><strong>combate</strong>: iniciativa, condiciones,"
-            + " encuentros…</li><li><strong>consulta</strong>: reglas, conjuros, bestiario, tienda…</li>"
-            + "<li><strong>mesa</strong>: la party, sonido ambiente, efectos de sonido, música…</li><li><strong>mundo</strong>:"
-            + " generadores de nombres, PNJ, dungeons, negocios, botín…</li><li><strong>apuntes</strong>: post-its, dibujo,"
-            + " documentos…</li></ul>"],
-        ["🔍 Buscar, crear y ajustes", "morado", "<ul><li>El <strong>buscador</strong> de arriba encuentra conjuros,"
-            + " monstruos, reglas, objetos, rasgos, dotes y habilidades a la vez (también lo que añadas tú).</li>"
-            + "<li><strong>⚙</strong>: zoom, ordenar o quitar ventanas, atajos y las <strong>copias de seguridad</strong>"
-            + " (exportar e importar).</li><li><strong>Aa</strong>: tamaño del texto, letra más legible y los"
-            + " temas de color.</li></ul>"],
-        ["🛠️ Crear contenido nuevo", "turquesa", "<p>El botón <strong>🛠️</strong> (arriba a la izquierda, junto a 📚) abre"
-            + " el <strong>compendio</strong>: ahí añades monstruos, objetos, conjuros y más cosas (especies, dotes…).</p><ul>"
-            + "<li><strong>＋ nuevo</strong>: rellenas un formulario.</li><li><strong>⧉ copiar</strong> uno del SRD y"
-            + " cambiarlo, para tu versión.</li><li><strong>📋 pegar un bloque</strong> copiado de D&amp;D Beyond o de un PDF:"
-            + " el formulario se rellena solo.</li><li><strong>⬆ importar</strong> muchos a la vez con la plantilla.</li></ul>"
-            + "<p>Luego salen en el bestiario, los encuentros, la tienda, los conjuros y el buscador, con «🛠️ tuyo». Su"
-            + " primera pestaña, <strong>❓ cómo añadir</strong>, lo explica paso a paso.</p>"],
-        ["🎲 Los dados", "rosa", "<ul><li>El <strong>botón redondo</strong> de abajo a la derecha (o la tecla"
-            + " <strong>D</strong>) abre los dados; pulsándolo otra vez se pliegan.</li><li>Toca los dados que quieras,"
-            + " pon el modificador y <strong>tirar</strong>. Con ventaja o desventaja, el d20 se tira dos veces.</li>"
-            + "<li>Las últimas tiradas quedan debajo, para repetirlas.</li><li>En las fichas, los números con dados también"
-            + " se tiran tocándolos: prueba aquí con 1d20+5.</li></ul>"],
-        ["💾 Tus datos", "gris", "<ul><li>Todo lo que haces se guarda <strong>sólo en este dispositivo</strong>: no se"
-            + " sube a ningún sitio.</li><li>Si borras los datos del navegador, se pierde: haz de vez en cuando una copia con"
-            + " <strong>⚙ → exportar</strong>.</li><li>Para llevarlo a otro dispositivo: exportar aquí e"
-            + " <strong>importar</strong> allí.</li></ul>"],
-        ["⌨️ Atajos", "azul", "<p>Con teclado va todo más rápido (pulsa <strong>?</strong> para verlos todos):</p><ul>"
-            + "<li><strong>/</strong> buscar · <strong>A</strong> añadir una ventana · <strong>N</strong> post-it nuevo</li>"
-            + "<li><strong>D</strong> dados · <strong>I</strong> iniciativa · <strong>C</strong> campañas</li>"
-            + "<li><strong>[</strong> y <strong>]</strong> tablero anterior y siguiente</li><li><strong>+</strong> y"
-            + " <strong>−</strong> zoom del tablero</li></ul>"],
+        [ocT("👋 Bienvenida"), "amarillo", ocT("<p>Esto es tu <strong>pantalla de máster</strong>: un tablero con ventanas que pones, mueves y quitas a tu gusto.</p><ul><li>Las <strong>pestañas de arriba</strong> son tus tableros (por ejemplo, uno para combate y otro para la ciudad).</li><li>Cada ventana es una herramienta: la iniciativa, el bestiario, las reglas, notas…</li><li>Este tablero es el tutorial: cuando ya no lo necesites, quítalo con <strong>✎</strong> (arriba, junto a las pestañas).</li></ul>")],
+        [ocT("🪟 Las ventanas"), "celeste", ocT("<ul><li><strong>Toca la barra</strong> de una ventana para plegarla o desplegarla.</li><li><strong>Mantén pulsada la barra</strong> y arrastra para moverla.</li><li>La esquina de abajo a la derecha cambia su <strong>tamaño</strong>.</li><li><strong>✎</strong> le cambia el nombre, el color y el tamaño de la letra; <strong>−</strong> la pliega y <strong>✕</strong> la quita.</li><li>Suelta una ventana sobre la barra de otra y se <strong>juntan en pestañas</strong>; ⇱ la vuelve a sacar.</li></ul>")],
+        [ocT("🗂️ Tableros y campañas"), "verde", ocT("<ul><li><strong>＋</strong> (junto a las pestañas) crea un tablero nuevo, vacío o desde una plantilla; <strong>✎</strong> cambia el de ahora: nombre, colores o quitarlo.</li><li>Mantén pulsada una pestaña para <strong>cambiarla de sitio</strong>.</li><li><strong>📚</strong> son tus campañas: cada una con sus tableros, su party y sus documentos, sin mezclarse.</li></ul>")],
+        [ocT("🧰 Añadir herramientas"), "naranja", ocT("<p>El botón <strong>🧰</strong> (arriba a la izquierda) abre todas las ventanas que puedes poner, por grupos:</p><ul><li><strong>combate</strong>: iniciativa, condiciones, encuentros…</li><li><strong>consulta</strong>: reglas, conjuros, bestiario, tienda…</li><li><strong>mesa</strong>: la party, sonido ambiente, efectos de sonido, música…</li><li><strong>mundo</strong>: generadores de nombres, PNJ, dungeons, negocios, botín…</li><li><strong>apuntes</strong>: post-its, dibujo, documentos…</li></ul>")],
+        [ocT("🔍 Buscar, crear y ajustes"), "morado", ocT("<ul><li>El <strong>buscador</strong> de arriba encuentra conjuros, monstruos, reglas, objetos, rasgos, dotes y habilidades a la vez (también lo que añadas tú).</li><li><strong>⚙</strong>: zoom, ordenar o quitar ventanas, atajos y las <strong>copias de seguridad</strong> (exportar e importar).</li><li><strong>Aa</strong>: tamaño del texto, letra más legible y los temas de color.</li></ul>")],
+        [ocT("🛠️ Crear contenido nuevo"), "turquesa", ocT("<p>El botón <strong>🛠️</strong> (arriba a la izquierda, junto a 📚) abre el <strong>compendio</strong>: ahí añades monstruos, objetos, conjuros y más cosas (especies, dotes…).</p><ul><li><strong>＋ nuevo</strong>: rellenas un formulario.</li><li><strong>⧉ copiar</strong> uno del SRD y cambiarlo, para tu versión.</li><li><strong>📋 pegar un bloque</strong> copiado de D&amp;D Beyond o de un PDF: el formulario se rellena solo.</li><li><strong>⬆ importar</strong> muchos a la vez con la plantilla.</li></ul><p>Luego salen en el bestiario, los encuentros, la tienda, los conjuros y el buscador, con «🛠️ tuyo». Su primera pestaña, <strong>❓ cómo añadir</strong>, lo explica paso a paso.</p>")],
+        [ocT("🎲 Los dados"), "rosa", ocT("<ul><li>El <strong>botón redondo</strong> de abajo a la derecha (o la tecla <strong>D</strong>) abre los dados; pulsándolo otra vez se pliegan.</li><li>Toca los dados que quieras, pon el modificador y <strong>tirar</strong>. Con ventaja o desventaja, el d20 se tira dos veces.</li><li>Las últimas tiradas quedan debajo, para repetirlas.</li><li>En las fichas, los números con dados también se tiran tocándolos: prueba aquí con 1d20+5.</li></ul>")],
+        [ocT("💾 Tus datos"), "gris", ocT("<ul><li>Todo lo que haces se guarda <strong>sólo en este dispositivo</strong>: no se sube a ningún sitio.</li><li>Si borras los datos del navegador, se pierde: haz de vez en cuando una copia con <strong>⚙ → exportar</strong>.</li><li>Para llevarlo a otro dispositivo: exportar aquí e <strong>importar</strong> allí.</li></ul>")],
+        [ocT("⌨️ Atajos"), "azul", ocT("<p>Con teclado va todo más rápido (pulsa <strong>?</strong> para verlos todos):</p><ul><li><strong>/</strong> buscar · <strong>A</strong> añadir una ventana · <strong>N</strong> post-it nuevo</li><li><strong>D</strong> dados · <strong>I</strong> iniciativa · <strong>C</strong> campañas</li><li><strong>[</strong> y <strong>]</strong> tablero anterior y siguiente</li><li><strong>+</strong> y <strong>−</strong> zoom del tablero</li></ul>")],
         TARJETA_MODOS,
     ];
     const TUTORIAL_TABLETA = [
-        ["👋 Bienvenida", "amarillo", "<p>Esto es tu <strong>pantalla de máster</strong>: un tablero con ventanas que pones, mueves y"
-            + " quitas a tu gusto.</p><ul><li>Las <strong>pestañas de arriba</strong> son tus tableros (uno para combate, otro"
-            + " para la ciudad…); desliza la fila con el dedo para ver todas.</li><li>Cada ventana es una herramienta: la"
-            + " iniciativa, el bestiario, las reglas, notas…</li><li>Este tablero es el tutorial: cuando ya no lo necesites,"
-            + " quítalo con <strong>✎</strong> (arriba, junto a las pestañas).</li></ul>"],
-        ["✋ Con el dedo", "celeste", "<ul><li><strong>Desliza</strong> para moverte por el tablero; con <strong>dos"
-            + " dedos</strong>, pellizcando, lo acercas o lo alejas (también en los dibujos).</li><li><strong>Toca la"
-            + " barra</strong> de una ventana para plegarla o desplegarla.</li><li>Para moverla, <strong>deja el dedo quieto"
-            + " en su barra</strong> hasta que la tablet vibre y la barra se marque, y arrastra.</li><li>La <strong>esquina de"
-            + " abajo a la derecha</strong> cambia su tamaño.</li><li>Suelta una ventana sobre la barra de otra y se"
-            + " <strong>juntan en pestañas</strong>; ⇱ la vuelve a sacar.</li><li><strong>✎</strong> le cambia el nombre, el"
-            + " color y la letra; <strong>−</strong> la pliega y <strong>✕</strong> la quita. El botón <strong>atrás</strong>"
-            + " cierra lo que tengas abierto.</li></ul>"],
-        ["🗂️ Tableros y campañas", "verde", "<ul><li><strong>＋</strong> (junto a las pestañas) crea un tablero nuevo, vacío o"
-            + " desde una plantilla; <strong>✎</strong> cambia el de ahora: nombre, colores o quitarlo.</li><li>Deja el dedo"
-            + " sobre una pestaña para <strong>cambiarla de sitio</strong>.</li><li><strong>📚</strong> son tus campañas: cada"
-            + " una con sus tableros, su party y sus documentos, sin mezclarse.</li></ul>"],
+        [ocT("👋 Bienvenida"), "amarillo", ocT("<p>Esto es tu <strong>pantalla de máster</strong>: un tablero con ventanas que pones, mueves y quitas a tu gusto.</p><ul><li>Las <strong>pestañas de arriba</strong> son tus tableros (uno para combate, otro para la ciudad…); desliza la fila con el dedo para ver todas.</li><li>Cada ventana es una herramienta: la iniciativa, el bestiario, las reglas, notas…</li><li>Este tablero es el tutorial: cuando ya no lo necesites, quítalo con <strong>✎</strong> (arriba, junto a las pestañas).</li></ul>")],
+        [ocT("✋ Con el dedo"), "celeste", ocT("<ul><li><strong>Desliza</strong> para moverte por el tablero; con <strong>dos dedos</strong>, pellizcando, lo acercas o lo alejas (también en los dibujos).</li><li><strong>Toca la barra</strong> de una ventana para plegarla o desplegarla.</li><li>Para moverla, <strong>deja el dedo quieto en su barra</strong> hasta que la tablet vibre y la barra se marque, y arrastra.</li><li>La <strong>esquina de abajo a la derecha</strong> cambia su tamaño.</li><li>Suelta una ventana sobre la barra de otra y se <strong>juntan en pestañas</strong>; ⇱ la vuelve a sacar.</li><li><strong>✎</strong> le cambia el nombre, el color y la letra; <strong>−</strong> la pliega y <strong>✕</strong> la quita. El botón <strong>atrás</strong> cierra lo que tengas abierto.</li></ul>")],
+        [ocT("🗂️ Tableros y campañas"), "verde", ocT("<ul><li><strong>＋</strong> (junto a las pestañas) crea un tablero nuevo, vacío o desde una plantilla; <strong>✎</strong> cambia el de ahora: nombre, colores o quitarlo.</li><li>Deja el dedo sobre una pestaña para <strong>cambiarla de sitio</strong>.</li><li><strong>📚</strong> son tus campañas: cada una con sus tableros, su party y sus documentos, sin mezclarse.</li></ul>")],
         TUTORIAL_ORDENADOR[3],
-        ["🔍 Buscar, crear y ajustes", "morado", "<ul><li>El <strong>buscador</strong> de arriba encuentra conjuros,"
-            + " monstruos, reglas, objetos, rasgos, dotes y habilidades a la vez (también lo que añadas tú).</li>"
-            + "<li><strong>⚙</strong>: zoom, ordenar o quitar ventanas, las <strong>copias de seguridad</strong>, dónde se"
-            + " guarda, que la pantalla no se apague y buscar actualizaciones.</li><li><strong>Aa</strong>: tamaño del texto,"
-            + " letra más legible y los temas de color.</li></ul>"],
+        [ocT("🔍 Buscar, crear y ajustes"), "morado", ocT("<ul><li>El <strong>buscador</strong> de arriba encuentra conjuros, monstruos, reglas, objetos, rasgos, dotes y habilidades a la vez (también lo que añadas tú).</li><li><strong>⚙</strong>: zoom, ordenar o quitar ventanas, las <strong>copias de seguridad</strong>, dónde se guarda, que la pantalla no se apague y buscar actualizaciones.</li><li><strong>Aa</strong>: tamaño del texto, letra más legible y los temas de color.</li></ul>")],
         TUTORIAL_ORDENADOR[5],
-        ["🎲 Los dados", "rosa", "<ul><li>El <strong>botón redondo</strong> de abajo a la derecha abre los dados; tocándolo"
-            + " otra vez se pliegan.</li><li>Toca los dados que quieras, pon el modificador y <strong>tirar</strong>. Con"
-            + " ventaja o desventaja, el d20 se tira dos veces.</li><li>Las últimas tiradas quedan debajo, para"
-            + " repetirlas.</li><li>En las fichas, los números con dados también se tiran tocándolos: prueba aquí con"
-            + " 1d20+5.</li></ul>"],
-        ["💾 Tus datos", "gris", "<ul><li>Todo se guarda <strong>sólo en esta tablet</strong>: no se sube a ningún"
-            + " sitio.</li><li>Dentro de la app, si la desinstalas, se pierde. Mejor en una <strong>carpeta</strong> (⚙ →"
-            + " dónde se guarda): sigue ahí, se puede copiar al ordenador y la app deja una copia al día.</li><li>Haz de vez"
-            + " en cuando una copia con <strong>⚙ → exportar</strong>; para llevarlo a otro sitio, <strong>importar</strong>"
-            + " allí.</li><li>Desde otras apps, <strong>Compartir</strong> o <strong>Abrir con</strong> trae copias,"
-            + " imágenes, PDF y audios.</li></ul>"],
-        ["📺 En la mesa", "azul", "<ul><li>La <strong>pantalla de jugadores</strong> sale en la tele o el monitor si los"
-            + " conectas por cable; si no, en otra ventana, al lado si cabe.</li><li>La <strong>música</strong> sigue sonando"
-            + " aunque dejes la app detrás o apagues la pantalla, y los botones de volumen son los suyos.</li><li>Mientras la"
-            + " app está a la vista, <strong>la pantalla no se apaga</strong> (se cambia en ⚙).</li></ul>"],
+        [ocT("🎲 Los dados"), "rosa", ocT("<ul><li>El <strong>botón redondo</strong> de abajo a la derecha abre los dados; tocándolo otra vez se pliegan.</li><li>Toca los dados que quieras, pon el modificador y <strong>tirar</strong>. Con ventaja o desventaja, el d20 se tira dos veces.</li><li>Las últimas tiradas quedan debajo, para repetirlas.</li><li>En las fichas, los números con dados también se tiran tocándolos: prueba aquí con 1d20+5.</li></ul>")],
+        [ocT("💾 Tus datos"), "gris", ocT("<ul><li>Todo se guarda <strong>sólo en esta tablet</strong>: no se sube a ningún sitio.</li><li>Dentro de la app, si la desinstalas, se pierde. Mejor en una <strong>carpeta</strong> (⚙ → dónde se guarda): sigue ahí, se puede copiar al ordenador y la app deja una copia al día.</li><li>Haz de vez en cuando una copia con <strong>⚙ → exportar</strong>; para llevarlo a otro sitio, <strong>importar</strong> allí.</li><li>Desde otras apps, <strong>Compartir</strong> o <strong>Abrir con</strong> trae copias, imágenes, PDF y audios.</li></ul>")],
+        [ocT("📺 En la mesa"), "azul", ocT("<ul><li>La <strong>pantalla de jugadores</strong> sale en la tele o el monitor si los conectas por cable; si no, en otra ventana, al lado si cabe.</li><li>La <strong>música</strong> sigue sonando aunque dejes la app detrás o apagues la pantalla, y los botones de volumen son los suyos.</li><li>Mientras la app está a la vista, <strong>la pantalla no se apaga</strong> (se cambia en ⚙).</li></ul>")],
         TARJETA_MODOS,
     ];
     const TUTORIAL = EN_ANDROID ? TUTORIAL_TABLETA : TUTORIAL_ORDENADOR;
     // Los tableros de tutorial de antes: la nota nueva del compendio, y la
     // de «buscar» sin lo del ＋ de al lado del buscador (que ya no está).
     function ponerAlDiaTutorial() {
-        const nueva = TUTORIAL.find((t) => t[0] === "🛠️ Crear contenido nuevo");
-        const buscar = TUTORIAL.find((t) => t[0] === "🔍 Buscar, crear y ajustes");
+        const nueva = TUTORIAL.find((t) => t[0] === ocT("🛠️ Crear contenido nuevo"));
+        const buscar = TUTORIAL.find((t) => t[0] === ocT("🔍 Buscar, crear y ajustes"));
         let algo = false;
         todas.campanas.forEach((c) => c.perfiles.filter((pf) => pf.nombre === "📖 tutorial").forEach((pf) => {
             // En la app de Android, las tarjetas del de ordenador que siguen
@@ -18851,7 +18685,7 @@
                     }
                 });
             }
-            pf.modulos.filter((m) => m.tipo === "tarjeta" && m.titulo === "🔍 Buscar, crear y ajustes" && m.datos
+            pf.modulos.filter((m) => m.tipo === "tarjeta" && m.titulo === ocT("🔍 Buscar, crear y ajustes") && m.datos
                 && /tus\s+creaciones/.test(m.datos.html || "")).forEach((m) => {
                 m.datos.html = buscar[2];
                 algo = true;
@@ -18904,7 +18738,7 @@
     }
     // Una campaña nueva: el tutorial y luego las plantillas de tableros.
     function crearCampana(nombre, unidades, edicion) {
-        const c = { id: "c" + siguienteCampana++, nombre: nombre || "campaña " + (todas.campanas.length + 1), pjs: [],
+        const c = { id: "c" + siguienteCampana++, nombre: nombre || ocT("campaña {n}", { n: todas.campanas.length + 1 }), pjs: [],
             unidades: unidades === "metrico" ? "metrico" : "imperial", edicion: edicion === "2014" ? "2014" : "2024",
             perfiles: [perfilTutorial()].concat(perfilesDeSerie()).map((pf) => Object.assign(pf, { id: "p" + siguientePerfil++,
                 modulos: pf.modulos.map((m) => Object.assign(m, { id: "m" + siguienteId++ })) })) };
@@ -18926,7 +18760,7 @@
     // pasa al vuelo (un MutationObserver sobre la página), y al volver a
     // imperial se deja como estaba. Lo que escribes tú (las notas, los
     // campos) no se toca nunca. ----
-    const MEDIDAS = [["imperial", "📏 imperial: pies, libras y millas"], ["metrico", "📐 métrico: metros, kilos y kilómetros"]];
+    const MEDIDAS = [["imperial", ocT("📏 imperial: pies, libras y millas")], ["metrico", ocT("📐 métrico: metros, kilos y kilómetros")]];
     const unidadesDe = (c) => (c && c.unidades === "metrico" ? "metrico" : "imperial");
     // (Sin una letra, un número ni una coma delante: «2d4 pies» se queda.)
     const NUM = "\\d+(?:[.,]\\d+)*";
@@ -18990,7 +18824,7 @@
             }
         });
     });
-    const EDICIONES = [["2024", "📕 2024 (D&D de 2024, SRD 5.2)"], ["2014", "📗 2014 (D&D de 2014, SRD 5.1)"]];
+    const EDICIONES = [["2024", ocT("📕 2024 (D&D de 2024, SRD 5.2)")], ["2014", ocT("📗 2014 (D&D de 2014, SRD 5.1)")]];
     const edicionDe = (c) => (c && c.edicion === "2014" ? "2014" : "2024");
     // Al cambiar de edición: las reglas, el buscador y las ventanas, otra vez.
     function aplicarEdicion() {
@@ -19029,8 +18863,8 @@
     }
     // Elegir las medidas o la edición (al crear una campaña): las opciones,
     // sin ninguna marcada, para que se elija. .valor() da la elegida o "".
-    const elegirUnidades = (id) => elegirUna(id, "¿qué medidas usáis?", MEDIDAS);
-    const elegirEdicion = (id) => elegirUna(id, "¿con qué reglas jugáis?", EDICIONES);
+    const elegirUnidades = (id) => elegirUna(id, ocT("¿qué medidas usáis?"), MEDIDAS);
+    const elegirEdicion = (id) => elegirUna(id, ocT("¿con qué reglas jugáis?"), EDICIONES);
     function elegirUna(id, leyenda, opciones) {
         const caja = crear("fieldset", "master-unidades");
         caja.appendChild(crear("legend", "oc-dados-etiqueta", leyenda));
@@ -19055,28 +18889,18 @@
     // letras y la propia app. Salen en la entrada y en ⚙ opciones, con
     // enlaces para verlas en la web.
     const CREDITOS = [
-        ["📖 Reglas, monstruos, conjuros, objetos, rasgos y dotes", "Este trabajo incluye material del System Reference"
-            + " Document 5.2 («SRD 5.2») de Wizards of the Coast LLC, disponible en dndbeyond.com/srd. El SRD 5.2 tiene licencia"
-            + " Creative Commons Reconocimiento 4.0 Internacional (CC BY 4.0). Está traducido al español: no es una traducción"
-            + " oficial. Los rasgos y dotes se han preparado a partir de 5e-bits/5e-database (MIT).",
-        [["el SRD 5.2", "https://www.dndbeyond.com/srd"], ["la licencia CC BY 4.0", "https://creativecommons.org/licenses/by/4.0/deed.es"],
+        ["📖 Reglas, monstruos, conjuros, objetos, rasgos y dotes", ocT("Este trabajo incluye material del System Reference Document 5.2 («SRD 5.2») de Wizards of the Coast LLC, disponible en dndbeyond.com/srd. El SRD 5.2 tiene licencia Creative Commons Reconocimiento 4.0 Internacional (CC BY 4.0). Está traducido al español: no es una traducción oficial. Los rasgos y dotes se han preparado a partir de 5e-bits/5e-database (MIT)."),
+        [[ocT("el SRD 5.2"), "https://www.dndbeyond.com/srd"], [ocT("la licencia CC BY 4.0"), "https://creativecommons.org/licenses/by/4.0/deed.es"],
             ["5e-database", "https://github.com/5e-bits/5e-database"]]],
-        ["📗 Reglas, monstruos, conjuros y objetos de 2014", "Esta obra incluye materiales extraídos del Documento de referencia del"
-            + " sistema 5.1 («SRD 5.1») de Wizards of the Coast LLC, que está disponible en"
-            + " https://dnd.wizards.com/es/resources/systems-reference-document. El SRD 5.1 tiene la licencia Creative Commons"
-            + " Atribución/Reconocimiento 4.0 Licencia Pública Internacional, que está disponible en"
-            + " https://creativecommons.org/licenses/by/4.0/legalcode.es.",
-        [["el SRD 5.1", "https://dnd.wizards.com/es/resources/systems-reference-document"],
-            ["la licencia CC BY 4.0", "https://creativecommons.org/licenses/by/4.0/legalcode.es"]]],
-        ["🔊 Sonidos", "Las grabaciones de sonido ambiente y efectos (cuando vienen con la app) son de la Google Sound Library,"
-            + " con licencia CC BY 4.0. Tus propios audios son tuyos y se quedan en tu dispositivo.",
-        [["Google Sound Library", "https://developers.google.com/assistant/tools/sound-library"],
-            ["la licencia CC BY 4.0", "https://creativecommons.org/licenses/by/4.0/deed.es"]]],
-        ["🔤 Tipografías", "Space Grotesk, DM Mono, Jersey 10, Pangolin, Patrick Hand, Caveat, Inter, Pixelify Sans, VT323, Atkinson Hyperlegible y Noto, con licencia SIL Open Font"
-            + " License 1.1.", [["la licencia OFL", "https://openfontlicense.org"]]],
-        ["🧩 La app", "Pantalla de máster, de Richi (rperezbarreda). El código tiene licencia MIT. Dungeons & Dragons y D&D son"
-            + " marcas de Wizards of the Coast; esta app no está afiliada ni respaldada por ellos.",
-        [["la licencia MIT", "https://opensource.org/license/mit"]]]
+        ["📗 Reglas, monstruos, conjuros y objetos de 2014", ocT("Esta obra incluye materiales extraídos del Documento de referencia del sistema 5.1 («SRD 5.1») de Wizards of the Coast LLC, que está disponible en https://dnd.wizards.com/es/resources/systems-reference-document. El SRD 5.1 tiene la licencia Creative Commons Atribución/Reconocimiento 4.0 Licencia Pública Internacional, que está disponible en https://creativecommons.org/licenses/by/4.0/legalcode.es."),
+        [[ocT("el SRD 5.1"), "https://dnd.wizards.com/es/resources/systems-reference-document"],
+            [ocT("la licencia CC BY 4.0"), "https://creativecommons.org/licenses/by/4.0/legalcode.es"]]],
+        ["🔊 Sonidos", ocT("Las grabaciones de sonido ambiente y efectos (cuando vienen con la app) son de la Google Sound Library, con licencia CC BY 4.0. Tus propios audios son tuyos y se quedan en tu dispositivo."),
+        [[ocT("Google Sound Library"), "https://developers.google.com/assistant/tools/sound-library"],
+            [ocT("la licencia CC BY 4.0"), "https://creativecommons.org/licenses/by/4.0/deed.es"]]],
+        ["🔤 Tipografías", ocT("Space Grotesk, DM Mono, Jersey 10, Pangolin, Patrick Hand, Caveat, Inter, Pixelify Sans, VT323, Atkinson Hyperlegible y Noto, con licencia SIL Open Font License 1.1."), [[ocT("la licencia OFL"), "https://openfontlicense.org"]]],
+        ["🧩 La app", ocT("Pantalla de máster, de Richi (rperezbarreda). El código tiene licencia MIT. Dungeons & Dragons y D&D son marcas de Wizards of the Coast; esta app no está afiliada ni respaldada por ellos."),
+        [[ocT("la licencia MIT"), "https://opensource.org/license/mit"]]]
     ];
     function cuerpoCreditos() {
         const cuerpo = crear("div", "master-creditos");
@@ -19089,7 +18913,7 @@
                 a.href = url;
                 a.target = "_blank";
                 a.rel = "noopener noreferrer";
-                a.setAttribute("aria-label", "Ver " + nombre + " en la web (se abre aparte)");
+                a.setAttribute("aria-label", ocT("Ver {nombre} en la web (se abre aparte)", { nombre: nombre }));
                 fila.appendChild(a);
             });
             sec.appendChild(fila);
@@ -19098,7 +18922,7 @@
         return cuerpo;
     }
     function verCreditos(vuelta) {
-        window.ocVentana.abrir({ titulo: "licencias y créditos", cuerpo: cuerpoCreditos(), vuelta, clase: "es-ancha" });
+        window.ocVentana.abrir({ titulo: ocT("licencias y créditos"), cuerpo: cuerpoCreditos(), vuelta, clase: "es-ancha" });
     }
 
     // LA ENTRADA: al abrir la app, con qué campaña se juega (como un
@@ -19112,7 +18936,7 @@
         const icono = crear("img", "master-entrada-icono");
         icono.src = "imagenes/icono.svg";
         icono.alt = "";
-        const titulo = crear("h2", "master-entrada-titulo", "Pantalla de máster");
+        const titulo = crear("h2", "master-entrada-titulo", ocT("Pantalla de máster"));
         titulo.id = "master-entrada-titulo";
         caja.append(icono, titulo);
         const principal = document.querySelector(".app-principal") || lienzo.closest("main");
@@ -19129,62 +18953,60 @@
             if (c !== todo || sinGuardarTodavia) {
                 activarCampana(c);
             } else {
-                avisar("Campaña: " + c.nombre + ".");
+                avisar(ocT("Campaña: {nombre}.", { nombre: c.nombre }));
             }
             const p = document.getElementById("master-pestana-" + estado.id);
             (p || botonCampana).focus();
         }
         if (!sinGuardarTodavia) {
-            caja.appendChild(crear("p", "master-entrada-texto", "¿Con qué campaña jugáis hoy?"));
+            caja.appendChild(crear("p", "master-entrada-texto", ocT("¿Con qué campaña jugáis hoy?")));
             const ul = crear("ul", "master-entrada-lista");
-            ul.setAttribute("aria-label", "Tus campañas");
+            ul.setAttribute("aria-label", ocT("Tus campañas"));
             todas.campanas.forEach((c) => {
                 const li = crear("li");
                 const b = botonDe("master-entrada-campana", "", () => entrar(c));
                 b.append(crear("span", "master-entrada-nombre", "📚 " + c.nombre), crear("span", "master-entrada-detalle",
-                    c.perfiles.length + (c.perfiles.length === 1 ? " tablero" : " tableros") + " · " + c.pjs.length
-                    + (c.pjs.length === 1 ? " personaje" : " personajes") + (c === todo ? " · la última" : "")));
+                    c.perfiles.length + (c.perfiles.length === 1 ? ocT(" tablero") : ocT(" tableros")) + " · " + c.pjs.length
+                    + (c.pjs.length === 1 ? ocT(" personaje") : ocT(" personajes")) + (c === todo ? ocT(" · la última") : "")));
                 li.appendChild(b);
                 ul.appendChild(li);
             });
             caja.appendChild(ul);
         } else {
-            caja.appendChild(crear("p", "master-entrada-texto", "¡Hola! Para empezar, crea tu primera campaña: ponle el nombre"
-                + " que quieras (lo puedes cambiar luego)."));
+            caja.appendChild(crear("p", "master-entrada-texto", ocT("¡Hola! Para empezar, crea tu primera campaña: ponle el nombre que quieras (lo puedes cambiar luego).")));
         }
         const form = crear("form", "master-entrada-form");
-        const et = crear("label", "oc-dados-etiqueta", sinGuardarTodavia ? "nombre de la campaña" : "o crea una nueva");
+        const et = crear("label", "oc-dados-etiqueta", sinGuardarTodavia ? ocT("nombre de la campaña") : ocT("o crea una nueva"));
         const input = crear("input", "oc-dados-texto");
         input.id = "master-entrada-nombre";
         input.maxLength = 40;
         input.autocomplete = "off";
-        input.placeholder = "La maldición de la torre, Los de los martes…";
+        input.placeholder = ocT("La maldición de la torre, Los de los martes…");
         if (sinGuardarTodavia) {
             input.required = true;
             input.setAttribute("aria-required", "true");
         }
         et.htmlFor = input.id;
-        const crearB = crear("button", "oc-vida-accion es-principal", "＋ crear y empezar");
+        const crearB = crear("button", "oc-vida-accion es-principal", ocT("＋ crear y empezar"));
         crearB.type = "submit";
         const medidas = elegirUnidades("master-entrada-unidades");
         const edicion = elegirEdicion("master-entrada-edicion");
-        form.append(et, input, edicion, medidas, crearB, crear("p", "oc-hoja-nota", "Viene con un tablero de tutorial que explica las opciones,"
-            + " y con tableros de ejemplo para combate, tiendas, PNJ…"));
+        form.append(et, input, edicion, medidas, crearB, crear("p", "oc-hoja-nota", ocT("Viene con un tablero de tutorial que explica las opciones, y con tableros de ejemplo para combate, tiendas, PNJ…")));
         form.addEventListener("submit", (e) => {
             e.preventDefault();
             const n = input.value.trim();
             if (!n) {
-                avisar("Ponle un nombre a la campaña.");
+                avisar(ocT("Ponle un nombre a la campaña."));
                 input.focus();
                 return;
             }
             if (!edicion.valor()) {
-                avisar("Elige con qué reglas jugáis: las de 2024 o las de 2014. Se puede cambiar luego en ⚙ opciones.");
+                avisar(ocT("Elige con qué reglas jugáis: las de 2024 o las de 2014. Se puede cambiar luego en ⚙ opciones."));
                 edicion.foco();
                 return;
             }
             if (!medidas.valor()) {
-                avisar("Elige qué medidas usáis: imperial (pies) o métrico (metros). Se puede cambiar luego en ⚙ opciones.");
+                avisar(ocT("Elige qué medidas usáis: imperial (pies) o métrico (metros). Se puede cambiar luego en ⚙ opciones."));
                 medidas.foco();
                 return;
             }
@@ -19196,7 +19018,7 @@
                 todas.campanas.push(c);
             }
             entrar(c);
-            avisar("Campaña creada: " + n + ". Empieza por el tablero «tutorial».");
+            avisar(ocT("Campaña creada: {n}. Empieza por el tablero «tutorial».", { n: n }));
         });
         caja.appendChild(form);
         // Con el ejecutable, la carpeta empieza vacía; si este navegador tiene
@@ -19209,7 +19031,7 @@
         }
         if (antes) {
             const caja2 = crear("div", "master-entrada-traer");
-            const traerB = botonDe("oc-vida-accion", "📥 traer lo de antes", () => {
+            const traerB = botonDe("oc-vida-accion", ocT("📥 traer lo de antes"), () => {
                 traerB.disabled = true;
                 const nav = window.ocAlmacen.navegador;
                 for (let i = 0; i < nav.length; i++) {
@@ -19222,20 +19044,17 @@
                     .then(() => window.ocAlmacen.guardarYa()).then(() => location.reload())
                     .catch(() => {
                         traerB.disabled = false;
-                        avisar("No se ha podido traer todo.");
+                        avisar(ocT("No se ha podido traer todo."));
                     });
             });
             caja2.append(crear("p", "oc-hoja-nota", EN_ANDROID
-                ? "Esta app tiene guardado lo de antes de elegir la carpeta (dentro de la app). La carpeta empieza vacía;"
-                    + " si quieres seguir con aquello, tráelo aquí:"
-                : "Este ordenador tiene guardado lo de una versión anterior de la pantalla"
-                + " (en el navegador). Esta carpeta empieza vacía; si quieres seguir con aquello, tráelo aquí:"), traerB);
+                ? ocT("Esta app tiene guardado lo de antes de elegir la carpeta (dentro de la app). La carpeta empieza vacía; si quieres seguir con aquello, tráelo aquí:")
+                : ocT("Este ordenador tiene guardado lo de una versión anterior de la pantalla (en el navegador). Esta carpeta empieza vacía; si quieres seguir con aquello, tráelo aquí:")), traerB);
             caja.appendChild(caja2);
         }
         if (sinGuardarTodavia) {
             const traer = crear("div", "master-entrada-traer");
-            traer.append(crear("p", "oc-hoja-nota", "¿Tienes una copia de seguridad (de esta app o de la pantalla de máster del"
-                + " blog)? Impórtala:"), copias(() => {}));
+            traer.append(crear("p", "oc-hoja-nota", ocT("¿Tienes una copia de seguridad (de esta app o de la pantalla de máster del blog)? Impórtala:")), copias(() => {}));
             traer.querySelectorAll("button").forEach((b) => {
                 if (/exportar/.test(b.textContent)) {
                     b.remove();
@@ -19261,22 +19080,19 @@
             if (dias >= 14) {
                 const recuerdo = crear("div", "master-entrada-traer");
                 const otras = crear("div", "master-anadir-otras");
-                otras.append(copias(() => {}).querySelector("button"), botonDe("oc-vida-accion", "📁 guardar en una carpeta",
+                otras.append(copias(() => {}).querySelector("button"), botonDe("oc-vida-accion", ocT("📁 guardar en una carpeta"),
                     () => window.ocAndroid.elegirCarpeta()));
-                recuerdo.append(crear("p", "oc-hoja-nota", (c.ultima ? "💾 Tu última copia de seguridad es de hace " + dias
-                    + " días." : "💾 Aún no has hecho ninguna copia de seguridad.") + " Lo guardas dentro de la app: si la"
-                    + " desinstalas, se pierde. Exporta una copia, o guárdalo en una carpeta (sigue ahí aunque desinstales)."),
+                recuerdo.append(crear("p", "oc-hoja-nota", ocT("{n} Lo guardas dentro de la app: si la desinstalas, se pierde. Exporta una copia, o guárdalo en una carpeta (sigue ahí aunque desinstales).", { n: c.ultima ? ocT("💾 Tu última copia de seguridad es de hace {dias} días.", { dias: dias }) : ocT("💾 Aún no has hecho ninguna copia de seguridad.") })),
                 otras);
                 caja.appendChild(recuerdo);
             }
         }
         caja.appendChild(crear("p", "oc-hoja-nota master-entrada-privado", EN_CARPETA && EN_ANDROID
-            ? "🔒 Todo se guarda en tu carpeta «" + window.ocAlmacen.nombre + "», en este dispositivo."
-            : EN_CARPETA ? "🔒 Todo se guarda en la carpeta «mis-datos», junto al programa." : "🔒 Todo se guarda sólo en este dispositivo."));
+            ? ocT("🔒 Todo se guarda en tu carpeta «{nombre}», en este dispositivo.", { nombre: window.ocAlmacen.nombre })
+            : EN_CARPETA ? ocT("🔒 Todo se guarda en la carpeta «mis-datos», junto al programa.") : ocT("🔒 Todo se guarda sólo en este dispositivo.")));
         // El aviso de licencias, plegado (también en ⚙ opciones).
         const avisoLic = crear("details", "master-entrada-licencias");
-        avisoLic.append(crear("summary", "", "📜 Incluye material del SRD 5.2 de Wizards of the Coast (CC BY 4.0) · licencias y"
-            + " créditos"), cuerpoCreditos());
+        avisoLic.append(crear("summary", "", ocT("📜 Incluye material del SRD 5.2 de Wizards of the Coast (CC BY 4.0) · licencias y créditos")), cuerpoCreditos());
         caja.appendChild(avisoLic);
         fondo.appendChild(caja);
         fondo.addEventListener("keydown", (e) => {
@@ -19330,27 +19146,24 @@
         fondo.setAttribute("aria-labelledby", "master-aviso-web-titulo");
         fondo.setAttribute("aria-describedby", "master-aviso-web-texto");
         const caja = crear("div", "master-entrada-caja");
-        const titulo = crear("h2", "master-entrada-titulo", "⬇️ Mejor, la app");
+        const titulo = crear("h2", "master-entrada-titulo", ocT("⬇️ Mejor, la app"));
         titulo.id = "master-aviso-web-titulo";
         const texto = crear("div");
         texto.id = "master-aviso-web-texto";
-        texto.append(crear("p", "master-entrada-texto", "Recomiendo descargar la aplicación en vez de usar la versión web,"
-            + " por el simple hecho de que la web está alojada en Cloudflare y los días de fútbol queda inutilizada."),
-        crear("p", "oc-hoja-nota", "Gratis y sin conexión. Para Windows, macOS y Linux: descomprime el .zip y ábrela con doble clic."
-            + " Para tablets Android: el .apk. Si ya tienes algo guardado aquí, haz una copia de seguridad (⚙ opciones)"
-            + " e impórtala en la app."));
-        const bajar = crear("a", "oc-vida-accion", "⬇️ descargar la app");
+        texto.append(crear("p", "master-entrada-texto", ocT("Recomiendo descargar la aplicación en vez de usar la versión web, por el simple hecho de que la web está alojada en Cloudflare y los días de fútbol queda inutilizada.")),
+        crear("p", "oc-hoja-nota", ocT("Gratis y sin conexión. Para Windows, macOS y Linux: descomprime el .zip y ábrela con doble clic. Para tablets Android: el .apk. Si ya tienes algo guardado aquí, haz una copia de seguridad (⚙ opciones) e impórtala en la app.")));
+        const bajar = crear("a", "oc-vida-accion", ocT("⬇️ descargar la app"));
         bajar.href = "https://github.com/rperezbarreda/pantalla_master/releases/latest";
         bajar.target = "_blank";
         bajar.rel = "noopener noreferrer";
-        bajar.setAttribute("aria-label", "Descargar la app para Windows, macOS, Linux o tablets Android (se abre aparte, en GitHub)");
-        const seguir = botonDe("oc-vida-accion", "seguir en la web", () => cerrarAviso());
+        bajar.setAttribute("aria-label", ocT("Descargar la app para Windows, macOS, Linux o tablets Android (se abre aparte, en GitHub)"));
+        const seguir = botonDe("oc-vida-accion", ocT("seguir en la web"), () => cerrarAviso());
         const botones = crear("div", "master-anadir-otras");
         botones.append(bajar, seguir);
         const marca = crear("label", "master-aviso-web-marca");
         const casilla = crear("input");
         casilla.type = "checkbox";
-        marca.append(casilla, document.createTextNode(" no volver a enseñar este aviso"));
+        marca.append(casilla, document.createTextNode(ocT(" no volver a enseñar este aviso")));
         caja.append(titulo, texto, botones, marca);
         fondo.appendChild(caja);
         entrada.inert = true;
@@ -19410,7 +19223,7 @@
             });
             const x = JSON.parse(texto);
             x.id = "c" + siguienteCampana++;
-            x.nombre = (c.nombre + " (copia)").slice(0, 40);
+            x.nombre = (ocT("{nombre} (copia)", { nombre: c.nombre })).slice(0, 40);
             const perfiles = {};
             x.perfiles.forEach((pf) => {
                 const nuevo = "p" + siguientePerfil++;
@@ -19436,9 +19249,9 @@
 
     function verCampanas() {
         const cuerpo = crear("div", "master-campanas");
-        cuerpo.appendChild(crear("p", "oc-hoja-nota", "Cada campaña tiene sus pestañas, sus ventanas y su party: no se mezclan."));
+        cuerpo.appendChild(crear("p", "oc-hoja-nota", ocT("Cada campaña tiene sus pestañas, sus ventanas y su party: no se mezclan.")));
         const ul = crear("ul", "master-anadir-lista");
-        ul.setAttribute("aria-label", "Campañas");
+        ul.setAttribute("aria-label", ocT("Campañas"));
         todas.campanas.forEach((c) => {
             const li = crear("li");
             const ahora = c === todo;
@@ -19452,8 +19265,8 @@
             const em = crear("span", "master-anadir-emoji", ahora ? "📖" : "📚");
             em.setAttribute("aria-hidden", "true");
             b.append(em, crear("span", "master-anadir-nombre", c.nombre), crear("span", "master-anadir-desc",
-                c.perfiles.length + (c.perfiles.length === 1 ? " pestaña" : " pestañas") + " · " + c.pjs.length +
-                (c.pjs.length === 1 ? " personaje" : " personajes") + (ahora ? " · la de ahora" : "")));
+                c.perfiles.length + (c.perfiles.length === 1 ? ocT(" pestaña") : ocT(" pestañas")) + " · " + c.pjs.length +
+                (c.pjs.length === 1 ? ocT(" personaje") : ocT(" personajes")) + (ahora ? ocT(" · la de ahora") : "")));
             if (ahora) {
                 b.setAttribute("aria-current", "true");
             }
@@ -19480,14 +19293,14 @@
         };
         const medidasNueva = elegirUnidades("master-campana-unidades");
         const edicionNueva = elegirEdicion("master-campana-edicion");
-        const nueva = formulario("master-campana-nueva", "campaña nueva", "campaña " + (todas.campanas.length + 1), "＋ crear", (n) => {
+        const nueva = formulario("master-campana-nueva", ocT("campaña nueva"), ocT("campaña {n}", { n: todas.campanas.length + 1 }), ocT("＋ crear"), (n) => {
             if (!edicionNueva.valor()) {
-                avisar("Elige con qué reglas jugáis: las de 2024 o las de 2014.");
+                avisar(ocT("Elige con qué reglas jugáis: las de 2024 o las de 2014."));
                 edicionNueva.foco();
                 return;
             }
             if (!medidasNueva.valor()) {
-                avisar("Elige qué medidas usáis: imperial (pies) o métrico (metros).");
+                avisar(ocT("Elige qué medidas usáis: imperial (pies) o métrico (metros)."));
                 medidasNueva.foco();
                 return;
             }
@@ -19497,7 +19310,7 @@
             activarCampana(c);
             botonCampana.focus();
         });
-        const renombrarla = formulario("master-campana-nombre", "nombre de esta campaña", todo.nombre, "guardar", (n) => {
+        const renombrarla = formulario("master-campana-nombre", ocT("nombre de esta campaña"), todo.nombre, "guardar", (n) => {
             if (!n) {
                 return;
             }
@@ -19506,13 +19319,13 @@
             pintarCampana();
             cerrar();
             botonCampana.focus();
-            avisar("Campaña: " + n + ".");
+            avisar(ocT("Campaña: {n}.", { n: n }));
         });
         let seguro = false;
-        const borrar = botonDe("oc-vida-accion", "🗑️ borrar esta campaña", () => {
+        const borrar = botonDe("oc-vida-accion", ocT("🗑️ borrar esta campaña"), () => {
             if (!seguro) {
                 seguro = true;
-                borrar.textContent = "🗑️ ¿seguro? se borran sus pestañas, ventanas y party: pulsa otra vez";
+                borrar.textContent = ocT("🗑️ ¿seguro? se borran sus pestañas, ventanas y party: pulsa otra vez");
                 return;
             }
             const i = todas.campanas.indexOf(todo);
@@ -19521,29 +19334,29 @@
             cerrar();
             activarCampana(todas.campanas[Math.max(0, i - 1)]);
             botonCampana.focus();
-            avisar("Borrada la campaña " + nombre + ".");
+            avisar(ocT("Borrada la campaña {nombre}.", { nombre: nombre }));
         });
         borrar.disabled = todas.campanas.length < 2;
         nueva.insertBefore(edicionNueva, nueva.querySelector("button"));
         nueva.insertBefore(medidasNueva, nueva.querySelector("button"));
-        const duplicar = botonDe("oc-vida-accion", "⧉ duplicar esta campaña", () => {
+        const duplicar = botonDe("oc-vida-accion", ocT("⧉ duplicar esta campaña"), () => {
             duplicar.disabled = true;
-            duplicar.textContent = "⧉ duplicando…";
+            duplicar.textContent = ocT("⧉ duplicando…");
             duplicarCampana(todo).then((x) => {
                 cerrar();
                 activarCampana(x);
                 botonCampana.focus();
-                avisar("Duplicada: ahora estás en «" + x.nombre + "» (la original sigue igual).");
+                avisar(ocT("Duplicada: ahora estás en «{nombre}» (la original sigue igual).", { nombre: x.nombre }));
             }).catch(() => {
                 duplicar.disabled = false;
-                duplicar.textContent = "⧉ duplicar esta campaña";
-                avisar("No se ha podido duplicar.");
+                duplicar.textContent = ocT("⧉ duplicar esta campaña");
+                avisar(ocT("No se ha podido duplicar."));
             });
-        }, "Duplicar la campaña " + todo.nombre + " (con sus tableros, party y documentos)");
+        }, ocT("Duplicar la campaña {nombre} (con sus tableros, party y documentos)", { nombre: todo.nombre }));
         const botonesC = crear("div", "master-anadir-otras");
         botonesC.append(duplicar, borrar);
         cuerpo.append(ul, nueva, renombrarla, botonesC);
-        const cerrar = window.ocVentana.abrir({ titulo: "campañas", cuerpo, vuelta: botonCampana, clase: "es-ancha" });
+        const cerrar = window.ocVentana.abrir({ titulo: ocT("campañas"), cuerpo, vuelta: botonCampana, clase: "es-ancha" });
     }
     pintarCampana();
     // LA BARRA, como un navegador: a la izquierda, pegado al tablero, 🧰
@@ -19553,20 +19366,20 @@
     // importar).
     botonAnadir.className = "master-pestana-mando master-herramientas";
     botonAnadir.textContent = "🧰";
-    botonAnadir.setAttribute("aria-label", "Añadir una ventana (herramientas)");
+    botonAnadir.setAttribute("aria-label", ocT("Añadir una ventana (herramientas)"));
     botonAnadir.setAttribute("aria-keyshortcuts", "A");
-    botonAnadir.title = "Herramientas: añadir una ventana (A)";
+    botonAnadir.title = ocT("Herramientas: añadir una ventana (A)");
     // ＋: el compendio (añadir monstruos, objetos, conjuros…), aparte.
     const botonCompendio = botonDe("master-crear", "🛠️", () => abrirCompendio(botonCompendio),
-        "Añadir al compendio: monstruos, objetos, conjuros…");
-    botonCompendio.title = "Añadir al compendio: monstruos, objetos, conjuros y más (con tutorial)";
+        ocT("Añadir al compendio: monstruos, objetos, conjuros…"));
+    botonCompendio.title = ocT("Añadir al compendio: monstruos, objetos, conjuros y más (con tutorial)");
     botonCompendio.setAttribute("aria-haspopup", "dialog");
     pestanas.append(botonAnadir, botonCampana, botonCompendio, marco, mandosPestanas);
 
     const mandos = crear("div", "master-barra-mandos");
     const zoomCaja = crear("div", "master-zoom");
     zoomCaja.setAttribute("role", "group");
-    zoomCaja.setAttribute("aria-label", "Zoom del tablero");
+    zoomCaja.setAttribute("aria-label", ocT("Zoom del tablero"));
     zoomCaja.append(menosZoom, botonZoom, masZoom);
     zoomCaja.hidden = !HAY_ZOOM;
     const buscador = montarBuscador();
@@ -19577,10 +19390,10 @@
         if (input.value.trim()) {
             input.dispatchEvent(new Event("input", { bubbles: true }));
         }
-    }, "Buscar");
-    botonBuscar.title = "Buscar (/)";
-    const botonOpciones = botonDe("master-pestana-mando master-opciones-boton", "⚙", () => verOpciones(), "Opciones del tablero");
-    botonOpciones.title = "Opciones: zoom, dados, atajos, ordenar, exportar…";
+    }, ocT("Buscar"));
+    botonBuscar.title = ocT("Buscar (/)");
+    const botonOpciones = botonDe("master-pestana-mando master-opciones-boton", "⚙", () => verOpciones(), ocT("Opciones del tablero"));
+    botonOpciones.title = ocT("Opciones: zoom, dados, atajos, ordenar, exportar…");
     botonOpciones.setAttribute("aria-haspopup", "dialog");
     mandos.append(buscador, botonBuscar, botonOpciones);
     barra.prepend(pestanas, mandos);
@@ -19593,125 +19406,111 @@
             cuerpo.appendChild(sec);
         };
         if (HAY_ZOOM && !enMovil.matches && !esModo(estado)) {
-            fila("Zoom del tablero", zoomCaja);
+            fila(ocT("Zoom del tablero"), zoomCaja);
         }
         const accion = (texto, alPulsar) => botonDe("oc-vida-accion", texto, () => {
             cerrar();
             alPulsar();
         });
         const herramientas = crear("div", "master-anadir-otras");
-        herramientas.append(accion("🎲 dados (D)", () => {
+        herramientas.append(accion(ocT("🎲 dados (D)"), () => {
             const d = document.querySelector(".oc-boton-dados");
             if (d) {
                 d.click();
             }
-        }), accion("⌨ atajos de teclado (?)", () => verAtajos()));
-        fila("A mano", herramientas);
+        }), accion(ocT("⌨ atajos de teclado (?)"), () => verAtajos()));
+        fila(ocT("A mano"), herramientas);
         if (estado.modulos.length && !esModo(estado)) {
             const otras = crear("div", "master-anadir-otras");
             let seguro = false;
-            const vaciar = botonDe("oc-vida-accion", "🗑️ quitar todas", () => {
+            const vaciar = botonDe("oc-vida-accion", ocT("🗑️ quitar todas"), () => {
                 if (!seguro) {
                     seguro = true;
-                    vaciar.textContent = "🗑️ ¿seguro? pulsa otra vez";
+                    vaciar.textContent = ocT("🗑️ ¿seguro? pulsa otra vez");
                     return;
                 }
                 cerrar();
                 estado.modulos = [];
                 pintarTodo();
                 guardar();
-                avisar("Pestaña vacía.");
+                avisar(ocT("Pestaña vacía."));
             });
-            otras.append(accion("▦ ordenar las ventanas", () => {
+            otras.append(accion(ocT("▦ ordenar las ventanas"), () => {
                 ordenar();
                 pintarTodo();
                 guardar();
-                avisar("Ordenadas.");
+                avisar(ocT("Ordenadas."));
             }), vaciar);
-            fila("Las ventanas de esta pestaña", otras);
+            fila(ocT("Las ventanas de esta pestaña"), otras);
         }
-        const notaMedidas = crear("p", "oc-hoja-nota", "En métrico, lo que sale en pantalla (monstruos, conjuros, reglas, objetos,"
-            + " generadores…) se pasa con la equivalencia de los manuales en español: 5 pies = 1,5 m, 1 libra = 0,5 kg,"
-            + " 1 milla = 1,5 km. Lo que escribes tú no se toca.");
+        const notaMedidas = crear("p", "oc-hoja-nota", ocT("En métrico, lo que sale en pantalla (monstruos, conjuros, reglas, objetos, generadores…) se pasa con la equivalencia de los manuales en español: 5 pies = 1,5 m, 1 libra = 0,5 kg, 1 milla = 1,5 km. Lo que escribes tú no se toca."));
         notaMedidas.dataset.sinMedidas = "";
-        fila("Reglas de esta campaña", botonesDe("edición", EDICIONES, edicionDe(todo), (v) => {
+        fila(ocT("Reglas de esta campaña"), botonesDe(ocT("edición"), EDICIONES, edicionDe(todo), (v) => {
             todo.edicion = v;
             guardar();
             aplicarEdicion();
-            avisar(v === "2014" ? "Reglas, monstruos y conjuros de 2014 (SRD 5.1)." : "Reglas, monstruos y conjuros de 2024 (SRD 5.2).");
-        }), crear("p", "oc-hoja-nota", "Cambia las reglas (estados, acciones, descansos…), el bestiario, los conjuros y los objetos"
-            + " (el equipo y los objetos mágicos de la tienda y del botín). Lo tuyo (tus monstruos, conjuros, objetos y reglas"
-            + " propias) sale con las dos."));
-        fila("Medidas de esta campaña", botonesDe("medidas", MEDIDAS, unidadesDe(todo), (v) => {
+            avisar(v === "2014" ? ocT("Reglas, monstruos y conjuros de 2014 (SRD 5.1).") : ocT("Reglas, monstruos y conjuros de 2024 (SRD 5.2)."));
+        }), crear("p", "oc-hoja-nota", ocT("Cambia las reglas (estados, acciones, descansos…), el bestiario, los conjuros y los objetos (el equipo y los objetos mágicos de la tienda y del botín). Lo tuyo (tus monstruos, conjuros, objetos y reglas propias) sale con las dos.")));
+        fila(ocT("Medidas de esta campaña"), botonesDe(ocT("medidas"), MEDIDAS, unidadesDe(todo), (v) => {
             todo.unidades = v;
             guardar();
             aplicarUnidades();
-            avisar(v === "metrico" ? "Medidas en metros, kilos y kilómetros." : "Medidas en pies, libras y millas.");
+            avisar(v === "metrico" ? ocT("Medidas en metros, kilos y kilómetros.") : ocT("Medidas en pies, libras y millas."));
         }), notaMedidas);
-        fila("Copia de seguridad", copias(() => cerrar()));
+        fila(ocT("Copia de seguridad"), copias(() => cerrar()));
         if (EN_ANDROID) {
             // Dónde se guarda: dentro de la app o en una carpeta (como
             // «mis-datos» en el programa; ver android/…/Carpeta.java).
             const donde = crear("div", "master-anadir-otras");
-            donde.append(botonDe("oc-vida-accion", EN_CARPETA ? "📁 cambiar de carpeta" : "📁 guardar en una carpeta", () => {
+            donde.append(botonDe("oc-vida-accion", EN_CARPETA ? ocT("📁 cambiar de carpeta") : ocT("📁 guardar en una carpeta"), () => {
                 cerrar();
                 window.ocAndroid.elegirCarpeta();
             }));
             if (EN_CARPETA) {
-                donde.append(botonDe("oc-vida-accion", "📱 guardarlo dentro de la app", () => {
+                donde.append(botonDe("oc-vida-accion", ocT("📱 guardarlo dentro de la app"), () => {
                     cerrar();
                     window.ocAndroid.quitarCarpeta();
                 }));
             }
-            fila("Dónde se guarda", crear("p", "oc-hoja-nota", EN_CARPETA
-                ? "En tu carpeta «" + window.ocAlmacen.nombre + "»: almacen.json y la carpeta «archivos» (imágenes, PDF y"
-                    + " música), como «mis-datos» en el programa del ordenador. Sigue ahí aunque desinstales la app, y se"
-                    + " puede copiar al ordenador y al revés."
-                : (window.ocAndroid.carpetaPerdida ? "La carpeta que elegiste ya no se puede usar (¿se borró o se movió?):"
-                    + " ahora se guarda dentro de la app. " : "")
-                    + "Dentro de la app: si la desinstalas, se borra. En una carpeta (por ejemplo, «Documentos/Pantalla de"
-                    + " máster») sigue ahí aunque desinstales la app y se puede copiar al ordenador: es como «mis-datos»"
-                    + " en el programa."), donde);
+            fila(ocT("Dónde se guarda"), crear("p", "oc-hoja-nota", EN_CARPETA
+                ? ocT("En tu carpeta «{nombre}»: almacen.json y la carpeta «archivos» (imágenes, PDF y música), como «mis-datos» en el programa del ordenador. Sigue ahí aunque desinstales la app, y se puede copiar al ordenador y al revés.", { nombre: window.ocAlmacen.nombre })
+                : ocT("{n}Dentro de la app: si la desinstalas, se borra. En una carpeta (por ejemplo, «Documentos/Pantalla de máster») sigue ahí aunque desinstales la app y se puede copiar al ordenador: es como «mis-datos» en el programa.", { n: window.ocAndroid.carpetaPerdida ? ocT("La carpeta que elegiste ya no se puede usar (¿se borró o se movió?): ahora se guarda dentro de la app. ") : "" })), donde);
         }
         if (PUEDE_ENCENDIDA) {
-            fila("La pantalla, durante la partida", botonesDe("pantalla", [["si", "💡 siempre encendida"],
-                ["no", "se apaga como siempre"]], encendidaElegida() ? "si" : "no", (v) => {
+            fila(ocT("La pantalla, durante la partida"), botonesDe(ocT("pantalla"), [["si", ocT("💡 siempre encendida")],
+                ["no", ocT("se apaga como siempre")]], encendidaElegida() ? "si" : "no", (v) => {
                 try {
                     localStorage.setItem(CLAVE_ENCENDIDA, v);
                 } catch (e) {
                     // Sin guardar: vale para esta vez.
                 }
                 aplicarEncendida();
-                avisar(v === "si" ? "La pantalla no se apagará sola mientras la pantalla de máster esté a la vista."
-                    : "La pantalla se apagará como siempre.");
-            }), crear("p", "oc-hoja-nota", "Con «siempre encendida», mientras la pantalla de máster está a la vista el"
-                + " dispositivo no se bloquea solo."));
+                avisar(v === "si" ? ocT("La pantalla no se apagará sola mientras la pantalla de máster esté a la vista.")
+                    : ocT("La pantalla se apagará como siempre."));
+            }), crear("p", "oc-hoja-nota", ocT("Con «siempre encendida», mientras la pantalla de máster está a la vista el dispositivo no se bloquea solo.")));
         }
         if (EN_ANDROID) {
             // ¿Hay versión nueva? Sólo se mira en GitHub al pulsar.
-            const notaVersion = crear("p", "oc-hoja-nota", "Tienes la versión " + window.ocAndroid.version
-                + ". Mira en GitHub si hay una nueva (sólo cuando lo pulses).");
+            const notaVersion = crear("p", "oc-hoja-nota", ocT("Tienes la versión {version}. Mira en GitHub si hay una nueva (sólo cuando lo pulses).", { version: window.ocAndroid.version }));
             const versiones = crear("div", "master-anadir-otras");
-            const buscarVersion = botonDe("oc-vida-accion", "🔄 buscar actualizaciones", () => {
+            const buscarVersion = botonDe("oc-vida-accion", ocT("🔄 buscar actualizaciones"), () => {
                 buscarVersion.disabled = true;
-                avisar("Mirando en GitHub…");
+                avisar(ocT("Mirando en GitHub…"));
                 fetch("__actualizacion", { cache: "no-store" }).then((r) => r.json()).then((x) => {
                     buscarVersion.disabled = false;
                     let dicho;
                     if (x.error) {
-                        dicho = "No se ha podido mirar: " + x.error + ".";
+                        dicho = ocT("No se ha podido mirar: {error}.", { error: x.error });
                     } else if (x.prueba) {
-                        dicho = "Es una versión de prueba: la última publicada es la " + (x.ultima || "?")
-                            + ". Las de prueba se bajan de GitHub Actions.";
+                        dicho = ocT("Es una versión de prueba: la última publicada es la {n}. Las de prueba se bajan de GitHub Actions.", { n: x.ultima || "?" });
                     } else if (!x.hay) {
-                        dicho = "Tienes la última versión (" + x.actual + ").";
+                        dicho = ocT("Tienes la última versión ({actual}).", { actual: x.actual });
                     } else {
-                        dicho = "Hay una versión nueva: la " + x.ultima + " (tienes la " + x.actual + "). Bájala, ábrela y"
-                            + " Android la instala encima, sin perder lo guardado.";
-                        const bajar = botonDe("oc-vida-accion", "⬇️ bajar la versión " + x.ultima, () => {
+                        dicho = ocT("Hay una versión nueva: la {ultima} (tienes la {actual}). Bájala, ábrela y Android la instala encima, sin perder lo guardado.", { ultima: x.ultima, actual: x.actual });
+                        const bajar = botonDe("oc-vida-accion", ocT("⬇️ bajar la versión {ultima}", { ultima: x.ultima }), () => {
                             window.ocAndroid.abrirFuera(x.url);
                         });
-                        bajar.setAttribute("aria-label", "Bajar la versión " + x.ultima + " (se abre en el navegador)");
+                        bajar.setAttribute("aria-label", ocT("Bajar la versión {ultima} (se abre en el navegador)", { ultima: x.ultima }));
                         versiones.querySelectorAll("[data-bajar]").forEach((b) => b.remove());
                         bajar.dataset.bajar = "";
                         versiones.append(bajar);
@@ -19720,68 +19519,65 @@
                     avisar(dicho);
                 }).catch(() => {
                     buscarVersion.disabled = false;
-                    notaVersion.textContent = "No se ha podido mirar (¿sin conexión?).";
+                    notaVersion.textContent = ocT("No se ha podido mirar (¿sin conexión?).");
                     avisar(notaVersion.textContent);
                 });
             });
             versiones.append(buscarVersion);
-            fila("Actualizaciones", notaVersion, versiones);
+            fila(ocT("Actualizaciones"), notaVersion, versiones);
         }
         // En la web (no en el ejecutable ni en la app de Android, que ya
         // son la app): de dónde bajarla para usarla sin el navegador.
         if (!(location.hostname === "127.0.0.1" && location.port === "47321") && !EN_ANDROID) {
-            const bajar = crear("a", "oc-vida-accion", "⬇️ descargar la app");
+            const bajar = crear("a", "oc-vida-accion", ocT("⬇️ descargar la app"));
             bajar.href = "https://github.com/rperezbarreda/pantalla_master/releases/latest";
             bajar.target = "_blank";
             bajar.rel = "noopener noreferrer";
-            bajar.setAttribute("aria-label", "Descargar la app para Windows, macOS, Linux o tablets Android (se abre aparte, en GitHub)");
+            bajar.setAttribute("aria-label", ocT("Descargar la app para Windows, macOS, Linux o tablets Android (se abre aparte, en GitHub)"));
             const otras = crear("div", "master-anadir-otras");
             otras.append(bajar);
-            fila("La app, sin el navegador", crear("p", "oc-hoja-nota", "Gratis y sin conexión. Para Windows, macOS y Linux:"
-                + " descomprime el .zip y ábrela con doble clic. Para tablets Android: el .apk. Lo guardado va en la app,"
-                + " no en el navegador: para llevarte lo de aquí, haz antes una copia de seguridad e impórtala allí."), otras);
+            fila(ocT("La app, sin el navegador"), crear("p", "oc-hoja-nota", ocT("Gratis y sin conexión. Para Windows, macOS y Linux: descomprime el .zip y ábrela con doble clic. Para tablets Android: el .apk. Lo guardado va en la app, no en el navegador: para llevarte lo de aquí, haz antes una copia de seguridad e impórtala allí.")), otras);
         }
         // Más cosas de rol, en el blog (se abre aparte; en Android, en el
         // navegador).
-        const blog = crear("a", "oc-vida-accion", "🎲 recursos de rol en richi.blog");
+        const blog = crear("a", "oc-vida-accion", ocT("🎲 recursos de rol en richi.blog"));
         blog.href = "https://richi.blog/web/mis_movidas/rol/index_rol.html";
         blog.target = "_blank";
         blog.rel = "noopener noreferrer";
-        blog.setAttribute("aria-label", "Recursos de rol en richi.blog (se abre aparte, en el navegador)");
+        blog.setAttribute("aria-label", ocT("Recursos de rol en richi.blog (se abre aparte, en el navegador)"));
         const masRol = crear("div", "master-anadir-otras");
         masRol.append(blog);
-        fila("Más de rol", crear("p", "oc-hoja-nota", "Más cosas para tus partidas en El Blog de Richi."), masRol);
+        fila(ocT("Más de rol"), crear("p", "oc-hoja-nota", ocT("Más cosas para tus partidas en El Blog de Richi.")), masRol);
         const lic = crear("div", "master-anadir-otras");
-        const web = crear("a", "oc-vida-accion", "🌐 el SRD en la web");
+        const web = crear("a", "oc-vida-accion", ocT("🌐 el SRD en la web"));
         web.href = "https://www.dndbeyond.com/srd";
         web.target = "_blank";
         web.rel = "noopener noreferrer";
-        web.setAttribute("aria-label", "Ver el SRD 5.2 en la web (se abre aparte)");
-        lic.append(accion("📜 licencias y créditos", () => verCreditos(botonOpciones)), web);
-        fila("Licencias y créditos", crear("p", "oc-hoja-nota", "SRD 5.2 de Wizards of the Coast (CC BY 4.0), sonidos de la Google"
-            + " Sound Library (CC BY 4.0), tipografías OFL y la app con licencia MIT."), lic);
-        const cerrar = window.ocVentana.abrir({ titulo: "opciones", cuerpo, vuelta: botonOpciones });
+        web.setAttribute("aria-label", ocT("Ver el SRD 5.2 en la web (se abre aparte)"));
+        lic.append(accion(ocT("📜 licencias y créditos"), () => verCreditos(botonOpciones)), web);
+        fila(ocT("Licencias y créditos"), crear("p", "oc-hoja-nota", ocT("SRD 5.2 de Wizards of the Coast (CC BY 4.0), sonidos de la Google Sound Library (CC BY 4.0), tipografías OFL y la app con licencia MIT.")), lic);
+        const cerrar = window.ocVentana.abrir({ titulo: ocT("opciones"), cuerpo, vuelta: botonOpciones });
     }
 
     // ---- LOS ATAJOS DE TECLADO (fuera de los campos de texto y sin
     // ventana modal abierta): «?» o ⌨ los enseña todos. ----
     const ATAJOS = [
-        ["El tablero", [["/", "ir al buscador"], ["A", "añadir una ventana"], ["N", "post-it nuevo"], ["D", "los dados"],
-            ["I", "la iniciativa (la abre si no está)"], ["+ / −", "acercar o alejar el tablero"], ["0", "el tablero al 100 %"],
-            ["[ / ]", "perfil anterior o siguiente"], ["Alt + ← / Alt + →", "mover la pestaña elegida"],
-            ["mantener pulsada una pestaña", "arrastrarla a otro sitio"], ["C", "campañas (cambiar, crear…)"],
-            ["?", "estos atajos"]]],
-        ["Las ventanas", [["clic en la barra", "plegarla o desplegarla"], ["mantener pulsada la barra", "cogerla y moverla"],
-            ["soltarla sobre la barra de otra", "juntarlas en pestañas (⇱ la saca)"],
-            ["Intro en el nombre", "plegarla o desplegarla"], ["flechas en el nombre", "moverla (con Mayús, más deprisa)"],
-            ["Alt + flechas en el nombre", "cambiar su tamaño"], ["Esc", "cerrar una ventana modal"]]],
-        ["El dibujo (con el foco en el lienzo)", [["B", "lápiz"], ["E", "goma"], ["G", "bote"], ["M", "seleccionar y mover"],
-            ["I", "cuentagotas"], ["L", "línea"], ["U", "rectángulo"], ["O", "elipse"], ["T", "texto"], ["Ctrl+Z / Ctrl+Y", "deshacer y rehacer"],
-            ["flechas", "mover la selección (Mayús: de 10 en 10)"], ["+ / −", "agrandar o encoger la selección"],
-            ["Supr", "borrar la selección"], ["Esc", "soltar la selección"], ["Ctrl+V", "pegar una imagen"]]],
-        ["Post-its y notas", [["Ctrl+B / I / U", "negrita, cursiva, subrayado"], ["Ctrl+Z / Ctrl+Y", "deshacer y rehacer"],
-            ["← → en la barra", "ir de un botón a otro"]]],
-        ["El buscador", [["↓ ↑", "por los resultados"], ["Intro", "abrir el elegido"], ["Esc", "cerrar"]]],
+        ["El tablero", [["/", ocT("ir al buscador")], ["A", ocT("añadir una ventana")], ["N", ocT("post-it nuevo")], ["D", ocT("los dados")],
+            ["I", ocT("la iniciativa (la abre si no está)")], ["+ / −", ocT("acercar o alejar el tablero")], ["0", ocT("el tablero al 100 %")],
+            ["[ / ]", ocT("perfil anterior o siguiente")], [ocT("Alt + ← / Alt + →"), ocT("mover la pestaña elegida")],
+            [ocT("mantener pulsada una pestaña"), ocT("arrastrarla a otro sitio")], ["C", ocT("campañas (cambiar, crear…)")],
+            ["?", ocT("estos atajos")]]],
+        ["Las ventanas", [[ocT("clic en la barra"), ocT("plegarla o desplegarla")], [ocT("mantener pulsada la barra"), ocT("cogerla y moverla")],
+            [ocT("soltarla sobre la barra de otra"), ocT("juntarlas en pestañas (⇱ la saca)")],
+            [ocT("Intro en el nombre"), ocT("plegarla o desplegarla")], [ocT("flechas en el nombre"), ocT("moverla (con Mayús, más deprisa)")],
+            [ocT("Alt + flechas en el nombre"), ocT("cambiar su tamaño")], ["Esc", ocT("cerrar una ventana modal")]]],
+        ["El dibujo (con el foco en el lienzo)", [["B", ocT("lápiz")], ["E", ocT("goma")], ["G", ocT("bote")], ["M", ocT("seleccionar y mover")],
+            ["I", ocT("cuentagotas")], ["L", ocT("línea")], ["U", ocT("rectángulo")], ["O", ocT("elipse")], ["T", ocT("texto")], [ocT("Ctrl+Z / Ctrl+Y"), ocT("deshacer y rehacer")],
+            ["flechas", ocT("mover la selección (Mayús: de 10 en 10)")], ["+ / −", ocT("agrandar o encoger la selección")],
+            ["Supr", ocT("borrar la selección")], ["Esc", ocT("soltar la selección")], ["Ctrl+V", ocT("pegar una imagen")]]],
+        ["Post-its y notas", [[ocT("Ctrl+B / I / U"), ocT("negrita, cursiva, subrayado")], [ocT("Ctrl+Z / Ctrl+Y"), ocT("deshacer y rehacer")],
+            [ocT("← → en la barra"), ocT("ir de un botón a otro")]]],
+        ["El buscador", [["↓ ↑", ocT("por los resultados")], ["Intro", ocT("abrir el elegido")], ["Esc", ocT("cerrar")]]],
     ];
 
     function verAtajos() {
@@ -19801,7 +19597,7 @@
             });
             cuerpo.appendChild(dl);
         });
-        window.ocVentana.abrir({ titulo: "atajos de teclado", cuerpo, vuelta: botonOpciones, clase: "es-ancha" });
+        window.ocVentana.abrir({ titulo: ocT("atajos de teclado"), cuerpo, vuelta: botonOpciones, clase: "es-ancha" });
     }
 
     document.addEventListener("keydown", (e) => {
@@ -19864,7 +19660,7 @@
         const pf = todo.perfiles[(i + paso + todo.perfiles.length) % todo.perfiles.length];
         if (pf !== estado) {
             activar(pf, true);
-            avisar("Perfil: " + pf.nombre + ".");
+            avisar(ocT("Perfil: {nombre}.", { nombre: pf.nombre }));
         }
     }
 

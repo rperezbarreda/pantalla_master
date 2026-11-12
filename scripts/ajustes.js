@@ -273,6 +273,9 @@ function armarAjustesPanel(ventana) {
     //
     // Si el fragmento SÍ los trae, estas dos no tocan nada.
     arreglarAjustesCrt(lista);
+    if (!lista.querySelector("[data-idioma-fila]")) {
+        lista.insertBefore(armarAjustesIdioma(), lista.firstChild);
+    }
     if (!lista.querySelector("[data-movimiento]")) {
         lista.appendChild(armarAjustesMovimiento());
     }
@@ -345,19 +348,18 @@ function arreglarAjustesCrt(lista) {
         texto.className = "ajustes-crt-texto";
         boton.appendChild(texto);
     }
-    texto.textContent = "FILTRO ";
+    texto.textContent = ocT("FILTRO ");
 
     const sigla = document.createElement("abbr");
     sigla.title =
-        "Cathode Ray Tube: los monitores de tubo de antes, con sus rayas " +
-        "y las esquinas apagadas";
-    sigla.textContent = "CRT";
+        ocT("Cathode Ray Tube: los monitores de tubo de antes, con sus rayas y las esquinas apagadas");
+    sigla.textContent = ocT("CRT");
     texto.appendChild(sigla);
     texto.appendChild(document.createTextNode(": "));
 
     const estado = document.createElement("span");
     estado.setAttribute("data-crt-estado", "");
-    estado.textContent = "OFF";
+    estado.textContent = ocT("OFF");
     texto.appendChild(estado);
 }
 
@@ -379,7 +381,7 @@ function armarAjustesMovimiento() {
     const nombre = document.createElement("p");
     nombre.className = "ajustes-nombre";
     nombre.id = "ajustes-movimiento-nombre";
-    nombre.textContent = "animaciones";
+    nombre.textContent = ocT("animaciones");
     fila.appendChild(nombre);
 
     const mandos = document.createElement("div");
@@ -389,7 +391,7 @@ function armarAjustesMovimiento() {
 
     [
         ["", "normal"],
-        ["quieto", "sin animaciones"],
+        ["quieto", ocT("sin animaciones")],
     ].forEach(([valor, etiqueta]) => {
         const boton = document.createElement("button");
         boton.type = "button";
@@ -404,6 +406,170 @@ function armarAjustesMovimiento() {
     });
 
     fila.appendChild(mandos);
+    return fila;
+}
+
+
+// EL IDIOMA
+//
+// Un botón por idioma (de idiomas/lista.json, con cuánto lleva traducido
+// la comunidad en Weblate). Al elegir uno se guarda en «richi-idioma» y la
+// app vuelve a arrancar: los textos se ponen al cargar (ver arranque.js).
+// «🧪 probar un archivo» carga los .json que se descargan de Weblate
+// (interfaz.json, compendio.json) para ver una traducción antes de que
+// esté en la app; se guarda en «richi-idioma-prueba» hasta quitarla.
+const AJUSTES_WEBLATE = "https://hosted.weblate.org/engage/pantalla-de-master/";
+
+function ajustesRecargar() {
+    const almacen = window.ocAlmacen;
+    const esperar = almacen && almacen.guardarYa ? almacen.guardarYa().catch(() => null) : Promise.resolve();
+    esperar.then(() => location.reload());
+}
+
+function armarAjustesIdioma() {
+    const fila = document.createElement("div");
+    fila.className = "ajustes-fila";
+    fila.setAttribute("data-idioma-fila", "");
+
+    const nombre = document.createElement("p");
+    nombre.className = "ajustes-nombre";
+    nombre.id = "ajustes-idioma-nombre";
+    nombre.textContent = ocT("🌐 idioma");
+    fila.appendChild(nombre);
+
+    const mandos = document.createElement("div");
+    mandos.className = "ajustes-mandos";
+    mandos.setAttribute("role", "group");
+    mandos.setAttribute("aria-labelledby", nombre.id);
+    fila.appendChild(mandos);
+
+    const ahora = window.ocIdioma ? window.ocIdioma.codigo : "es";
+    const aviso = document.createElement("p");
+    aviso.className = "ajustes-grupo-nota";
+    aviso.setAttribute("role", "status");
+
+    function elegir(codigo) {
+        if (codigo === ahora) {
+            return;
+        }
+        guardarAjuste("richi-idioma", codigo, codigo === "es");
+        aviso.textContent = ocT("Cambiando de idioma…");
+        ajustesRecargar();
+    }
+    function pintar(lista) {
+        mandos.replaceChildren();
+        lista.forEach((x) => {
+            const boton = document.createElement("button");
+            boton.type = "button";
+            boton.className = "ajustes-opcion";
+            boton.lang = x.codigo;
+            boton.setAttribute("aria-pressed", x.codigo === ahora ? "true" : "false");
+            boton.textContent = x.nombre;
+            if (x.codigo !== "es") {
+                const cuanto = document.createElement("span");
+                cuanto.lang = document.documentElement.lang;
+                cuanto.textContent = ocT(" · {n} % traducido", { n: x.interfaz });
+                boton.appendChild(cuanto);
+            }
+            boton.addEventListener("click", () => elegir(x.codigo));
+            mandos.appendChild(boton);
+        });
+    }
+    const deSerie = [{ codigo: "es", nombre: "Castellano", interfaz: 100 }];
+    if (ahora !== "es") {
+        deSerie.push({ codigo: ahora, nombre: ahora, interfaz: 0 });
+    }
+    pintar(deSerie);
+    fetch("idiomas/lista.json").then((r) => (r.ok ? r.json() : null)).then((lista) => {
+        if (Array.isArray(lista) && lista.length) {
+            pintar(lista.filter((x) => x && typeof x.codigo === "string" && typeof x.nombre === "string"));
+        }
+    }).catch(() => {});
+
+    // Probar una traducción descargada de Weblate.
+    const prueba = document.createElement("div");
+    prueba.className = "ajustes-mandos ajustes-mandos-anchos";
+    const archivo = document.createElement("input");
+    archivo.type = "file";
+    archivo.accept = ".json,application/json";
+    archivo.multiple = true;
+    archivo.hidden = true;
+    const probar = document.createElement("button");
+    probar.type = "button";
+    probar.className = "ajustes-opcion";
+    probar.textContent = ocT("🧪 probar un archivo de traducción…");
+    probar.addEventListener("click", () => {
+        if (ahora === "es") {
+            aviso.textContent = ocT("Elige antes el idioma de la traducción que quieres probar.");
+            return;
+        }
+        archivo.click();
+    });
+    archivo.addEventListener("change", () => {
+        const archivos = Array.from(archivo.files || []);
+        archivo.value = "";
+        if (!archivos.length) {
+            return;
+        }
+        Promise.all(archivos.map((a) => a.text().then((t) => [a.name, JSON.parse(t)]))).then((leidos) => {
+            const datos = { codigo: ahora, interfaz: {}, compendio: null };
+            leidos.forEach(([nombreArchivo, json]) => {
+                if (!json || typeof json !== "object" || Array.isArray(json)) {
+                    throw new Error("formato");
+                }
+                if (json.interfaz || json.compendio) {
+                    Object.assign(datos.interfaz, json.interfaz || {});
+                    datos.compendio = Object.assign(datos.compendio || {}, json.compendio || {});
+                } else if (/compendio/i.test(nombreArchivo)) {
+                    datos.compendio = Object.assign(datos.compendio || {}, json);
+                } else {
+                    Object.assign(datos.interfaz, json);
+                }
+            });
+            try {
+                localStorage.setItem("richi-idioma-prueba", JSON.stringify(datos));
+            } catch (e) {
+                // Muy grande para el almacén: se prueba sólo la interfaz.
+                datos.compendio = null;
+                try {
+                    localStorage.setItem("richi-idioma-prueba", JSON.stringify(datos));
+                } catch (e2) {
+                    aviso.textContent = ocT("No cabe en el almacén de este navegador.");
+                    return;
+                }
+            }
+            aviso.textContent = ocT("Traducción de prueba cargada. Volviendo a arrancar…");
+            ajustesRecargar();
+        }).catch(() => {
+            aviso.textContent = ocT("No he podido leer ese archivo: tiene que ser el .json que se descarga de Weblate.");
+        });
+    });
+    prueba.append(probar, archivo);
+    if (window.ocIdioma && window.ocIdioma.prueba) {
+        const quitar = document.createElement("button");
+        quitar.type = "button";
+        quitar.className = "ajustes-opcion";
+        quitar.textContent = ocT("✕ quitar la traducción de prueba");
+        quitar.addEventListener("click", () => {
+            guardarAjuste("richi-idioma-prueba", "", true);
+            aviso.textContent = ocT("Traducción de prueba quitada. Volviendo a arrancar…");
+            ajustesRecargar();
+        });
+        prueba.appendChild(quitar);
+    }
+    fila.appendChild(prueba);
+
+    const nota = document.createElement("p");
+    nota.className = "ajustes-grupo-nota";
+    nota.appendChild(document.createTextNode(ocT("Las traducciones las hace la comunidad. ")));
+    const enlace = document.createElement("a");
+    enlace.href = AJUSTES_WEBLATE;
+    enlace.target = "_blank";
+    enlace.rel = "noopener";
+    enlace.textContent = ocT("Ayuda a traducir la app en Weblate");
+    nota.appendChild(enlace);
+    fila.appendChild(nota);
+    fila.appendChild(aviso);
     return fila;
 }
 
@@ -448,9 +614,7 @@ function armarAjustesMovimiento() {
 // dentro de la función para no tenerla escrita dos veces: se usa en la
 // fuente de leer y en la monoespaciada.
 const AJUSTES_CARACTERES =
-    "abc def ghi jkl mno pqrs tuv wxyz " +
-    "ABC DEF GHI JKL MNO PQRS TUV WXYZ " +
-    "0123456789 !\"§ $%& /() =?* '<> #|; ²³~ @`´ ©«» ¤¼× {}";
+    "abc def ghi jkl mno pqrs tuv wxyz ABC DEF GHI JKL MNO PQRS TUV WXYZ 0123456789 !\"§ $%& /() =?* '<> #|; ²³~ @`´ ©«» ¤¼× {}";
 
 function armarAjustesEjemplo() {
     const caja = document.createElement("div");
@@ -475,24 +639,24 @@ function armarAjustesEjemplo() {
     // ---- el titular ----
     const como = document.createElement("p");
     como.className = "ajustes-ejemplo-titulo";
-    como.textContent = "así se va a ver";
+    como.textContent = ocT("así se va a ver");
     dentro.appendChild(como);
 
     // ---- el párrafo, con negrita, cursiva y enlace ----
     const texto = document.createElement("p");
     texto.className = "ajustes-ejemplo-texto";
-    texto.appendChild(document.createTextNode("«El veloz murciélago hindú comía feliz cardillo y kiwi.» Esto va en "));
+    texto.appendChild(document.createTextNode(ocT("«El veloz murciélago hindú comía feliz cardillo y kiwi.» Esto va en ")));
     const negrita = document.createElement("strong");
-    negrita.textContent = "negrita";
+    negrita.textContent = ocT("negrita");
     texto.appendChild(negrita);
-    texto.appendChild(document.createTextNode(", esto en "));
+    texto.appendChild(document.createTextNode(ocT(", esto en ")));
     const cursiva = document.createElement("em");
-    cursiva.textContent = "cursiva";
+    cursiva.textContent = ocT("cursiva");
     texto.appendChild(cursiva);
-    texto.appendChild(document.createTextNode(" y esto es "));
+    texto.appendChild(document.createTextNode(ocT(" y esto es ")));
     const enlace = document.createElement("span");
     enlace.className = "ajustes-ejemplo-enlace";
-    enlace.textContent = "un enlace";
+    enlace.textContent = ocT("un enlace");
     texto.appendChild(enlace);
     texto.appendChild(document.createTextNode("."));
     dentro.appendChild(texto);
@@ -513,10 +677,10 @@ function armarAjustesEjemplo() {
     botones.className = "ajustes-ejemplo-botones";
     const macizo = document.createElement("span");
     macizo.className = "ajustes-ejemplo-boton ajustes-ejemplo-boton-macizo";
-    macizo.textContent = "botón macizo";
+    macizo.textContent = ocT("botón macizo");
     const hueco = document.createElement("span");
     hueco.className = "ajustes-ejemplo-boton";
-    hueco.textContent = "botón hueco";
+    hueco.textContent = ocT("botón hueco");
     botones.appendChild(macizo);
     botones.appendChild(hueco);
     dentro.appendChild(botones);
@@ -524,10 +688,10 @@ function armarAjustesEjemplo() {
     // ---- la línea de datos, en monoespaciada ----
     const datos = document.createElement("p");
     datos.className = "ajustes-ejemplo-datos";
-    datos.appendChild(document.createTextNode("28 sept 2026 · 3 min · "));
+    datos.appendChild(document.createTextNode(ocT("28 sept 2026 · 3 min · ")));
     const etiqueta = document.createElement("span");
     etiqueta.className = "entry-tag";
-    etiqueta.textContent = "diario";
+    etiqueta.textContent = ocT("diario");
     datos.appendChild(etiqueta);
     dentro.appendChild(datos);
 
@@ -577,7 +741,7 @@ function armarAjustesReiniciar() {
     boton.appendChild(icono);
 
     const nombre = document.createElement("span");
-    nombre.textContent = "reiniciar cambios";
+    nombre.textContent = ocT("reiniciar cambios");
     boton.appendChild(nombre);
     fila.appendChild(boton);
 
@@ -586,7 +750,7 @@ function armarAjustesReiniciar() {
     aviso.setAttribute("role", "status");
     aviso.setAttribute("data-ajustes-reiniciado", "");
     aviso.hidden = true;
-    aviso.textContent = "Listo: todo ha vuelto a como venía de fábrica.";
+    aviso.textContent = ocT("Listo: todo ha vuelto a como venía de fábrica.");
     fila.appendChild(aviso);
 
     return fila;
@@ -597,12 +761,12 @@ function armarAjustesPie() {
     pie.className = "ajustes-pie";
     pie.appendChild(
         document.createTextNode(
-            "Lo elegido se queda guardado en este navegador para la próxima visita. "
+            ocT("Lo elegido se queda guardado en este navegador para la próxima visita. ")
         )
     );
     const enlace = document.createElement("a");
     enlace.href = "/web/accesibilidad/accesibilidad.html";
-    enlace.textContent = "Más sobre la accesibilidad de la web";
+    enlace.textContent = ocT("Más sobre la accesibilidad de la web");
     pie.appendChild(enlace);
     return pie;
 }
@@ -785,8 +949,8 @@ function pintarAjustesCrt() {
     boton.setAttribute(
         "aria-label",
         encendido
-            ? "Quitar el filtro CRT"
-            : "Poner el filtro CRT"
+            ? ocT("Quitar el filtro CRT")
+            : ocT("Poner el filtro CRT")
     );
     // Solo se cambia el ON/OFF, no el texto entero: dentro hay un
     // <abbr> explicando qué es CRT, y reescribiendo el textContent del

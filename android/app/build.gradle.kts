@@ -11,8 +11,10 @@ plugins {
 val laWeb = listOf(
     "index.html", "reproductor.html", "jugadores.html", "manifest.webmanifest",
     "estilos/**", "scripts/**", "datos/**", "tipografias/**", "imagenes/**", "sonidos/**",
+    "idiomas/*.js", "idiomas/lista.json", "idiomas/*/compendio.json",
 )
-val fuera = listOf("**/*.txt", "**/*.md", "**/*.py")
+// De idiomas/, sin las plantillas en castellano (son para Weblate).
+val fuera = listOf("**/*.txt", "**/*.md", "**/*.py", "idiomas/es/**")
 val raizDelRepo: File = rootDir.parentFile
 
 abstract class CopiarWeb : DefaultTask() {

@@ -33,7 +33,7 @@ import zipfile
 RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 LANZADOR = os.path.join(RAIZ, "lanzador")
 DIST = os.path.join(RAIZ, "dist")
-DENTRO = ["index.html", "reproductor.html", "jugadores.html", "manifest.webmanifest", "sw.js", "estilos", "scripts", "datos", "tipografias", "imagenes", "sonidos"]
+DENTRO = ["index.html", "reproductor.html", "jugadores.html", "manifest.webmanifest", "sw.js", "estilos", "scripts", "datos", "tipografias", "imagenes", "sonidos", "idiomas"]
 NOMBRE = "Pantalla de máster"
 VERSION = "dev"
 
@@ -67,8 +67,12 @@ def archivos_de_la_app():
             continue
         for base, _, archivos in os.walk(o):
             for a in sorted(archivos):
+                ruta = os.path.join(base, a)
+                rel = os.path.relpath(ruta, RAIZ).replace(os.sep, "/")
+                # De idiomas/, sin las plantillas ni lo de Weblate.
+                if rel.startswith("idiomas/es/") or rel.endswith("/interfaz.json"):
+                    continue
                 if not a.endswith((".txt", ".md", ".py")):
-                    ruta = os.path.join(base, a)
                     lista.append((ruta, os.path.relpath(ruta, RAIZ).replace(os.sep, "/")))
     return lista
 

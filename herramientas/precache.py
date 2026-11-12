@@ -4,7 +4,8 @@ antes de subir un cambio:
 
     python3 herramientas/precache.py
 
-Hace dos cosas:
+Hace tres cosas (la primera, con herramientas/idiomas.py):
+  0. Los idiomas: las plantillas para Weblate y los diccionarios de la app.
   1. sonidos/indice.json: qué grabaciones hay en sonidos/ (la app sólo
      enseña las que estén). Rutas como «weather/rain_on_roof».
   2. sw.js: el service worker, desde herramientas/sw-plantilla.js, con la
@@ -15,14 +16,23 @@ Hace dos cosas:
 import hashlib
 import json
 import os
+import re
+
+import idiomas
 
 RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-CARPETAS = ["estilos", "scripts", "datos", "tipografias", "imagenes", "sonidos"]
+CARPETAS = ["estilos", "scripts", "datos", "tipografias", "imagenes", "sonidos", "idiomas"]
 SUELTOS = ["index.html", "reproductor.html", "jugadores.html", "manifest.webmanifest"]
 NO = {".txt", ".md", ".py"}
 
 
+# De idiomas/ sólo lo que lee la app: <código>.js, <código>/compendio.json y
+# lista.json (las plantillas en castellano y los interfaz.json son para Weblate).
+FUERA = re.compile(r"^idiomas/(es/|[^/]+/interfaz\.json$)")
+
+
 def main():
+    idiomas.main()
     sonidos = os.path.join(RAIZ, "sonidos")
     rutas = []
     for base, _, archivos in os.walk(sonidos):
@@ -41,7 +51,9 @@ def main():
             for a in sorted(archivos):
                 if os.path.splitext(a)[1] in NO:
                     continue
-                lista.append(os.path.relpath(os.path.join(base, a), RAIZ).replace(os.sep, "/"))
+                rel = os.path.relpath(os.path.join(base, a), RAIZ).replace(os.sep, "/")
+                if not FUERA.match(rel):
+                    lista.append(rel)
     lista.sort()
     huella = hashlib.sha256()
     for r in lista:

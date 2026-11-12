@@ -39,6 +39,12 @@ Además de los tableros (las pestañas, donde las ventanas van donde las dejas),
 - **🛡️ party:** 🧝 *fichas de la party*: eliges un personaje y ves su ficha como el visor de fichas del blog (tarjeta con PG, CA, retrato y características; historia, ficha, criaturas, PNJ, imágenes, extra y lo del máster).
 - En un hueco vacío, «＋ elegir ventana»; en el ✎ de una ventana, la pestaña «🧩 hueco» la cambia por otra o le pone otra en pestaña. «＋» crea un modo (vacío, con una rejilla, o como uno de serie); el ✎ de junto a las pestañas cambia el de ahora (nombre, dibujo, rejilla) o lo borra; «▦ tableros» vuelve a las pestañas.
 
+## Idiomas
+
+La app está en castellano y la traduce la comunidad (de momento, al catalán, gallego y euskera) en **Weblate**: [hosted.weblate.org/engage/pantalla-de-master](https://hosted.weblate.org/engage/pantalla-de-master/). Se elige el idioma en **Aa → 🌐 idioma**, que dice cuánto lleva traducido cada uno; lo que aún no está traducido sale en castellano.
+
+Para ver una traducción antes de que llegue a la app: en Weblate, descarga el archivo del idioma (`interfaz.json` y, si quieres, `compendio.json`), y en Aa elige el idioma y pulsa «🧪 probar un archivo de traducción…». Se queda puesta en ese dispositivo hasta «✕ quitar la traducción de prueba».
+
 ## Dónde se guarda lo tuyo
 
 Todo lo que haces (campañas, tableros, notas, documentos, imágenes, música, tus creaciones…) se queda **sólo en el dispositivo**: en el navegador, en la carpeta «mis-datos» (el programa de escritorio) o en la app de Android (dentro de ella, y se borra si se desinstala, o en la carpeta que elijas). No se sube a ningún sitio. Para no perderlo o pasarlo a otro dispositivo: ⚙ → exportar (y luego importar).
@@ -61,12 +67,27 @@ datos/                  el SRD 5.2 en español (CC BY 4.0) y las tablas
 tipografias/            las letras (con sus licencias OFL)
 imagenes/               iconos y fondos
 sonidos/                las grabaciones (ver sonidos/LEEME.txt)
-herramientas/           precache.py, construir-ejecutables.py, iconos.py y la plantilla del sw
+idiomas/                las traducciones (ver «Los idiomas», abajo)
+herramientas/           precache.py, idiomas.py, construir-ejecutables.py, iconos.py y la plantilla del sw
 lanzador/               el ejecutable (Go)
 android/                la app de Android (Java, sin librerías; ver abajo)
 ```
 
 **Los modos** (`pantalla-master.js`): son como los perfiles, con `rejilla` (una de `REJILLAS`: huecos `[columna, fila, ancho, alto]` en 12 × 6) y sus ventanas con `hueco`; van en la campaña (`modos`, `modoActivo`). Los de serie, en `MODOS_DE_SERIE`. Pasar de turno lo hacen igual la iniciativa y la ventana de turnos con `window.ocTurnos` (`personajes.js`).
+
+**Los idiomas** (`scripts/arranque.js`, `herramientas/idiomas.py`, `idiomas/`):
+
+- Cada texto de la interfaz va en `ocT("texto en castellano")`, con las partes que cambian como `{nombre}`: `ocT("Quitado: {nombre}.", { nombre: x.nombre })`. Nunca se pega un texto con `+` («"Quitar " + nombre»): se escribe la frase entera con su `{…}`, que el orden de las palabras cambia de un idioma a otro. Lo que es un identificador (clases, claves, valores que se comparan) no va en `ocT`. En castellano `ocT` sólo pone las variables, así que la app es la misma.
+- Lo escrito tal cual en los `.html` (títulos, `aria-label`, `title`, `placeholder`) se traduce solo al cargar; con `translate="no"` en un elemento, eso no.
+- El compendio (`datos/`) se traduce al cargarse (`window.ocIdioma.datos`, en `pedir`, `pedirNombres` y `ocReglas.cargar`), menos los campos de `FIJOS` en `arranque.js` (los nombres en inglés, los id, y las categorías con las que filtra el programa: clases, rarezas, escuelas, tipos…; esas salen en castellano). Si se añade un campo de ese tipo, va en `FIJOS` aquí **y** en `herramientas/idiomas.py`.
+- `python3 herramientas/idiomas.py` (lo llama `precache.py`) saca las **plantillas** `idiomas/es/interfaz.json` (todos los `ocT("…")` y los textos de los `.html`) y `idiomas/es/compendio.json` (cada texto distinto de `datos/`), y para cada idioma hace `idiomas/<código>.js` (el diccionario que carga la app) desde `idiomas/<código>/interfaz.json`, y `idiomas/lista.json` con lo traducido. Weblate escribe `idiomas/<código>/interfaz.json` y `idiomas/<código>/compendio.json`; al subirlos, la Action `idiomas` (`.github/workflows/idiomas.yml`) rehace lo demás y lo sube en otro commit.
+- Las claves son el propio texto en castellano: si se cambia un texto, su traducción vuelve a estar pendiente (Weblate lo marca).
+- **Un idioma nuevo:** se añade en Weblate (o la carpeta `idiomas/<código>/` con `interfaz.json` y `compendio.json` con `{}`) y su nombre en `NOMBRES` de `herramientas/idiomas.py`.
+- **Montar Weblate (una vez):** en [hosted.weblate.org](https://hosted.weblate.org) (gratis para proyectos libres; hace falta que el repo sea público), «Add new translation project» con el nombre «Pantalla de máster» (URL `pantalla-de-master`, la del enlace de Aa) y dos componentes desde este repo, rama `desarrollo`:
+  - «Interfaz»: formato *JSON file*, máscara `idiomas/*/interfaz.json`, plantilla monolingüe `idiomas/es/interfaz.json`, idioma de origen español. En «Translation flags»: `placeholders:r"\{[A-Za-z0-9_]+\}", safe-html`.
+  - «Compendio»: igual con `compendio.json` y la *flag* de los `{…}`.
+  - Para que Weblate suba lo traducido: en el componente, «Repository push URL» con el repo y la clave de Weblate añadida en GitHub (Settings → Deploy keys, con escritura), o la integración de GitHub de Weblate; y en Settings → Webhooks del repo, el de Weblate (`https://hosted.weblate.org/hooks/github/`) para que vea los cambios.
+  - Añadir el catalán, el gallego y el euskera (ya tienen su carpeta).
 
 **Las reglas y los nombres se cambian en sus JSON** (`datos/personajes/compendio/`):
 
