@@ -18925,6 +18925,142 @@
         window.ocVentana.abrir({ titulo: ocT("licencias y créditos"), cuerpo: cuerpoCreditos(), vuelta, clase: "es-ancha" });
     }
 
+    // LOS IDIOMAS EN LA ENTRADA: una banderita por idioma (los de
+    // idiomas/lista.json). El que aún no tiene nada traducido no cambia:
+    // avisa de que falta la traducción y de cómo ayudar con ella.
+    const BANDERAS = {
+        es: '<rect width="30" height="20" fill="#c60b1e"/><rect y="5" width="30" height="10" fill="#ffc400"/>',
+        ca: '<rect width="30" height="20" fill="#fcdd09"/><g fill="#da121a"><rect y="2.22" width="30" height="2.22"/>'
+            + '<rect y="6.67" width="30" height="2.22"/><rect y="11.11" width="30" height="2.22"/><rect y="15.56" width="30" height="2.22"/></g>',
+        eu: '<rect width="30" height="20" fill="#d52b1e"/><path d="M0 0L30 20M30 0L0 20" stroke="#009b48" stroke-width="3"/>'
+            + '<path d="M15 0V20M0 10H30" stroke="#fff" stroke-width="3"/>',
+        gl: '<rect width="30" height="20" fill="#fff"/><path d="M0 0L30 20" stroke="#0099cc" stroke-width="4"/>'
+    };
+    const IDIOMA_EN_CASTELLANO = { es: "castellano", ca: "catalán", eu: "euskera", gl: "gallego" };
+    const TRADUCCIONES_URL = "https://github.com/rperezbarreda/pantalla_master/tree/main/traducciones";
+    function banderaDe(codigo) {
+        const svg = document.createElementNS(SVG, "svg");
+        svg.setAttribute("class", "master-bandera");
+        svg.setAttribute("viewBox", "0 0 30 20");
+        svg.setAttribute("aria-hidden", "true");
+        svg.setAttribute("focusable", "false");
+        svg.innerHTML = (BANDERAS[codigo] || '<rect width="30" height="20" fill="#888"/>')
+            + '<rect x=".5" y=".5" width="29" height="19" fill="none" stroke="#000" stroke-opacity=".4"/>';
+        return svg;
+    }
+    function idiomasDeEntrada(entrada) {
+        const caja = crear("div", "master-entrada-idiomas");
+        caja.setAttribute("role", "group");
+        caja.setAttribute("aria-label", ocT("Idioma de la app"));
+        const ahora = window.ocIdioma ? window.ocIdioma.codigo : "es";
+        const pintar = (lista) => {
+            caja.replaceChildren(...lista.map((x) => {
+                const b = botonDe("master-entrada-idioma", "", () => elegirIdiomaEntrada(x, ahora, entrada, b));
+                b.setAttribute("aria-pressed", x.codigo === ahora ? "true" : "false");
+                const nombre = crear("span", "", x.nombre);
+                nombre.lang = x.codigo;
+                b.append(banderaDe(x.codigo), nombre);
+                return b;
+            }));
+        };
+        pintar([{ codigo: "es", nombre: "Castellano", interfaz: 100 }, { codigo: "ca", nombre: "Català", interfaz: 0 },
+            { codigo: "eu", nombre: "Euskara", interfaz: 0 }, { codigo: "gl", nombre: "Galego", interfaz: 0 }]);
+        fetch("idiomas/lista.json").then((r) => (r.ok ? r.json() : null)).then((lista) => {
+            if (Array.isArray(lista) && lista.length) {
+                pintar(lista.filter((x) => x && typeof x.codigo === "string" && typeof x.nombre === "string"));
+            }
+        }).catch(() => {});
+        return caja;
+    }
+    function elegirIdiomaEntrada(x, ahora, entrada, boton) {
+        if (x.codigo === ahora) {
+            return;
+        }
+        if (x.codigo !== "es" && !(x.interfaz > 0)) {
+            avisoSinTraducir(x, entrada, boton);
+            return;
+        }
+        try {
+            if (x.codigo === "es") {
+                localStorage.removeItem("richi-idioma");
+            } else {
+                localStorage.setItem("richi-idioma", x.codigo);
+            }
+        } catch (e) {
+            return;
+        }
+        avisar(ocT("Cambiando de idioma…"));
+        const almacen = window.ocAlmacen;
+        (almacen && almacen.guardarYa ? almacen.guardarYa().catch(() => null) : Promise.resolve()).then(() => location.reload());
+    }
+    // El aviso de que un idioma aún no está traducido, encima de la entrada.
+    function avisoSinTraducir(x, entrada, volverA) {
+        const idioma = IDIOMA_EN_CASTELLANO[x.codigo] || x.nombre;
+        const fondo = crear("div", "master-entrada master-aviso-web");
+        fondo.setAttribute("role", "alertdialog");
+        fondo.setAttribute("aria-modal", "true");
+        fondo.setAttribute("aria-labelledby", "master-sin-traducir-titulo");
+        fondo.setAttribute("aria-describedby", "master-sin-traducir-texto");
+        const caja = crear("div", "master-entrada-caja");
+        const titulo = crear("h2", "master-entrada-titulo", ocT("Todavía sin traducir"));
+        titulo.id = "master-sin-traducir-titulo";
+        titulo.prepend(banderaDe(x.codigo), " ");
+        const texto = crear("div");
+        texto.id = "master-sin-traducir-texto";
+        const correo = crear("a", "", "contacto@richi.blog");
+        correo.href = "mailto:contacto@richi.blog";
+        const partes = ocT("Para cualquier duda o para colaborar, escríbeme a {correo}.").split("{correo}");
+        const pCorreo = crear("p", "master-entrada-texto", partes[0]);
+        pCorreo.append(correo, partes.slice(1).join(""));
+        texto.append(
+            crear("p", "master-entrada-texto", ocT("La traducción al {idioma} aún no está hecha: de momento, la app sólo está en castellano.", { idioma })),
+            crear("p", "master-entrada-texto", ocT("Si quieres ayudar a traducirla, usa las herramientas de la propia app: en Aa → 🌐 idioma eliges el idioma y, con «🧪 probar un archivo de traducción…», ves tu traducción en la app mientras la haces.")),
+            crear("p", "master-entrada-texto", ocT("Toda ayuda es bienvenida: no conozco estos idiomas y no quiero usar traducciones automáticas.")),
+            pCorreo);
+        const ayuda = crear("a", "oc-vida-accion", ocT("📖 cómo ayudar a traducir"));
+        ayuda.href = TRADUCCIONES_URL;
+        ayuda.target = "_blank";
+        ayuda.rel = "noopener noreferrer";
+        ayuda.setAttribute("aria-label", ocT("Cómo ayudar a traducir la app (se abre aparte, en GitHub)"));
+        const vale = botonDe("oc-vida-accion es-principal", ocT("entendido"), () => cerrar());
+        const botones = crear("div", "master-anadir-otras");
+        botones.append(vale, ayuda);
+        caja.append(titulo, texto, botones);
+        fondo.appendChild(caja);
+        entrada.inert = true;
+        function cerrar() {
+            entrada.inert = false;
+            fondo.remove();
+            if (volverA && volverA.focus) {
+                volverA.focus();
+            }
+        }
+        fondo.addEventListener("keydown", (e) => {
+            if (e.key === "Escape") {
+                e.preventDefault();
+                e.stopPropagation();
+                cerrar();
+            } else if (e.key === "Tab") {
+                const cosas = [correo, vale, ayuda];
+                const i = cosas.indexOf(document.activeElement);
+                if (e.shiftKey && i <= 0) {
+                    e.preventDefault();
+                    cosas[cosas.length - 1].focus();
+                } else if (!e.shiftKey && i === cosas.length - 1) {
+                    e.preventDefault();
+                    cosas[0].focus();
+                }
+            }
+        });
+        fondo.addEventListener("click", (e) => {
+            if (e.target === fondo) {
+                cerrar();
+            }
+        });
+        document.body.appendChild(fondo);
+        vale.focus();
+    }
+
     // LA ENTRADA: al abrir la app, con qué campaña se juega (como un
     // inicio de sesión). Sin ninguna, hay que crear una para empezar.
     function verEntrada() {
@@ -18938,7 +19074,7 @@
         icono.alt = "";
         const titulo = crear("h2", "master-entrada-titulo", ocT("Pantalla de máster"));
         titulo.id = "master-entrada-titulo";
-        caja.append(icono, titulo);
+        caja.append(icono, titulo, idiomasDeEntrada(fondo));
         const principal = document.querySelector(".app-principal") || lienzo.closest("main");
         const dados = document.querySelector(".oc-boton-dados");
         const fuera = [principal, dados].filter(Boolean);

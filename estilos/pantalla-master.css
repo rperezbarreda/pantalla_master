@@ -4700,9 +4700,60 @@
     color: var(--yellow);
 }
 
+/* Los idiomas: una banderita y su nombre. */
+.master-entrada-idiomas {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 6px;
+    margin: 0 0 14px;
+}
+
+.master-entrada-idioma {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border: 2px solid var(--yellow);
+    background: transparent;
+    color: var(--white);
+    font: inherit;
+    font-size: 0.9rem;
+    cursor: pointer;
+}
+
+.master-entrada-idioma[aria-pressed="true"],
+.master-entrada-idioma:hover,
+.master-entrada-idioma:focus-visible {
+    background: var(--yellow);
+    color: var(--yellow-contrast);
+}
+
+.master-entrada-idioma:focus-visible {
+    outline: 3px solid var(--white);
+    outline-offset: 2px;
+}
+
+.master-bandera {
+    flex: none;
+    width: 1.5em;
+    height: 1em;
+    vertical-align: -0.1em;
+}
+
 .master-entrada-texto {
     margin: 0 0 12px;
     text-align: center;
+}
+
+.master-entrada-texto a {
+    color: var(--yellow);
+    text-underline-offset: 3px;
+}
+
+.master-entrada-texto a:focus-visible {
+    outline: 3px solid var(--yellow);
+    outline-offset: 2px;
 }
 
 .master-entrada-lista {
