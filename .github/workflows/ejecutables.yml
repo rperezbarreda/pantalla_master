@@ -5,9 +5,10 @@
 #   - la app de Android (PantallaMaster-Android.apk), firmada con la clave de
 #     los secretos (ver LEEME). El .aab para Google Play queda en
 #     «Artifacts» de la ejecución (PantallaMaster-Android-Play).
-# El título de la release lleva el número de esta ejecución, que es también
-# el de la versión de la app de Android: la app lo compara con el suyo al
-# buscar actualizaciones (android/…/Red.java).
+# El título de la release lleva la versión (la del archivo VERSION, «1.0»;
+# también es el versionName de la app de Android) y el número de esta
+# ejecución, que es el versionCode de la app: la app lo compara con el suyo
+# al buscar actualizaciones (android/…/Red.java, que lee «versión N»).
 name: ejecutables
 
 on:
@@ -53,7 +54,7 @@ jobs:
           ANDROID_ALIAS_CLAVE: ${{ secrets.ANDROID_ALIAS_CLAVE }}
         run: |
           set -o pipefail
-          export VERSION_APP="$(date -u +%Y.%m.%d)"
+          export VERSION_APP="$(cat VERSION)"
           gradle -p android assembleRelease bundleRelease --no-daemon --stacktrace 2>&1 | tee android-compilacion.log || {
             grep -E "error:|e: |What went wrong|> .*(failed|Could not)|Caused by" -A2 android-compilacion.log | head -45 \
               | sed 's/%/%25/g' | while IFS= read -r l; do echo "::error::$l"; done
@@ -113,7 +114,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          V="$(cat VERSION)"
           gh release delete ultima --yes --cleanup-tag || true
           gh release create ultima dist/* --latest \
-            --title "Pantalla de máster (versión ${{ github.run_number }})" \
+            --title "Pantalla de máster $V (versión ${{ github.run_number }})" \
             --notes "Baja el .zip de tu sistema, descomprímelo y abre «Pantalla de máster» con doble clic (junto a él va la carpeta «archivos»: déjalos juntos). Windows: PantallaMaster-Windows.zip. Mac: el de tu procesador (Apple Silicon = M1, M2…; si no, Intel). Linux: PantallaMaster-Linux.zip. Tablets Android: PantallaMaster-Android.apk (ábrelo en la tablet y permite instalar apps de esta fuente). Todo lo que hagas se guarda en tu dispositivo; funciona sin conexión."
