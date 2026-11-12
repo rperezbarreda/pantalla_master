@@ -659,6 +659,18 @@
     display: none;
 }
 
+/* Las ventanas que no están a la vista no se pintan (el navegador se las
+   salta hasta que asoman): con muchas ventanas, mover una, hacer zoom o
+   desplazar el tablero va mucho más suelto. Ya recortan lo que se sale
+   (overflow: hidden) y tienen su tamaño puesto, así que no cambia nada
+   más; «auto 400px» por si una no lo tuviera. */
+@media (min-width: 861px) {
+    .master-lienzo.con-lienzo > .master-ventana {
+        content-visibility: auto;
+        contain-intrinsic-size: auto 400px;
+    }
+}
+
 .master-ventana.es-arrastrada {
     /* Mientras se arrastra va en su propia capa (se mueve con transform). */
     will-change: transform;

@@ -113,10 +113,9 @@ class LectorHtml(html.parser.HTMLParser):
 
 def plantilla_interfaz():
     textos = []
-    for nombre in sorted(os.listdir(SCRIPTS)):
-        if not nombre.endswith(".js"):
-            continue
-        with open(os.path.join(SCRIPTS, nombre), encoding="utf-8") as f:
+    rutas = sorted(os.path.join(base, a) for base, _, archivos in os.walk(SCRIPTS) for a in archivos if a.endswith(".js"))
+    for ruta in rutas:
+        with open(ruta, encoding="utf-8") as f:
             codigo = f.read()
         for m in OCT.finditer(codigo):
             textos.append(cadena_js(m.group(1) if m.group(1) is not None else m.group(2)))

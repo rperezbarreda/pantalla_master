@@ -57,8 +57,9 @@ No hay que compilar nada: son archivos estáticos.
 index.html              la app
 manifest.webmanifest    para instalarla
 sw.js                   GENERADO: el service worker (sin conexión)
-scripts/                arranque.js (tema antes de pintar), app.js (Aa, sw),
-                        pantalla-master.js, personajes.js, tema.js, ajustes.js
+scripts/                arranque.js (tema e idioma antes de pintar), app.js (Aa, sw),
+                        pantalla-master.js (el núcleo), personajes.js, tema.js, ajustes.js
+scripts/ventanas/       una por ventana (bestiario.js, dibujo.js, musica.js…)
 estilos/                los del blog + app.css (lo propio de la app) y moderno.css
                         windows.css y lapiz.css (los otros tres diseños, Aa → diseño:
                         «moderno», «windows 98» y «a lápiz»; sin ellos, el retro de siempre)
@@ -73,6 +74,10 @@ herramientas/           precache.py, idiomas.py, construir-ejecutables.py, icono
 lanzador/               el ejecutable (Go)
 android/                la app de Android (Java, sin librerías; ver abajo)
 ```
+
+**Las ventanas** (`scripts/ventanas/<clave>.js`, una por cada entrada de `MODULOS`): cada archivo lleva su `montarX` y lo que sólo usa esa ventana; lo que comparten varias (crear, botonDe, avisar, guardar, pedir, el estado…) está en el núcleo, `pantalla-master.js`. Se hablan por `window.ocPM` (en el código, `PM.algo`): el núcleo pone ahí lo que usan las ventanas y cada ventana pone lo que usa el núcleo (su `montarX`). Las ventanas se cargan antes que el núcleo (en `index.html`, todas con `defer`) y al cargar no hacen nada más que declarar; una ventana nueva es un archivo nuevo aquí, su `<script>` en `index.html` y su entrada en `MODULOS`.
+
+**La fluidez:** mover una ventana va con `transform` (sin recolocar la página) y el ancho se mide una vez al cogerla; el lienzo crece a saltos mientras se arrastra; el zoom con la rueda o el pellizco se enseña con `transform` y sólo al acabar se pone de verdad (`verZoom` y `ponerZoom`); el `touchmove` del pellizco sólo escucha mientras hay dos dedos (si no, el desplazamiento con un dedo esperaría al JavaScript); y las ventanas que no están a la vista no se pintan (`content-visibility: auto`).
 
 **Los modos** (`pantalla-master.js`): son como los perfiles, con `rejilla` (una de `REJILLAS`: huecos `[columna, fila, ancho, alto]` en 12 × 6) y sus ventanas con `hueco`; van en la campaña (`modos`, `modoActivo`). Los de serie, en `MODOS_DE_SERIE`. Pasar de turno lo hacen igual la iniciativa y la ventana de turnos con `window.ocTurnos` (`personajes.js`).
 
