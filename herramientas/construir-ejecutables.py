@@ -19,7 +19,8 @@ mano o con .github/workflows/ejecutables.yml):
                                  mueve las apps descargadas y no
                                  encontraría lo de al lado)
 
-Antes pasa precache.py (para que lo de dentro vaya al día). El icono de
+Antes pasa precache.py (para que lo de dentro vaya al día). La app de Mac
+se firma «ad hoc» con rcodesign si está (ver firmar_mac). El icono de
 Windows sale de imagenes/icono-512.png (con rsrc, si está instalado:
 go install github.com/akavel/rsrc@latest; si no, sin icono).
 """
@@ -87,6 +88,17 @@ def empaquetar(zipf, ejecutable, nombre_ejecutable, carpeta, extra=()):
             z.writestr(carpeta + "/" + d, contenido)
 
 
+def firmar_mac(app):
+    """Firma «ad hoc» la .app (sin cuenta de Apple) con rcodesign
+    (https://github.com/indygreg/apple-platform-rs; la ruta, en RCODESIGN
+    o en el PATH). Sin firmar, macOS dice que la app está «dañada»."""
+    rcodesign = os.environ.get("RCODESIGN") or shutil.which("rcodesign")
+    if not rcodesign:
+        print("  (sin rcodesign: la app de Mac va SIN FIRMAR y macOS dirá que está dañada)")
+        return
+    ejecutar([rcodesign, "sign", app], stdout=subprocess.DEVNULL)
+
+
 def main():
     ejecutar([sys.executable, os.path.join(RAIZ, "herramientas", "precache.py")])
     global VERSION
@@ -126,19 +138,34 @@ def main():
     for arch, nombre in (("arm64", "AppleSilicon"), ("amd64", "Intel")):
         binario = os.path.join(tmp, "m-" + arch)
         go("darwin", arch, binario)
-        app = NOMBRE + ".app/Contents"
-        extra = [("Info.plist", PLIST)]
+        # La .app como carpeta, firmada (sin Apple, «ad hoc»: si no, macOS
+        # dice que está «dañada» y no deja abrirla) y al .zip.
+        base = os.path.join(tmp, "mac-" + arch)
+        app = os.path.join(base, NOMBRE + ".app")
+        contenido = os.path.join(app, "Contents")
+        os.makedirs(os.path.join(contenido, "MacOS"))
+        with open(os.path.join(contenido, "Info.plist"), "w", encoding="utf-8") as f:
+            f.write(PLIST)
+        shutil.copy(binario, os.path.join(contenido, "MacOS", "pantalla-master"))
+        os.chmod(os.path.join(contenido, "MacOS", "pantalla-master"), 0o755)
+        if icns:
+            os.makedirs(os.path.join(contenido, "Resources"), exist_ok=True)
+            shutil.copy(icns, os.path.join(contenido, "Resources", "icono.icns"))
+        for o, d in archivos_de_la_app():
+            destino = os.path.join(contenido, "Resources", "archivos", d)
+            os.makedirs(os.path.dirname(destino), exist_ok=True)
+            shutil.copy(o, destino)
+        firmar_mac(app)
         with zipfile.ZipFile(os.path.join(DIST, "PantallaMaster-macOS-%s.zip" % nombre), "w", zipfile.ZIP_DEFLATED) as z:
-            z.writestr(app + "/Info.plist", PLIST)
-            info = zipfile.ZipInfo(app + "/MacOS/pantalla-master")
-            info.external_attr = 0o100755 << 16
-            info.compress_type = zipfile.ZIP_DEFLATED
-            with open(binario, "rb") as f:
-                z.writestr(info, f.read())
-            if icns:
-                z.write(icns, app + "/Resources/icono.icns")
-            for o, d in archivos_de_la_app():
-                z.write(o, app + "/Resources/archivos/" + d)
+            for raiz, carpetas, archivos in os.walk(app):
+                carpetas.sort()
+                for a in sorted(archivos):
+                    ruta = os.path.join(raiz, a)
+                    info = zipfile.ZipInfo(os.path.relpath(ruta, base).replace(os.sep, "/"))
+                    info.external_attr = (os.stat(ruta).st_mode & 0o777 | 0o100000) << 16
+                    info.compress_type = zipfile.ZIP_DEFLATED
+                    with open(ruta, "rb") as f:
+                        z.writestr(info, f.read())
     shutil.rmtree(tmp)
     for a in sorted(os.listdir(DIST)):
         print("  dist/%s  (%.1f MB)" % (a, os.path.getsize(os.path.join(DIST, a)) / 1e6))

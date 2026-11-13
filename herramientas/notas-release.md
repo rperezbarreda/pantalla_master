@@ -18,7 +18,7 @@ Baja **un solo archivo**, el de tu sistema, de la lista de abajo («Assets»):
 | Tengo… | Baja | Y luego… |
 |---|---|---|
 | Windows | `PantallaMaster-Windows.zip` | Descomprímelo y abre «Pantalla de máster.exe». Si Windows avisa («Windows protegió tu PC»), pulsa «Más información» → «Ejecutar de todas formas». |
-| Mac con chip M1, M2, M3… | `PantallaMaster-macOS-AppleSilicon.zip` | Descomprímelo. La primera vez, clic derecho en «Pantalla de máster» → Abrir. |
+| Mac con chip M1, M2, M3… | `PantallaMaster-macOS-AppleSilicon.zip` | Descomprímelo y mueve «Pantalla de máster» a Aplicaciones. La primera vez macOS no la abre (no está firmada por Apple): intenta abrirla, ve a Ajustes del Sistema → Privacidad y seguridad y pulsa «Abrir igualmente». |
 | Mac con Intel | `PantallaMaster-macOS-Intel.zip` | Igual que el de arriba. |
 | Linux | `PantallaMaster-Linux.zip` | Descomprímelo y abre `pantalla-de-master`. |
 | Tablet Android | `PantallaMaster-Android.apk` | Bájalo **en la tablet** y ábrelo. Android pedirá permiso para instalar apps de esa fuente: acéptalo. |

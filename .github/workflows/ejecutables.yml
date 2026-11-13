@@ -104,6 +104,14 @@ jobs:
         run: |
           pip install pillow
           go install github.com/akavel/rsrc@v0.10.2
+      # rcodesign firma la app de Mac «ad hoc» (sin cuenta de Apple): sin
+      # firmar, macOS dice que está «dañada» y no deja abrirla.
+      - name: rcodesign (para firmar la app de Mac)
+        run: |
+          curl -sSL -o /tmp/rcodesign.tgz "https://github.com/indygreg/apple-platform-rs/releases/download/apple-codesign%2F0.29.0/apple-codesign-0.29.0-x86_64-unknown-linux-musl.tar.gz"
+          echo "dbe85cedd8ee4217b64e9a0e4c2aef92ab8bcaaa41f20bde99781ff02e600002  /tmp/rcodesign.tgz" | sha256sum -c -
+          tar xzf /tmp/rcodesign.tgz -C /tmp
+          echo "RCODESIGN=/tmp/apple-codesign-0.29.0-x86_64-unknown-linux-musl/rcodesign" >> "$GITHUB_ENV"
       - name: Construir
         run: python3 herramientas/construir-ejecutables.py
       - uses: actions/download-artifact@v7
