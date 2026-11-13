@@ -89,6 +89,15 @@ jobs:
             exit 1
           fi
           echo "### Gatekeeper: sin «dañada» ✅ (lo esperado: pide «Abrir igualmente» la primera vez)" >> "$GITHUB_STEP_SUMMARY"
+      - name: (Para comparar) la de la release publicada
+        continue-on-error: true
+        run: |
+          curl -sSL -o publicada.zip "https://github.com/rperezbarreda/pantalla_master/releases/download/ultima/PantallaMaster-macOS-${{ matrix.zip }}.zip"
+          ditto -x -k publicada.zip publicada
+          xattr -w -r com.apple.quarantine "0081;$(printf %x "$(date +%s)");Google Chrome;" "publicada/Pantalla de máster.app"
+          SALE=$(spctl --assess --type execute -vv "publicada/Pantalla de máster.app" 2>&1 || true)
+          echo "$SALE"
+          { echo "La de la release publicada ahora:"; echo '```'; echo "$SALE"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
       - name: 3. Que arranca y sirve la app
         run: |
           # Como al pulsar «Abrir igualmente»: sin la marca.
