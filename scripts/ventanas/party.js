@@ -149,10 +149,10 @@
                     vitales.append(dt, PM.crear("dd", "", String(valor)));
                 };
                 const pgAhora = numero(pj.pg) !== "" ? numero(pj.pg) : numero(pj.pgmax);
-                vital("PG", pgAhora === "" ? "—" : pgAhora + (numero(pj.pgmax) !== "" ? " / " + numero(pj.pgmax) : "")
+                vital(ocT("PG"), pgAhora === "" ? "—" : pgAhora + (numero(pj.pgmax) !== "" ? " / " + numero(pj.pgmax) : "")
                     + (numero(pj.pgtemp) ? ocT(" (+{numero} temp.)", { numero: numero(pj.pgtemp) }) : ""), ocT("Puntos de golpe"));
-                vital("CA", numero(pj.ca), ocT("Clase de armadura"));
-                vital("PX", (PM.numPj(pj.px) || 0).toLocaleString(window.ocLocale) + ((PM.numPj(pj.nivel) || 1) < 20 ? " / "
+                vital(ocT("CA"), numero(pj.ca), ocT("Clase de armadura"));
+                vital(ocT("PX"), (PM.numPj(pj.px) || 0).toLocaleString(window.ocLocale) + ((PM.numPj(pj.nivel) || 1) < 20 ? " / "
                     + PM.pxParaSubir(pj).toLocaleString(window.ocLocale) : ""), ocT("Puntos de experiencia (y los que necesita para subir)"));
                 PASIVAS.forEach(([k, texto, emoji]) => vital(emoji, PM.pasivaPj(pj, k) === null ? "" : PM.pasivaPj(pj, k), texto));
                 vitales.querySelectorAll("dt").forEach((dt) => {
@@ -173,7 +173,7 @@
                         return;
                     }
                     const c = PM.crear("li", "master-party-c");
-                    c.appendChild(PM.crear("span", "master-party-et", k));
+                    c.appendChild(PM.crear("span", "master-party-et", ocT(k)));
                     c.appendChild(PM.crear("span", "master-party-valor", String(n)));
                     c.appendChild(window.ocDadoBoton ? window.ocDadoBoton(conSigno(mod(n)), "1d20" + (mod(n) >= 0 ? "+" : "")
                         + mod(n), ocT("{k} de {quien}", { k: k, quien: quien })) : document.createTextNode(conSigno(mod(n))));

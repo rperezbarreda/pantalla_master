@@ -99,7 +99,7 @@
                 ul.setAttribute("aria-label", ocT("Inventario común de la party"));
                 inv.objetos.forEach((o) => {
                     const li = PM.crear("li", "master-inv-objeto");
-                    const s = objetosSrd[PM.llano(o.nombre)];
+                    const s = PM.deSrd(objetosSrd, o.nombre);
                     const nombre = s ? PM.botonDe("master-conjuro-boton", o.nombre, () => PM.abrirObjeto(s, nombre, tienda.fuente))
                         : PM.crear("span", "master-inv-nombre", o.nombre);
                     const menos = PM.botonDe("master-docs-mando", "−", () => {

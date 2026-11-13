@@ -26,6 +26,8 @@ Cada archivo es una lista de textos. A la izquierda, el texto en castellano (no 
 - Las comillas dentro de una traducción van con barra: `\"`. Mejor usar las españolas, « ».
 - Los primeros textos son los de la interfaz (botones, menús, avisos); los que vienen después, los del compendio (reglas, bestiario, conjuros, objetos, tablas). Si vas a empezar por algo, empieza por arriba.
 - Cuando la app tiene textos nuevos, aparecen solos en cada archivo, vacíos.
+- El compendio no hace falta traducirlo de cero: las reglas, los monstruos, los conjuros y los objetos son los del SRD, que ya existe en otros idiomas (en inglés, el texto de `en.json` es el original del SRD 5.2 y 5.1). Lo que sí es de la app (las tablas de PNJ, dungeons, negocios, nombres…) hay que traducirlo.
+- Si un texto sale igual en la interfaz y en el compendio pero en tu idioma se dice distinto en cada sitio («Vista»: un botón para ver y el alcance de un conjuro), la traducción del compendio va aparte, al final del archivo, en `"@compendio": { "Vista": "Sight" }`.
 
 Sirve cualquier editor de texto que guarde en UTF-8 (Visual Studio Code, Notepad++, el editor de GitHub…).
 

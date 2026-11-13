@@ -14,12 +14,15 @@
         if (!n) {
             return null;
         }
-        const salen = lista.filter((r) => limpio(r.nombre) === n || limpio(r.en) === n || PM.llano(r.nombre) === PM.llano(nombre));
+        // (Y por su traducción: un nombre guardado en castellano con la app en otro idioma.)
+        const n2 = limpio(window.ocTd(String(nombre || "")));
+        const salen = lista.filter((r) => limpio(r.nombre) === n || limpio(r.en) === n || PM.llano(r.nombre) === PM.llano(nombre)
+            || limpio(r.nombre) === n2);
         if (salen.length < 2) {
             return salen[0] || null;
         }
         const p = PM.llano(pista || "");
-        return salen.find((r) => r.propio) || salen.find((r) => p && PM.llano(r.de || "").split(/[ ,()]+/).some((w) => w.length > 3
+        return salen.find((r) => r.propio) || salen.find((r) => p && PM.llano((r.de || "") + " " + PM.verDato(r.de || "")).split(/[ ,()]+/).some((w) => w.length > 3
             && p.includes(w))) || salen[0];
     }
 
@@ -303,7 +306,7 @@
             });
             pgCaja.append(pgInput, document.createTextNode(PM.numPj(pj.pgmax) !== null ? " / " + PM.numPj(pj.pgmax) : ""));
             const d = car("des");
-            panelFicha.appendChild(datosDe([["CA", pj.ca], ["PG", visor ? null : pgCaja], [ocT("PG temporales"), PM.numPj(pj.pgtemp) || ""],
+            panelFicha.appendChild(datosDe([[ocT("CA"), pj.ca], [ocT("PG"), visor ? null : pgCaja], [ocT("PG temporales"), PM.numPj(pj.pgtemp) || ""],
                 [ocT("Iniciativa"), d !== null ? PM.dadoPj(PM.modDe(d), ocT("Iniciativa de {quien}", { quien: quien })) : ""], [ocT("Velocidad"), pj.velocidad],
                 [ocT("Competencia"), PM.signo(prof)], [ocT("Dados de golpe"), pj.dadosGolpe]]));
             const cars = PM.crear("ul", "master-pj-caracteristicas");
@@ -550,7 +553,7 @@
             const pintarInv = () => {
                 listaInv.replaceChildren(...pj.objetos.map((o, i) => {
                     const li = PM.crear("li");
-                    const srdO = objetosSrd[PM.llano(o.nombre)];
+                    const srdO = PM.deSrd(objetosSrd, o.nombre);
                     const nombre = srdO ? PM.botonDe("master-conjuro-boton", o.nombre, () => PM.abrirObjeto(srdO, li.firstChild, tienda.fuente))
                         : PM.crear("span", "", o.nombre);
                     li.append(nombre, PM.crear("span", "master-pj-marca", ocT("×{n}{n2}", { n: PM.numPj(o.cant) || 1, n2: o.equipado ? ocT(" · equipado") : "" })));

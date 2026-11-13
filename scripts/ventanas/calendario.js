@@ -13,7 +13,10 @@
     // la partida (y botones para que pase el tiempo) y apuntes por día. ----
     const MESES_GREGORIANO = [ocT("enero"), ocT("febrero"), ocT("marzo"), ocT("abril"), ocT("mayo"), ocT("junio"), ocT("julio"), ocT("agosto"), ocT("septiembre"), ocT("octubre"),
         ocT("noviembre"), ocT("diciembre")];
-    const SEMANA_GREGORIANO = [ocT("lun"), ocT("mar"), ocT("mié"), ocT("jue"), ocT("vie"), ocT("sáb"), ocT("dom")];
+    // Las tres primeras letras de cada día («mar» sería «mar» de agua en
+    // otros sitios de la app).
+    const SEMANA_GREGORIANO = [ocT("lunes"), ocT("martes"), ocT("miércoles"), ocT("jueves"), ocT("viernes"), ocT("sábado"), ocT("domingo")]
+        .map((d) => d.slice(0, 3));
 
     function montarCalendario(dentro, m) {
         m.datos = m.datos || {};

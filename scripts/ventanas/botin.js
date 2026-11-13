@@ -66,7 +66,7 @@
                     }
                     const x = PM.crear("li", "master-botin-cosa es-magico");
                     const b = PM.botonDe("master-botin-objeto", o.nombre, () => PM.abrirObjeto(o, b, tienda.fuente), ocT("Ver {nombre}", { nombre: o.nombre }));
-                    x.append(PM.crear("span", "master-botin-icono", "✨"), b, PM.crear("span", "master-botin-valor", o.rareza));
+                    x.append(PM.crear("span", "master-botin-icono", "✨"), b, PM.crear("span", "master-botin-valor", PM.verDato(o.rareza)));
                     lista.appendChild(x);
                 });
                 let total = monedas.reduce((t, x) => t + x[1] * VALOR_MONEDA[x[0]], 0) / 100;

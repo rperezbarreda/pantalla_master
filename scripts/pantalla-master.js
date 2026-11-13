@@ -645,11 +645,11 @@
         const fuente = fuenteDe(c, fuenteSrd);
         const cuerpo = crear("div", "oc-regla-ventana");
         const chapas = crear("ul", "oc-desplegable-datos");
-        [nivelDe(c), c.escuela, c.ritual ? ocT("ritual") : "", c.conc ? ocT("concentración") : ""].filter(Boolean)
+        [nivelDe(c), verDato(c.escuela), c.ritual ? ocT("ritual") : "", c.conc ? ocT("concentración") : ""].filter(Boolean)
             .forEach((t) => chapas.appendChild(crear("li", "", t)));
         const dl = crear("dl", "master-bicho-datos");
         [[ocT("Lanzamiento"), c.tiempo], [ocT("Alcance"), c.alcance], [ocT("Componentes"), c.comp], [ocT("Duración"), c.dur],
-            [ocT("Clases"), (c.clases || []).join(", ")]].forEach(([k, v]) => {
+            [ocT("Clases"), (c.clases || []).map(verDato).join(", ")]].forEach(([k, v]) => {
             if (v) {
                 dl.append(crear("dt", "", k), crear("dd", "", v));
             }
@@ -797,14 +797,14 @@
                 dl.append(crear("dt", "", que), crear("dd", "", String(valor)));
             }
         };
-        fila(ocT("Categoría"), o.cat);
-        fila(ocT("Rareza"), o.rareza);
+        fila(ocT("Categoría"), verDato(o.cat));
+        fila(ocT("Rareza"), verDato(o.rareza));
         fila(ocT("Sintonía"), o.sint ? ocT("la requiere") : "");
         fila(ocT("Detalles"), o.det);
         fila(ocT("Peso"), o.peso);
         fila(ocT("Nota"), o.nota);
         fila(ocT("Precio"), o.cp ? moneda(o.cp) : "");
-        fila(ocT("Se vende en"), (o.tiendas || []).join(", ").toLowerCase());
+        fila(ocT("Se vende en"), (o.tiendas || []).map(verDato).join(", ").toLowerCase());
         fila(ocT("En inglés"), o.en);
         cuerpo.appendChild(dl);
         if (o.texto) {
@@ -868,7 +868,7 @@
     Object.assign(PM, { RASGOS_SRD });
     const idRasgo = (r) => (r.propio ? r.id : r.en + "|" + r.de);
     Object.assign(PM, { idRasgo });
-    const datosRasgo = (r) => [r.tipo, r.de && r.de !== "dote" ? r.de : "", r.nivel ? ocT("nivel {nivel}", { nivel: r.nivel }) : ""].filter(Boolean);
+    const datosRasgo = (r) => [verDato(r.tipo), r.de && r.de !== "dote" ? verDato(r.de) : "", r.nivel ? ocT("nivel {nivel}", { nivel: r.nivel }) : ""].filter(Boolean);
     Object.assign(PM, { datosRasgo });
 
     function cuerpoRasgo(r, fuenteSrd) {
@@ -930,14 +930,22 @@
 
     // Sus hechizos: [{nivel, nombre}] (el nivel, del SRD si está).
     function conjurosPj(pj, srd) {
-        return (pj.conjuros || []).map((n) => ({ nivel: srd[llano(n)] ? srd[llano(n)].nivel : null, nombre: n }));
+        return (pj.conjuros || []).map((n) => ({ nivel: deSrd(srd, n) ? deSrd(srd, n).nivel : null, nombre: n }));
+    }
+
+    // Lo del SRD con ese nombre (en un índice por llano(nombre)). Si la app
+    // va en otro idioma y el nombre está guardado en castellano («Bola de
+    // fuego» de una ficha de antes), también por su traducción.
+    function deSrd(indice, nombre) {
+        return indice[llano(nombre)] || indice[llano(window.ocTd(nombre))];
     }
 
     // Un hechizo: el del SRD (o uno tuyo), con su ventana; si no, el nombre.
     function conjuroPj(nombre, srd, fuente) {
-        const c = srd[llano(nombre)];
-        return c ? botonConjuro(c, nombre, fuente) : crear("span", "", nombre);
+        const c = deSrd(srd, nombre);
+        return c ? botonConjuro(c, srd[llano(nombre)] ? nombre : c.nombre, fuente) : crear("span", "", nombre);
     }
+    Object.assign(PM, { deSrd });
 
     // Unas pestañas (role="tablist", con las flechas, Inicio y Fin):
     // «paneles» [[título, panel]]; alElegir(i) al cambiar.
@@ -1010,7 +1018,9 @@
     // mismo). ----
     const SALVACIONES_PJ = ["fue", "des", "con", "int", "sab", "car"];
     Object.assign(PM, { SALVACIONES_PJ });
-    const MONEDAS_PJ = [["pc", "pc", "cobre"], ["pp", "pp", "plata"], ["pe", "pe", "electro"], ["po", "po", "oro"], ["pt", "ppt", "platino"]];
+    // [clave, abreviatura, nombre] (las dos últimas, en el idioma de la app).
+    const MONEDAS_PJ = [["pc", ocT("pc"), ocT("cobre")], ["pp", ocT("pp"), ocT("plata")], ["pe", ocT("pe"), ocT("electro")],
+        ["po", ocT("po"), ocT("oro")], ["pt", ocT("ppt"), ocT("platino")]];
     Object.assign(PM, { MONEDAS_PJ });
     const avisarPjs = (desde) => document.dispatchEvent(new CustomEvent("master:pjs", { detail: { desde } }));
     Object.assign(PM, { avisarPjs });
@@ -1183,11 +1193,14 @@
         const cl = llano(clase || "");
         const base = cl.split(/[ (/]+/)[0];
         return lista.filter((r) => {
-            if (r.tipo !== "rasgo de clase" || r.nivel !== nivel || /^subclase de /i.test(r.nombre)) {
+            if (r.tipo !== "rasgo de clase" || r.nivel !== nivel || /^subclase de /i.test(r.nombre) || / Subclass$/.test(r.en || "")) {
                 return false;
             }
-            const m = /^(.*?)(?: \((.*)\))?$/.exec(r.de || "") || [];
-            return base && llano(m[1] || "") === base && (!m[2] || cl.includes(llano(m[2])));
+            // La clase de la ficha, en castellano o en el idioma de la app.
+            return base && [r.de, verDato(r.de)].some((de) => {
+                const m = /^(.*?)(?: \((.*)\))?$/.exec(de || "") || [];
+                return llano(m[1] || "") === base && (!m[2] || cl.includes(llano(m[2])));
+            });
         });
     }
     function subirNivel(pj) {
@@ -1197,7 +1210,7 @@
             const nuevos = rasgosDeNivel(datos.rasgos || [], pj.clase, nuevo).filter((r) => !llano(pj.rasgos || "")
                 .includes("**" + llano(r.nombre) + "**"));
             if (nuevos.length) {
-                pj.rasgos = (String(pj.rasgos || "").replace(/\s+$/, "") + "\n" + nuevos.map((r) => ocT("- **{nombre}** ({de}, nivel {nuevo})", { nombre: r.nombre, de: r.de, nuevo: nuevo })).join("\n")).trim();
+                pj.rasgos = (String(pj.rasgos || "").replace(/\s+$/, "") + "\n" + nuevos.map((r) => ocT("- **{nombre}** ({de}, nivel {nuevo})", { nombre: r.nombre, de: verDato(r.de), nuevo: nuevo })).join("\n")).trim();
             }
             guardar();
             avisarPjs("");
@@ -1642,7 +1655,7 @@
         pj.historia = String((d.notes || {}).backstory || "").trim();
         pj.fotoUrl = String(((d.decorations || {}).avatarUrl) || d.avatarUrl || "");
         pj.dndbeyond = d.readonlyUrl || (d.id ? "https://www.dndbeyond.com/characters/" + d.id : "");
-        if (t.sin.length) {
+        if (t.sin.length && window.ocLocale !== "en") {
             avisos.push(ocT("Sin traducir (cámbialo a mano si quieres): {join}{n}", { join: t.sin.slice(0, 30).join("; "), n: t.sin.length > 30 ? "…" : "" }));
         }
         return { pj, avisos };
@@ -2152,7 +2165,7 @@
         if (img && !pj.fotoUrl && !/mystery-man|systems\/dnd5e\/|icons\//.test(img)) {
             avisos.push(ocT("Su foto se queda en tu Foundry: ponla con «✎ editar ficha» → 📷."));
         }
-        if (t.sin.length) {
+        if (t.sin.length && window.ocLocale !== "en") {
             avisos.push(ocT("Sin traducir (cámbialo a mano si quieres): {join}{n}", { join: t.sin.slice(0, 30).join("; "), n: t.sin.length > 30 ? "…" : "" }));
         }
         return { pj, avisos };
@@ -2680,7 +2693,7 @@
                 if (!r.ok) {
                     throw new Error(r.status);
                 }
-                return r.json().then(window.ocIdioma.datos);
+                return r.json().then(window.ocIdioma.datos).then(nombresEnSuIdioma);
             });
         }
         return nombresCrudo.then((d) => {
@@ -2752,6 +2765,25 @@
         return nombre;
     }
 
+    // En inglés, los apellidos (sus trozos no se traducen: se pegan) salen
+    // de los de «en» (nombres.json).
+    function nombresEnSuIdioma(d) {
+        const otro = window.ocLocale === "en" && d.en;
+        if (!otro) {
+            return d;
+        }
+        const x = Object.assign({}, d);
+        x.apellidos = Object.assign({}, d.apellidos, otro.apellidos || {});
+        return x;
+    }
+    // «El Grifo» + «Torcido» (o «La Cabra» + «Torcida»); en inglés, el
+    // adjetivo va delante: «The Crooked Griffon».
+    function nombreConAdjetivo(sust, g, adj) {
+        const a = g === "f" ? adj[1] : adj[0];
+        const m = window.ocLocale === "en" && /^The (.+)$/.exec(sust);
+        return m ? "The " + a + " " + m[1] : sust + " " + a;
+    }
+    Object.assign(PM, { nombreConAdjetivo });
     function lugarDe(datos, tipo) {
         const tuya = propiaDe(datos, tipo);
         if (tuya) {
@@ -2760,13 +2792,14 @@
         const l = datos.lugares[tipo];
         if (tipo === "taberna") {
             const [sust, g] = alAzar(l.sust);
-            const adj = alAzar(l.adj);
-            return sust + " " + (g === "f" ? adj[1] : adj[0]);
+            return nombreConAdjetivo(sust, g, alAzar(l.adj));
         }
-        if (tipo === "pueblo" && alAzar([0, 1])) {
+        // «Villa» + «seca», pegados, sólo en castellano.
+        if (tipo === "pueblo" && window.ocLocale !== "en" && alAzar([0, 1])) {
             return alAzar(l.pre) + alAzar(l.adj);
         }
-        return alAzar(l.base) + " " + alAzar(l.de);
+        // («de» es fijo en los datos: se traduce al ponerlo.)
+        return alAzar(l.base) + " " + verDato(alAzar(l.de));
     }
 
     // Un grupo de botones que se comportan como opciones (uno pulsado):
@@ -3126,11 +3159,18 @@
         return nombre;
     }
 
+    // Cuántas acciones legendarias tiene (3 si no lo dice): en castellano
+    // o en inglés, de 2024 («Usos de acción legendaria: 3») o de 2014
+    // («puede realizar 3 acciones legendarias»).
+    function usosLegendarios(b) {
+        const m = /(?:Usos de acción legendaria|Legendary Action Uses):\*? (\d+)|(?:puede realizar|can take) (\d+) (?:acciones legendarias|legendary actions)/
+            .exec(b.legInfo || "") || [];
+        return parseInt(m[1] || m[2], 10) || 3;
+    }
     // Lo que la iniciativa necesita de un monstruo: sus legendarias y su
     // salvación de Constitución.
     function iniDeBicho(b) {
-        const leg = (b.legendarias && b.legendarias.length) ? parseInt((/Usos de acción legendaria:\*? (\d+)/.exec(b.legInfo || "")
-            || [])[1], 10) || 3 : 0;
+        const leg = (b.legendarias && b.legendarias.length) ? usosLegendarios(b) : 0;
         const salv = /Con ([+−-]\d+)/.exec(b.salv || "");
         const con = salv ? parseInt(salv[1].replace("−", "-"), 10) : b.car && b.car.Con ? modDe(Number(b.car.Con)) : undefined;
         // «bicho»: quién es en el bestiario (para la ventana de la criatura
@@ -3209,13 +3249,16 @@
     function tablaDeAtaques(lista) {
         const filas = [];
         lista.forEach((r) => {
-            const m = /^\*(Ataque[^:*]*):\* ([+−-]\d+), ([^*]+?) \*Impacto:\* (.*)$/s.exec(r.t);
+            // En castellano («*Ataque cuerpo a cuerpo:* +4, alcance 5 ft.
+            // *Impacto:* …») o en inglés («*Melee Attack Roll:* +4, reach 5
+            // ft. *Hit:* …»).
+            const m = /^\*((?:Ataque|Melee|Ranged)[^:*]*):\* ([+−-]\d+)(?: to hit)?, ([^*]+?) \*(?:Impacto|Hit):\* (.*)$/s.exec(r.t);
             if (!m) {
                 return;
             }
             const resto = m[4];
             const corte = resto.search(/\.(\s|$)/);
-            filas.push({ r, tipo: m[1].replace(/^Ataque /, ""), bono: m[2], alcance: m[3],
+            filas.push({ r, tipo: m[1].replace(/^Ataque /, "").replace(/ (?:Weapon |Spell )?Attack(?: Roll)?$/, ""), bono: m[2], alcance: m[3],
                 dano: corte >= 0 ? resto.slice(0, corte + 1) : resto, efecto: corte >= 0 ? resto.slice(corte + 1).trim() : "" });
         });
         if (!filas.length) {
@@ -3246,7 +3289,8 @@
             // «10 (2d6 + 3) de daño cortante.»: el dado, grande y entero
             // (sin que el paréntesis se quede colgando), y al lado la media
             // y el tipo; el efecto, debajo.
-            const d = /^(\d+) \(([^()]+)\) (?:de )?daño (?:de )?([^.,]+?)([.,].*)?$/s.exec(x.dano.trim());
+            const d = /^(\d+) \(([^()]+)\) (?:de )?daño (?:de )?([^.,]+?)([.,].*)?$/s.exec(x.dano.trim())
+                || /^(\d+) \(([^()]+)\) ([A-Za-z]+) damage([.,].*)?$/s.exec(x.dano.trim());
             if (d && window.ocDadoBoton) {
                 const linea = crear("p", "master-ataque-dado");
                 linea.append(window.ocDadoBoton(d[2], d[2].replace(/\s+/g, "").replace("−", "-"), ocT("{n} · daño", { n: x.r.n })),
@@ -3292,7 +3336,7 @@
         };
         const repintables = [];
         const caja = crear("div", "master-bicho");
-        const tipo = crear("p", "master-bicho-tipo", b.tipo + ", " + b.alin);
+        const tipo = crear("p", "master-bicho-tipo", verDato(b.tipo) + ", " + b.alin);
         const cabeza = crear("div", "master-bicho-cabeza");
         cabeza.append(tokenDe(b, true), tipo);
         caja.appendChild(cabeza);
@@ -3339,7 +3383,7 @@
         const cab = crear("tr");
         const val = crear("tr");
         Object.keys(b.car).forEach((k) => {
-            const th = crear("th", "", k);
+            const th = crear("th", "", ocT(k));
             th.scope = "col";
             cab.appendChild(th);
             const n = b.car[k];
@@ -3347,7 +3391,7 @@
             const td = crear("td", "", n + " ");
             const bono = (mo >= 0 ? "+" : "−") + Math.abs(mo);
             td.appendChild(window.ocDadoBoton ? window.ocDadoBoton("(" + bono + ")", "1d20" + (mo >= 0 ? "+" : "") + mo,
-                ocT("prueba de {k}", { k: k })) : document.createTextNode("(" + bono + ")"));
+                ocT("prueba de {k}", { k: ocT(k) })) : document.createTextNode("(" + bono + ")"));
             val.appendChild(td);
         });
         const thead = crear("thead");
@@ -3369,7 +3413,7 @@
         fila(abajo, ocT("Sentidos"), b.sent);
         fila(abajo, ocT("Idiomas"), b.idio);
         fila(abajo, ocT("VD"), b.vd);
-        fila(abajo, ocT("Hábitat"), (b.habitat || []).join(", "));
+        fila(abajo, ocT("Hábitat"), (b.habitat || []).map(verDato).join(", "));
         stats.append(arriba, tabla, abajo);
 
         // Un rasgo o acción: su nombre en negrita (con sus casillas si se
@@ -3378,8 +3422,8 @@
             const div = crear("div", "master-bicho-entrada");
             const cabeza = crear("p", "master-bicho-nombre");
             cabeza.appendChild(crear("strong", "", r.n));
-            const rec = /Recarga (\d)(?:–6)?/.exec(r.n);
-            const dia = /\((\d+)\/día/.exec(r.n);
+            const rec = /(?:Recarga|Recharge) (\d)(?:–6)?/.exec(r.n);
+            const dia = /\((\d+)\/(?:día|Day)/.exec(r.n);
             if (rec) {
                 const clave = seccion + ":" + r.n;
                 const c = casillas(usos, clave, 1, r.n, alCambiar);
@@ -3422,7 +3466,7 @@
             const parte = crear("div", "master-bicho-parte");
             let lista = b[k];
             if (k === "legendarias" && b.legInfo) {
-                const cuantas = parseInt((/Usos de acción legendaria:\* (\d+)/.exec(b.legInfo) || [])[1], 10) || 3;
+                const cuantas = usosLegendarios(b);
                 const p = crear("p", "master-bicho-nombre");
                 p.appendChild(crear("strong", "", ocT("Usos")));
                 const c = casillas(usos, "legendarias", cuantas, "acciones legendarias", alCambiar);
@@ -3481,13 +3525,13 @@
         if (b.conjuros) {
             const panel = crear("div", "master-bicho-panel");
             panel.appendChild(markdown(b.conjuros.t));
-            panel.appendChild(crear("p", "oc-hoja-nota", ocT("Se lanzan como {donde}.", { donde: b.conjuros.donde })));
+            panel.appendChild(crear("p", "oc-hoja-nota", ocT("Se lanzan como {donde}.", { donde: verDato(b.conjuros.donde) })));
             b.conjuros.listas.forEach((l, i) => {
                 const div = crear("div", "master-bicho-entrada");
                 const cabeza = crear("p", "master-bicho-nombre");
-                cabeza.appendChild(crear("strong", "", l.et));
+                cabeza.appendChild(crear("strong", "", verDato(l.et)));
                 if (l.usos && !l.cada) {
-                    const c = casillas(usos, "conj:" + i, l.usos, l.et, alCambiar);
+                    const c = casillas(usos, "conj:" + i, l.usos, verDato(l.et), alCambiar);
                     repintables.push(c);
                     cabeza.appendChild(c);
                 }
@@ -3590,7 +3634,7 @@
     const colorIni = (c) => (/^#[0-9a-f]{6}$/i.test(c.color || "") ? c.color
         : { personaje: "#3fae5a", npc: "#3b7ddd", monstruo: "#d23b3b" }[c.tipo] || "#3fae5a");
     Object.assign(PM, { colorIni });
-    const textoMarcaIni = (mk) => mk.t + (mk.r ? " (" + mk.r + (mk.r === 1 ? ocT(" ronda") : ocT(" rondas")) + ")" : "");
+    const textoMarcaIni = (mk) => verDato(mk.t) + (mk.r ? " (" + mk.r + (mk.r === 1 ? ocT(" ronda") : ocT(" rondas")) + ")" : "");
     // Lo de un combatiente que se ve de un vistazo: iniciativa, CA, PG y
     // sus marcas (cegado, concentrado…).
     function datosIni(c, conMarcas) {
@@ -4650,6 +4694,25 @@
     const PROPIO_RASGOS = ["rasgo de clase", "rasgo de especie", "dote de origen", "dote general", "estilo de combate", "don épico",
         "rasgo de trasfondo", "otro rasgo"];
     const PROPIO_OTROS = ["especie", "trasfondo", "dote", "clase", "subclase", "rasgo de clase", "regla", "lugar", "deidad", "otro"];
+    // Los datos que se guardan en castellano (categorías, rarezas, tipos…),
+    // en el idioma de la app para enseñarlos: los del compendio, con
+    // window.ocTd; los que sólo salen en estas listas, aquí.
+    const VER_PROPIO = { "Dragón": ocT("Dragón"), Planta: ocT("Planta"), "rasgo de trasfondo": ocT("rasgo de trasfondo"), "otro rasgo": ocT("otro rasgo"), especie: ocT("especie"),
+        trasfondo: ocT("trasfondo"), clase: ocT("clase"), subclase: ocT("subclase"), regla: ocT("regla"), lugar: ocT("lugar"),
+        deidad: ocT("deidad"), otro: ocT("otro") };
+    function verDato(v) {
+        if (typeof v !== "string") {
+            return v;
+        }
+        const t = window.ocTd(v);
+        return t !== v ? t : VER_PROPIO[v] || v;
+    }
+    Object.assign(PM, { verDato });
+    // Los tamaños, aparte («Mediano» y «Grande» se dicen distinto en otros
+    // sitios): «(tamaño)» es sólo para quien traduce.
+    const TAMANO_VER = { Diminuto: ocT("Diminuto"), "Pequeño": ocT("Pequeño"), Mediano: ocT("Mediano (tamaño)"), Grande: ocT("Grande (tamaño)"),
+        Enorme: ocT("Enorme"), Gargantuesco: ocT("Gargantuesco"), "Pequeño o Mediano": ocT("Pequeño o Mediano") };
+    const tamanoVer = (t) => [t, (TAMANO_VER[t] || t).replace(/ \(tamaño\)$/, "").replace(/ \(size\)$/, "")];
     const SECCIONES_BICHO = [["rasgos", ocT("Rasgos")], ["acciones", ocT("Acciones")], ["adicionales", ocT("Acciones adicionales")],
         ["reacciones", ocT("Reacciones")], ["legendarias", ocT("Acciones legendarias")]];
 
@@ -4805,7 +4868,7 @@
     // Una de las «otras cosas» (especie, dote…) en su ventana.
     function abrirOtro(x, vuelta) {
         const cuerpo = crear("div", "oc-regla-ventana");
-        cuerpo.appendChild(crear("p", "oc-hoja-nota", x.cat));
+        cuerpo.appendChild(crear("p", "oc-hoja-nota", verDato(x.cat)));
         const t = markdown(x.texto);
         cuerpo.appendChild(t);
         if (window.ocDadosEnTexto) {
@@ -5227,7 +5290,9 @@
         const etTr = crear("label", "master-creador-check");
         const conTraducir = crear("input");
         conTraducir.type = "checkbox";
-        conTraducir.checked = d.traducir !== false;
+        // En inglés no hay nada que traducir (los términos ya van en inglés).
+        conTraducir.checked = d.traducir !== false && window.ocLocale !== "en";
+        etTr.hidden = window.ocLocale === "en";
         conTraducir.addEventListener("change", () => {
             d.traducir = conTraducir.checked;
             guardar();
@@ -5398,7 +5463,7 @@
                 cargado.then(() => {
                     const clave = (x) => (k === "rasgos" ? x.en + "|" + x.de : x.en);
                     sel.replaceChildren(...srd[k].slice().sort((a, b) => a.nombre.localeCompare(b.nombre, window.ocLocale)).map((x) => {
-                        const o = crear("option", "", x.nombre + (k === "rasgos" && x.de && x.de !== "dote" ? " (" + x.de + ")" : ""));
+                        const o = crear("option", "", x.nombre + (k === "rasgos" && x.de && x.de !== "dote" ? " (" + verDato(x.de) + ")" : ""));
                         o.value = clave(x);
                         return o;
                     }));
@@ -5523,18 +5588,18 @@
 
         function detalleDe(k, x) {
             if (k === "monstruos") {
-                return ocT("VD {cr} · {tipo}", { cr: x.cr, tipo: x.tipo });
+                return ocT("VD {cr} · {tipo}", { cr: x.cr, tipo: verDato(x.tipo) });
             }
             if (k === "objetos") {
-                return x.cat + (x.rareza ? " · " + x.rareza : "");
+                return verDato(x.cat) + (x.rareza ? " · " + verDato(x.rareza) : "");
             }
             if (k === "conjuros") {
-                return nivelDe(x) + " · " + x.escuela;
+                return nivelDe(x) + " · " + verDato(x.escuela);
             }
             if (k === "rasgos") {
                 return datosRasgo(x).join(" · ");
             }
-            return x.cat;
+            return verDato(x.cat);
         }
         function abrirUno(k, x, vuelta) {
             pedir(RUTA_DE[k] || "datos/personajes/compendio/tienda.json").then((datos) => {
@@ -5940,11 +6005,11 @@
             if (o.opciones) {
                 x = crear("select", "master-elegir");
                 const lista = o.opciones.slice();
-                if (valor && !lista.includes(valor)) {
+                if (valor && !lista.some((v) => (Array.isArray(v) ? v[0] : v) === valor)) {
                     lista.push(valor);
                 }
                 lista.forEach((v) => {
-                    const op2 = crear("option", "", Array.isArray(v) ? v[1] : v || "—");
+                    const op2 = crear("option", "", Array.isArray(v) ? v[1] : verDato(v) || "—");
                     op2.value = Array.isArray(v) ? v[0] : v;
                     x.appendChild(op2);
                 });
@@ -6006,7 +6071,7 @@
                 c.type = "checkbox";
                 c.value = v;
                 c.checked = (marcadas || []).includes(v);
-                et.append(c, " " + v);
+                et.append(c, " " + verDato(v));
                 caja.appendChild(et);
                 return c;
             });
@@ -6069,6 +6134,7 @@
             et.htmlFor = area.id;
             const nota = crear("p", "oc-hoja-nota", conTraducir.checked ? ocT("🌐 Los términos de reglas en inglés se pasan al español.")
                 : ocT("Tal cual (sin traducir: está desmarcado «🌐 traducir»)."));
+            nota.hidden = window.ocLocale === "en";
             const ok = crear("button", "oc-vida-accion es-principal", ocT("✓ rellenar"));
             ok.type = "submit";
             const guia = botonDe("oc-vida-accion", ocT("❓ cómo"), () => abrirGuiaPegar(guia), ocT("Cómo pegar desde D&D Beyond (guía)"));
@@ -6114,7 +6180,7 @@
                     .exec(v.tipo || "") || [];
                 const tipo = campo(base, ocT("tipo"), t[1] || (v.tipo ? v.tipo : "Monstruosidad"), { opciones: PROPIO_TIPOS });
                 const etiqueta = campo(base, ocT("etiqueta"), t[2] || "", { ayuda: ocT("opcional: goblinoide…") });
-                const tam = campo(base, ocT("tamaño"), t[3] || (v.tipo ? "" : "Mediano"), { opciones: PROPIO_TAMANOS });
+                const tam = campo(base, ocT("tamaño"), t[3] || (v.tipo ? "" : "Mediano"), { opciones: PROPIO_TAMANOS.map(tamanoVer) });
                 const alin = campo(base, ocT("alineamiento"), v.alin || "neutral", { opciones: PROPIO_ALIN });
                 const cr = campo(base, ocT("VD"), v.cr || "1", { opciones: CR_LISTA });
                 const comb = grupo(ocT("Combate"));
@@ -6240,6 +6306,7 @@
                 }
             }, ocT("Traducir al español los términos de reglas en inglés de este formulario"));
             const no = botonDe("oc-vida-accion", ocT("cancelar"), cerrar);
+            traducirB.hidden = window.ocLocale === "en";
             botones.append(ok, traducirB, no);
             editor.appendChild(botones);
             editor.onsubmit = (e) => {
@@ -6616,7 +6683,7 @@
             desc: ocT("Escribe una nota y mírala en élfico, enano, infernal…"), montar: PM.montarIdiomas },
         tarjeta: { nombre: ocT("post-it"), emoji: "🗒️", grupo: "apuntes", w: 420, h: 340,
             desc: ocT("Un texto con formato: negrita, listas, colores…"), montar: PM.montarTarjeta },
-        dibujo: { nombre: "dibujo", emoji: "🎨", grupo: "apuntes", w: 900, h: 660,
+        dibujo: { nombre: ocT("dibujo"), emoji: "🎨", grupo: "apuntes", w: 900, h: 660,
             desc: ocT("Un Paint con capas, bote, selección y rejilla de rol."), montar: PM.montarDibujo },
         notas: { nombre: ocT("notas"), emoji: "📝", grupo: "apuntes", unico: true, w: 520, h: 480,
             desc: ocT("Las notas de la sesión, con formato (como un Word)."), montar: PM.montarNotas },
@@ -6624,7 +6691,7 @@
             desc: ocT("Tus carpetas y notas: búscalas (nombre y contenido) y ábrelas en el tablero."), montar: PM.montarDocumentos },
         tabla: { nombre: ocT("tabla para tirar"), emoji: "🔮", grupo: "apuntes", w: 360, h: 380,
             desc: ocT("Una lista de la que sale una cosa al azar."), montar: PM.montarTabla },
-        criatura: { nombre: "criatura", emoji: "🐾", oculto: true, w: 440, h: 520, montar: PM.montarCriatura },
+        criatura: { nombre: ocT("criatura"), emoji: "🐾", oculto: true, w: 440, h: 520, montar: PM.montarCriatura },
         ficha: { nombre: ocT("ficha"), emoji: "📖", oculto: true, w: 420, h: 420, montar: PM.montarFicha },
         pj: { nombre: ocT("ficha de personaje"), emoji: "🧝", oculto: true, w: 620, h: 720, montar: PM.montarPj },
         inventario: { nombre: ocT("inventario de la party"), emoji: "🎒", grupo: "mesa", unico: true, w: 520, h: 600,
@@ -7032,7 +7099,7 @@
         if (m.el) {
             const n = m.el.querySelector(".master-ventana-nombre");
             if (n) {
-                n.textContent = m.titulo || MODULOS[m.tipo].nombre;
+                n.textContent = m.titulo || ocT(MODULOS[m.tipo].nombre);
             }
         }
     }
@@ -7070,7 +7137,7 @@
         const input = crear("input", "oc-dados-texto");
         input.id = "master-personalizar-" + m.id;
         input.value = m.titulo || "";
-        input.placeholder = def.nombre;
+        input.placeholder = ocT(def.nombre);
         input.maxLength = 60;
         input.autocomplete = "off";
         et.htmlFor = input.id;
@@ -7271,7 +7338,7 @@
         guardar();
         return true;
     }
-    const nombreDeVentana = (m) => m.titulo || MODULOS[m.tipo].nombre;
+    const nombreDeVentana = (m) => m.titulo || ocT(MODULOS[m.tipo].nombre);
     function verEnGrupo(m, foco) {
         const todas = delGrupo(m);
         const antes = todas.find((x) => x.delante) || todas[0];
@@ -7462,7 +7529,7 @@
         em.setAttribute("aria-hidden", "true");
         // El nombre es un botón que pliega y despliega la ventana (como en
         // el resto de la web).
-        const nombre = botonDe("master-ventana-nombre", m.titulo || def.nombre, () => {
+        const nombre = botonDe("master-ventana-nombre", m.titulo || ocT(def.nombre), () => {
             if (v.dataset.recienMovida) {
                 delete v.dataset.recienMovida;
                 return;
@@ -7517,7 +7584,7 @@
                 pintarTodo();
             }
             guardar();
-            avisar(ocT("Quitado: {n}.", { n: m.titulo || def.nombre }));
+            avisar(ocT("Quitado: {n}.", { n: m.titulo || ocT(def.nombre) }));
             const sigue = resto[0] && resto[0].el;
             if (!sigue && esModo(estado) && Number.isInteger(m.hueco)) {
                 pintarTodo();
@@ -7946,16 +8013,16 @@
                         detalle: datosRasgo(r).join(" · ") + (r.propio ? ocT(" · 🛠️ tuyo") : ""), buscar: llano(r.nombre + " " + r.en),
                         abrir: (v) => abrirRasgo(r, v, ras.fuente) }));
                     (conj.conjuros || []).forEach((c) => cosas.push({ tipo: "conjuro", emoji: "✨", nombre: c.nombre,
-                        detalle: nivelDe(c) + " · " + c.escuela + (c.propio ? ocT(" · 🛠️ tuyo") : ""), buscar: llano(c.nombre + " " + c.en),
+                        detalle: nivelDe(c) + " · " + verDato(c.escuela) + (c.propio ? ocT(" · 🛠️ tuyo") : ""), buscar: llano(c.nombre + " " + c.en),
                         abrir: (v) => abrirConjuro(c, v, conj.fuente) }));
                     (best.monstruos || []).forEach((b) => cosas.push({ tipo: "monstruo", emoji: tokenDe(b).textContent, nombre: b.nombre,
-                        detalle: ocT("VD {cr} · {tipo}{n}", { cr: b.cr, tipo: b.tipo, n: b.propio ? ocT(" · 🛠️ tuyo") : "" }), buscar: llano(b.nombre + " " + b.en),
+                        detalle: ocT("VD {cr} · {tipo}{n}", { cr: b.cr, tipo: verDato(b.tipo), n: b.propio ? ocT(" · 🛠️ tuyo") : "" }), buscar: llano(b.nombre + " " + b.en),
                         abrir: (v) => abrirBicho(b, v, best.fuente) }));
                     (reg.reglas || []).forEach((r) => cosas.push({ tipo: "regla", emoji: r.icono || "📚", nombre: r.nombre,
                         detalle: ocT("Regla · {grupo}", { grupo: r.grupo }), buscar: llano(r.nombre + " " + (r.alias || "")),
                         abrir: (v) => abrirRegla(r, v, fuenteDeRegla(r, reg.fuente)) }));
                     (tienda.objetos || []).forEach((o) => cosas.push({ tipo: "objeto", emoji: "💰", nombre: o.nombre,
-                        detalle: ocT("Objeto · {cat}{n}{n2}", { cat: o.cat, n: o.rareza ? " · " + o.rareza : "", n2: o.propio ? ocT(" · 🛠️ tuyo") : "" }), buscar: llano(o.nombre + " " + o.en),
+                        detalle: ocT("Objeto · {cat}{n}{n2}", { cat: verDato(o.cat), n: o.rareza ? " · " + verDato(o.rareza) : "", n2: o.propio ? ocT(" · 🛠️ tuyo") : "" }), buscar: llano(o.nombre + " " + o.en),
                         abrir: (v) => abrirObjeto(o, v, tienda.fuente) }));
                     return cosas.concat(deRasgos);
                 });
@@ -8018,7 +8085,7 @@
                     detalle: ocT("Regla propia"), buscar: llano(r.nombre),
                     abrir: (v) => abrirRegla(Object.assign({ propia: true, grupo: ocT("🏠 Reglas propias") }, r), v) }));
                 const otras = leerPropios().otros.map((x) => ({ tipo: "otro", emoji: "📜", nombre: x.nombre,
-                    detalle: ocT("{cat} · 🛠️ tuyo", { cat: x.cat }), buscar: llano(x.nombre + " " + x.cat), abrir: (v) => abrirOtro(x, v) }));
+                    detalle: ocT("{cat} · 🛠️ tuyo", { cat: verDato(x.cat) }), buscar: llano(x.nombre + " " + x.cat), abrir: (v) => abrirOtro(x, v) }));
                 const todas = propias.concat(otras, cosas);
                 // Primero lo que empieza por lo buscado; luego lo que lo lleva.
                 const empieza = todas.filter((x) => x.buscar.startsWith(q));
@@ -8110,13 +8177,13 @@
                 });
                 const em = crear("span", "master-anadir-emoji", def.emoji);
                 em.setAttribute("aria-hidden", "true");
-                const nombre = crear("span", "master-anadir-nombre", def.nombre);
+                const nombre = crear("span", "master-anadir-nombre", ocT(def.nombre));
                 const desc = crear("span", "master-anadir-desc", ya ? ocT("Ya está en el tablero.") : def.desc);
                 b.append(em, nombre, desc);
                 b.disabled = ya;
                 li.appendChild(b);
                 lista.appendChild(li);
-                tarjetas.push({ li, seccion, b, nombre: llano(def.nombre), texto: llano(def.nombre + " " + def.desc + " " + titulo) });
+                tarjetas.push({ li, seccion, b, nombre: llano(ocT(def.nombre)), texto: llano(def.nombre + " " + ocT(def.nombre) + " " + def.desc + " " + titulo) });
             });
             seccion.appendChild(lista);
             return [titulo, seccion];
@@ -8714,7 +8781,7 @@
         const primero = m.el.querySelector(".master-ventana-cuerpo button, .master-ventana-cuerpo input, .master-ventana-cuerpo textarea")
             || m.el.querySelector(".master-ventana-nombre");
         primero.focus();
-        avisar(ocT("Añadido: {n}.", { n: m.titulo || def.nombre }));
+        avisar(ocT("Añadido: {n}.", { n: m.titulo || ocT(def.nombre) }));
     }
 
     // EL PRIMER HUECO LIBRE para una ventana de w × h: empezando por lo
@@ -10106,6 +10173,9 @@
         [ocT("📗 Reglas, monstruos, conjuros y objetos de 2014"), ocT("Esta obra incluye materiales extraídos del Documento de referencia del sistema 5.1 («SRD 5.1») de Wizards of the Coast LLC, que está disponible en https://dnd.wizards.com/es/resources/systems-reference-document. El SRD 5.1 tiene la licencia Creative Commons Atribución/Reconocimiento 4.0 Licencia Pública Internacional, que está disponible en https://creativecommons.org/licenses/by/4.0/legalcode.es."),
         [[ocT("el SRD 5.1"), "https://dnd.wizards.com/es/resources/systems-reference-document"],
             [ocT("la licencia CC BY 4.0"), "https://creativecommons.org/licenses/by/4.0/legalcode.es"]]],
+        [ocT("🇬🇧 El compendio en inglés"), ocT("En inglés, las reglas, los monstruos, los conjuros, los objetos y los rasgos son el texto original del SRD 5.2 y del SRD 5.1 de Wizards of the Coast LLC (CC BY 4.0), sacado de los datos de open5e, del SRD 5.2.1 reForged y de 5e-bits/5e-database (MIT). Las tablas propias de la app están traducidas a mano."),
+        [["open5e", "https://github.com/open5e/open5e-api"], ["SRD 5.2.1 reForged", "https://github.com/oldmanumby/dnd.srd.5.2"],
+            ["5e-database", "https://github.com/5e-bits/5e-database"], [ocT("la licencia CC BY 4.0"), "https://creativecommons.org/licenses/by/4.0/deed.es"]]],
         [ocT("🔊 Sonidos"), ocT("Las grabaciones de sonido ambiente y efectos (cuando vienen con la app) son de la Google Sound Library, con licencia CC BY 4.0. Tus propios audios son tuyos y se quedan en tu dispositivo."),
         [[ocT("Google Sound Library"), "https://developers.google.com/assistant/tools/sound-library"],
             [ocT("la licencia CC BY 4.0"), "https://creativecommons.org/licenses/by/4.0/deed.es"]]],

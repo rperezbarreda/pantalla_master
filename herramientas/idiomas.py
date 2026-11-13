@@ -42,9 +42,12 @@ NOMBRES = {"es": "Castellano", "ca": "Català", "gl": "Galego", "eu": "Euskara",
            "it": "Italiano", "de": "Deutsch"}
 # Los mismos que en scripts/arranque.js.
 FIJOS = {"en", "id", "fuente", "url", "clave", "silabas", "emoji", "icono", "ilus", "ilusDe", "apellido", "glifos",
-         "conjuros", "asalariados", "donde", "cr", "clases", "tiendas", "tienda", "cat", "rareza", "escuela", "tipo",
+         "asalariados", "donde", "cr", "clases", "tiendas", "tienda", "cat", "rareza", "escuela", "tipo",
          "de", "habitat", "marca", "regla", "tipos", "estilos", "et"}
 PIEZAS = {"ini", "m", "f", "n", "fin"}
+# De los FIJOS, los que se enseñan (traducidos con window.ocTd al pintarlos):
+# entran en la plantilla aunque no se traduzcan en su sitio.
+SE_VEN = {"cat", "rareza", "escuela", "tipo", "tiendas", "tienda", "de", "habitat", "et", "clases", "tipos", "estilos", "marca", "donde"}
 LETRAS = re.compile(r"[A-Za-zÀ-ÿ]")
 ATRIBUTOS = {"aria-label", "title", "placeholder", "alt", "aria-description"}
 CODIGO = re.compile(r"^[a-z]{2,3}(-[A-Za-z0-9]{2,8})?$")
@@ -137,7 +140,10 @@ def plantilla_compendio():
 
     def recorrer(x, campo, con_piezas):
         if isinstance(x, str):
-            if campo in FIJOS or (con_piezas and campo in PIEZAS) or not LETRAS.search(x):
+            if campo == "fuente" and " " in x:
+                textos.setdefault(x, x)
+                return
+            if campo in FIJOS and campo not in SE_VEN or (con_piezas and campo in PIEZAS) or not LETRAS.search(x):
                 return
             textos.setdefault(x, x)
         elif isinstance(x, list):
@@ -146,7 +152,7 @@ def plantilla_compendio():
         elif isinstance(x, dict):
             piezas = con_piezas or "especies" in x or "apellidos" in x
             for k, v in x.items():
-                if k not in FIJOS:
+                if k not in FIJOS or k in SE_VEN or k == "fuente":
                     recorrer(v, k, piezas)
 
     datos = os.path.join(RAIZ, "datos")
@@ -189,10 +195,17 @@ def main():
             continue
         # El archivo, con todos los textos de ahora y en el mismo orden que
         # el original: lo traducido, y lo que falta vacío.
-        escribir(os.path.join(TRADUCCIONES, nombre),
-                 {k: dic[k] if isinstance(dic.get(k), str) else "" for k in plantilla})
+        # «@compendio»: para un texto que sale en la interfaz y en el
+        # compendio y en este idioma se dice distinto en cada sitio («Vista»:
+        # «View» en un botón, «Sight» en el alcance de un conjuro).
+        aparte = traducidos(dic.get("@compendio"), compendio)
+        nuevo = {k: dic[k] if isinstance(dic.get(k), str) else "" for k in plantilla}
+        if aparte:
+            nuevo["@compendio"] = aparte
+        escribir(os.path.join(TRADUCCIONES, nombre), nuevo)
         ti = traducidos(dic, interfaz)
         tc = traducidos(dic, compendio)
+        tc.update(aparte)
         with open(os.path.join(IDIOMAS, codigo + ".js"), "w", encoding="utf-8") as f:
             f.write("// Generado por herramientas/idiomas.py desde traducciones/%s.json: no tocar a mano.\n" % codigo)
             f.write("window.ocIdioma.poner(")
