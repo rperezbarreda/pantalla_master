@@ -1,6 +1,7 @@
 # Cada vez que se sube algo a main, hace lo que se descarga y lo deja en la
 # release «ultima» del repo (https://github.com/rperezbarreda/pantalla_master/releases/latest)
-# y en la de su versión («v1.0», la del archivo VERSION), que se queda:
+# y en la de su versión («v1.0», la del archivo VERSION), que se queda; las
+# dos con el texto de herramientas/notas-release.md (qué hace y cómo bajarla):
 #   - los .zip de escritorio (el programa y su carpeta «archivos», para
 #     Windows, macOS y Linux; ver herramientas/construir-ejecutables.py);
 #   - la app de Android (PantallaMaster-Android.apk), firmada con la clave de
@@ -119,7 +120,7 @@ jobs:
           gh release delete ultima --yes --cleanup-tag || true
           gh release create ultima dist/* --latest \
             --title "Pantalla de máster $V (versión ${{ github.run_number }})" \
-            --notes "Baja el .zip de tu sistema, descomprímelo y abre «Pantalla de máster» con doble clic (junto a él va la carpeta «archivos»: déjalos juntos). Windows: PantallaMaster-Windows.zip. Mac: el de tu procesador (Apple Silicon = M1, M2…; si no, Intel). Linux: PantallaMaster-Linux.zip. Tablets Android: PantallaMaster-Android.apk (ábrelo en la tablet y permite instalar apps de esta fuente). Todo lo que hagas se guarda en tu dispositivo; funciona sin conexión."
+            --notes-file herramientas/notas-release.md
       # Y la de su versión («v1.0»…), que se queda: si una versión nueva sale
       # mal, la anterior sigue ahí. Mientras VERSION no cambie, se pone al día
       # con la última compilación; no es la «latest» (la app de Android mira
@@ -131,8 +132,9 @@ jobs:
           V="$(cat VERSION)"
           if gh release view "v$V" >/dev/null 2>&1; then
             gh release upload "v$V" dist/* --clobber
+            gh release edit "v$V" --notes-file herramientas/notas-release.md
           else
             gh release create "v$V" dist/* --latest=false --target "${{ github.sha }}" \
               --title "Pantalla de máster $V" \
-              --notes "Baja el .zip de tu sistema, descomprímelo y abre «Pantalla de máster» con doble clic (junto a él va la carpeta «archivos»: déjalos juntos). Windows: PantallaMaster-Windows.zip. Mac: el de tu procesador (Apple Silicon = M1, M2…; si no, Intel). Linux: PantallaMaster-Linux.zip. Tablets Android: PantallaMaster-Android.apk (ábrelo en la tablet y permite instalar apps de esta fuente). Todo lo que hagas se guarda en tu dispositivo; funciona sin conexión."
+              --notes-file herramientas/notas-release.md
           fi
