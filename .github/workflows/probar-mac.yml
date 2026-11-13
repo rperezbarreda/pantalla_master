@@ -99,7 +99,9 @@ jobs:
             sleep 1
           done
           echo "versión: $(curl -sf http://127.0.0.1:47321/__version)"
-          curl -sf http://127.0.0.1:47321/index.html | grep -q "<title"
+          # (la página, en «/»: /index.html redirige ahí)
+          echo "página: $(curl -sSL -o pagina.html -w '%{http_code}' http://127.0.0.1:47321/)"
+          grep -q "<title" pagina.html
           curl -sf http://127.0.0.1:47321/idiomas/lista.json > /dev/null
-          ls -la "/Applications/" | grep -i "mis-datos" || true
+          cat lanzador.log
           echo "### ${{ matrix.zip }}: arranca y sirve la app ✅" >> "$GITHUB_STEP_SUMMARY"
