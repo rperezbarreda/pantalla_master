@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- El nombre de la app con Android en inglés. -->
+<resources>
+    <string name="app_name">Dungeon Master Screen</string>
+</resources>

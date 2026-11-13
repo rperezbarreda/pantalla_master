@@ -27,10 +27,10 @@
     }
 
     // Los nombres de los campos de nombres.json, para cambiarlos.
-    const CAMPOS_NOMBRES = { ini: "principios (sílabas)", f: "finales femeninos", m: "finales masculinos", n: "finales neutros",
-        fin: "segunda parte", pre: "principio (va pegado al final)", adj: "final (va pegado al principio)",
-        base: "lo primero", de: "lo de después", sust: "el nombre y su género («La Jarra | f»)" };
-    const CAMPOS_TABERNA = { adj: "lo de después, masculino | femenino («Dorado | Dorada»)" };
+    const CAMPOS_NOMBRES = { ini: ocT("principios (sílabas)"), f: ocT("finales femeninos"), m: ocT("finales masculinos"), n: ocT("finales neutros"),
+        fin: ocT("segunda parte"), pre: ocT("principio (va pegado al final)"), adj: ocT("final (va pegado al principio)"),
+        base: ocT("lo primero"), de: ocT("lo de después"), sust: ocT("el nombre y su género («La Jarra | f»)") };
+    const CAMPOS_TABERNA = { adj: ocT("lo de después, masculino | femenino («Dorado | Dorada»)") };
 
     function montarNombres(dentro, m) {
         m.datos = m.datos || {};

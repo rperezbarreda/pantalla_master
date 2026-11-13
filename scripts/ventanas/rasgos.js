@@ -34,7 +34,7 @@
             const tipo = campo(elegir([["", ocT("todos")]].concat(tipos.map((t) => [t, t]))), ocT("qué"), "master-rasgos-tipo-");
             const des = Array.from(new Set(todos.filter((x) => x.r.tipo !== "rasgo de clase" || !/\(/.test(x.r.de))
                 .flatMap((x) => String(x.r.de || "").replace(/ \(.*$/, "").split(/,\s*/)).filter((d) => d && d !== "dote"))).sort((a, b) =>
-                a.localeCompare(b, "es"));
+                a.localeCompare(b, window.ocLocale));
             const de = campo(elegir([["", ocT("todas")]].concat(des.map((t) => [t, t]))), ocT("clase o especie"), "master-rasgos-de-");
             const input = campo(Object.assign(PM.crear("input", "oc-dados-texto"), { type: "search", placeholder: ocT("furia, alerta, sneak attack…") }),
                 ocT("buscar"), "master-rasgos-");

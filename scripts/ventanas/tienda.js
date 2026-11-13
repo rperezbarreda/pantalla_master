@@ -24,10 +24,10 @@
                 sel.value = valor || "";
                 return [et, sel];
             };
-            const [etTienda, tienda] = elegir("master-tienda-", "tienda",
+            const [etTienda, tienda] = elegir("master-tienda-", ocT("tienda"),
                 [["", ocT("todas")]].concat((datos.tiendas || []).map((t) => [t, t])), m.datos.tienda);
-            const [etCat, cat] = elegir("master-tienda-cat-", "categoría", [["", ocT("todas")]], "");
-            const [etRareza, rareza] = elegir("master-tienda-rareza-", "rareza",
+            const [etCat, cat] = elegir("master-tienda-cat-", ocT("categoría"), [["", ocT("todas")]], "");
+            const [etRareza, rareza] = elegir("master-tienda-rareza-", ocT("rareza"),
                 [["", ocT("todas")]].concat(PM.RAREZAS.map((r) => [r, r])), m.datos.rareza);
             // El precio de la tienda, en %: 100 es lo normal; 80, un 20 % más
             // barato; 150, la mitad más caro. (Lo de antes, ×1,5…, pasa a %.)

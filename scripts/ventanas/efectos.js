@@ -12,7 +12,7 @@
     // evento «oc-iniciativa:guardada» de personajes.js) y con el tiempo
     // del calendario («master:tiempo»); también a mano. Escribiendo el
     // nombre de un conjuro del SRD, se pone solo su duración. ----
-    const UNIDADES = [["rondas", "rondas", 6], ["minutos", "minutos", 60], ["horas", "horas", 3600], ["dias", "días", 86400]];
+    const UNIDADES = [["rondas", ocT("rondas"), 6], ["minutos", ocT("minutos"), 60], ["horas", ocT("horas"), 3600], ["dias", ocT("días"), 86400]];
 
     // «Concentración, hasta 10 minutos» → {n: 10, unidad: "minutos", conc}.
     function duracionDe(texto) {

@@ -25,7 +25,7 @@
                 const total = PM.crear("p", "oc-hoja-nota");
                 const pintarTotal = () => {
                     const po = PM.MONEDAS_PJ.reduce((s, [k]) => s + (PM.numPj(inv.dinero[k]) || 0) * ORO_DE_MONEDA[k], 0);
-                    total.textContent = ocT("En total: {toLocaleString} po", { toLocaleString: (Math.round(po * 100) / 100).toLocaleString("es-ES") });
+                    total.textContent = ocT("En total: {toLocaleString} po", { toLocaleString: (Math.round(po * 100) / 100).toLocaleString(window.ocLocale) });
                 };
                 PM.MONEDAS_PJ.forEach(([k, abr, nom]) => {
                     const lab = PM.crear("label", "master-inv-moneda");

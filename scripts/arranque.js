@@ -187,6 +187,8 @@
     } catch (e) {
         prueba = null;
     }
+    // El idioma para fechas, números (1.000 o 1,000) y ordenar.
+    window.ocLocale = codigo === "es" ? "es-ES" : codigo;
     if (prueba && (typeof prueba !== "object" || prueba.codigo !== codigo || !prueba.textos)) {
         prueba = null;
     }

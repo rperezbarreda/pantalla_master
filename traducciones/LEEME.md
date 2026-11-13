@@ -7,6 +7,7 @@ La app está escrita en castellano. Aquí hay un archivo por idioma, y cualquier
 | `es.json` | Castellano: el **original**. No se cambia (se rehace solo). |
 | `ca.json` | Català |
 | `gl.json` | Galego |
+| `en.json` | English |
 | `eu.json` | Euskara |
 
 ## Cómo se traduce

@@ -1666,8 +1666,8 @@ document.querySelectorAll(".oc-ataques th[data-oc-desc]").forEach((th) => {
     }
 
     // LA ESCALERA DE FATE (la misma que en sistemas_rol.py).
-    const ESCALERA = { 8: "Legendario", 7: "Épico", 6: "Fantástico", 5: "Soberbio", 4: "Grande", 3: "Bueno",
-        2: "Normal", 1: "Mediano", 0: "Mediocre", "-1": "Malo", "-2": "Terrible" };
+    const ESCALERA = { 8: ocT("Legendario"), 7: ocT("Épico"), 6: ocT("Fantástico"), 5: ocT("Soberbio"), 4: ocT("Grande"), 3: ocT("Bueno"),
+        2: ocT("Normal"), 1: ocT("Mediano"), 0: ocT("Mediocre"), "-1": ocT("Malo"), "-2": ocT("Terrible") };
 
     function escalera(n) {
         return ESCALERA[Math.max(-2, Math.min(8, n))] || "";
@@ -1689,8 +1689,8 @@ document.querySelectorAll(".oc-ataques th[data-oc-desc]").forEach((th) => {
         const dieces = todos.filter((x) => x === 10).length;
         const parejas = Math.floor(dieces / 2);
         const exitos = todos.filter((x) => x >= 6).length + parejas * 2;
-        const r = guardarTirada({ que: que || "reserva", formula: formula || "v5:" + n, total: exitos,
-            unidad: exitos === 1 ? "éxito" : "éxitos", partes: [], d20: null,
+        const r = guardarTirada({ que: que || ocT("reserva"), formula: formula || "v5:" + n, total: exitos,
+            unidad: exitos === 1 ? ocT("éxito") : ocT("éxitos"), partes: [], d20: null,
             dados3d: normales.map((v) => ({ caras: 10, valor: v, color: "vampiro" }))
                 .concat(deHambre.map((v) => ({ caras: 10, valor: v, color: "hambre" }))) });
         r.desglose = n + "d10 [" + (normales.join(", ") || "—") + "]" + (hambre ? ocT(" · hambre [{n}]", { n: deHambre.join(", ") }) : "");
@@ -1699,7 +1699,7 @@ document.querySelectorAll(".oc-ataques th[data-oc-desc]").forEach((th) => {
         const bestial = deHambre.includes(1);
         r.critico = parejas > 0 && !sucio;
         r.pifia = !!sucio || (bestial && !exitos);
-        r.nota = [parejas ? (sucio ? ocT("crítico sucio") : "crítico") : "",
+        r.nota = [parejas ? (sucio ? ocT("crítico sucio") : ocT("crítico")) : "",
             bestial ? (exitos ? ocT("un 1 de hambre: si no llega, fallo bestial") : ocT("fallo bestial")) : ""]
             .filter(Boolean).join("; ");
         return terminar(r);
@@ -1771,7 +1771,7 @@ document.querySelectorAll(".oc-ataques th[data-oc-desc]").forEach((th) => {
             sonarFinal(r.critico);
         }
         pintarHistorial();
-        avisar(dicho(r).replace(r.que + ":", r.que + " con " + modo + ":") + ". " + r.desglose);
+        avisar(dicho(r).replace(r.que + ":", r.que + ocT(" con ") + modo + ":") + ". " + r.desglose);
         const li = historial.querySelector('[data-id="' + r.id + '"] .oc-dados-repetir');
         if (li) {
             li.focus();
@@ -3421,7 +3421,7 @@ window.ocMontar.notas = function (sitio, opciones) {
     const fecha = crear("button", "oc-vida-accion", ocT("📅 poner la fecha"));
     fecha.type = "button";
     fecha.addEventListener("click", () => {
-        const hoy = new Date().toLocaleDateString("es-ES", { day: "numeric", month: "long", year: "numeric" });
+        const hoy = new Date().toLocaleDateString(window.ocLocale, { day: "numeric", month: "long", year: "numeric" });
         texto.value = (texto.value.trim() ? texto.value.replace(/\s*$/, "") + "\n\n" : "") + "## " + hoy + "\n";
         partida.guardar("notas", texto.value);
         texto.focus();

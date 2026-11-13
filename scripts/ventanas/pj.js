@@ -40,7 +40,7 @@
             // Sin el compendio: se quedan en negrita.
         });
     }
-    const NIVELES_COMP = ["", "competente", "pericia"];
+    const NIVELES_COMP = ["", ocT("competente"), ocT("pericia")];
     // Los tipos de acción (lo de antes de «:» en pj.acciones, en llano) y
     // su título.
     const TIPOS_ACCION = [[/^accion$|^action$/, ocT("🌀 Acciones")], [/adicional|bonus/, ocT("⚡ Acciones adicionales")],
@@ -91,14 +91,14 @@
                 return;
             }
             const de = (mt[2] || "").trim();
-            const nivel = /^(.*?),\s*(nivel \d+)$/i.exec(de);
+            const nivel = /^(.*?),\s*((?:nivel|level) \d+)$/i.exec(de);
             const llano = PM.llano(de);
             let g = ocT("⭐ Otros rasgos");
             let resto = "";
             if (nivel) {
                 g = ocT("⚔️ Clase: {clase}", { clase: nivel[1] });
                 resto = nivel[2];
-            } else if (/^(especie|raza|race)$/.test(llano) || igual(de, pj.raza)) {
+            } else if (/^(especie|raza|race|species)$/.test(llano) || igual(de, pj.raza)) {
                 g = ocT("🧬 Especie");
             } else if (/^(clase|class)$/.test(llano) || igual(de, pj.clase)) {
                 g = ocT("⚔️ Clase");
@@ -333,8 +333,8 @@
             panelHab.appendChild(listaDe(PM.HABILIDADES_PJ.filter(([, k]) => car(k) !== null).map(([nombre, k]) => {
                 const nv = pj.habilidades[nombre] || 0;
                 return [PM.crear("span", "master-pj-marca-comp", nv === 2 ? "◆" : nv === 1 ? "●" : "○"),
-                    PM.crear("span", "", nombre + " (" + PM.CAR_ABR[k] + ")" + (nv ? " · " + NIVELES_COMP[nv] : "")),
-                    PM.dadoPj(PM.bonoHabPj(pj, nombre), ocT("{nombre} de {quien}", { nombre: nombre, quien: quien }))];
+                    PM.crear("span", "", PM.verHab(nombre) + " (" + PM.CAR_ABR[k] + ")" + (nv ? " · " + NIVELES_COMP[nv] : "")),
+                    PM.dadoPj(PM.bonoHabPj(pj, nombre), ocT("{nombre} de {quien}", { nombre: PM.verHab(nombre), quien: quien }))];
             }), ocT("Habilidades de {quien}", { quien: quien })));
             panelHab.appendChild(datosDe([[ocT("👁️ Percepción pasiva"), PM.pasivaPj(pj, "per")], [ocT("🔍 Investigación pasiva"),
                 PM.pasivaPj(pj, "inv")], [ocT("💭 Perspicacia pasiva"), PM.pasivaPj(pj, "persp")], [ocT("Sentidos"), pj.sentidos],
@@ -1259,10 +1259,10 @@
         pF.appendChild(fsS);
         const hs = grupo(ocT("Habilidades"));
         destino = pC;
-        const habs = PM.HABILIDADES_PJ.map(([nom, k]) => [nom, campo(hs, nom + " (" + PM.CAR_ABR[k] + ")", pj.habilidades[nom] || 0,
-            { opciones: [["0", "—"], ["1", "competente"], ["2", "pericia"]] })]);
-        const leerAtaques = filasDe(ocT("Ataques"), pj.ataques, [["nombre", ocT("arma o ataque")], ["bono", "bono", { ayuda: "+5" }],
-            ["dano", "daño", { ayuda: ocT("1d8+3 cortante") }]], () => ({ nombre: "", bono: "", dano: "" }));
+        const habs = PM.HABILIDADES_PJ.map(([nom, k]) => [nom, campo(hs, PM.verHab(nom) + " (" + PM.CAR_ABR[k] + ")", pj.habilidades[nom] || 0,
+            { opciones: [["0", "—"], ["1", ocT("competente")], ["2", ocT("pericia")]] })]);
+        const leerAtaques = filasDe(ocT("Ataques"), pj.ataques, [["nombre", ocT("arma o ataque")], ["bono", ocT("bono"), { ayuda: "+5" }],
+            ["dano", ocT("daño"), { ayuda: ocT("1d8+3 cortante") }]], () => ({ nombre: "", bono: "", dano: "" }));
         const acc = campo(grupo(ocT("Acciones especiales")), ocT("una por línea"), pj.acciones.join("\n"), { filas: 3, ancho: true,
             ayuda: ocT("Acción adicional: Forma salvaje (2 usos, descanso corto)") });
         destino = pM;
