@@ -1,0 +1,106 @@
+# Prueba la app de Mac en un Mac de verdad (los de GitHub), como si alguien
+# la bajara de internet: hace los .zip igual que «ejecutables», le pone a la
+# app la marca de «bajado de internet» (la cuarentena, lo que hace que macOS
+# diga «está dañada») y mira:
+#   1. que la firma está bien (codesign, con las herramientas de Apple);
+#   2. qué diría Gatekeeper al abrirla: sin cuenta de desarrollador de Apple
+#      lo normal es «no se puede comprobar el desarrollador» (se abre con
+#      «Abrir igualmente»); si dice que está dañada o sin firmar, falla;
+#   3. que arranca y sirve la app (quitándole la marca, como «Abrir
+#      igualmente»).
+# El resumen sale en la ejecución (Actions → probar-mac).
+name: probar-mac
+
+on:
+  push:
+    branches: [desarrollo, main]
+    paths:
+      - "lanzador/**"
+      - "herramientas/construir-ejecutables.py"
+      - ".github/workflows/probar-mac.yml"
+  workflow_dispatch:
+
+jobs:
+  construir:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version: "1.22"
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Pillow y rcodesign
+        run: |
+          pip install pillow
+          curl -sSL -o /tmp/rcodesign.tgz "https://github.com/indygreg/apple-platform-rs/releases/download/apple-codesign%2F0.29.0/apple-codesign-0.29.0-x86_64-unknown-linux-musl.tar.gz"
+          echo "dbe85cedd8ee4217b64e9a0e4c2aef92ab8bcaaa41f20bde99781ff02e600002  /tmp/rcodesign.tgz" | sha256sum -c -
+          tar xzf /tmp/rcodesign.tgz -C /tmp
+          echo "RCODESIGN=/tmp/apple-codesign-0.29.0-x86_64-unknown-linux-musl/rcodesign" >> "$GITHUB_ENV"
+      - name: Construir
+        run: python3 herramientas/construir-ejecutables.py
+      - uses: actions/upload-artifact@v6
+        with:
+          name: mac
+          path: dist/PantallaMaster-macOS-*.zip
+          retention-days: 3
+
+  probar:
+    needs: construir
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - mac: macos-latest
+            zip: AppleSilicon
+          - mac: macos-15-intel
+            zip: Intel
+    runs-on: ${{ matrix.mac }}
+    steps:
+      - uses: actions/download-artifact@v7
+        with:
+          name: mac
+      - name: Descomprimir (como el Finder) y llevar a Aplicaciones
+        run: |
+          sw_vers
+          ditto -x -k "PantallaMaster-macOS-${{ matrix.zip }}.zip" descomprimido
+          APP="/Applications/Pantalla de máster.app"
+          rm -rf "$APP"
+          ditto "descomprimido/Pantalla de máster.app" "$APP"
+          # La marca que pone el navegador a lo que se baja.
+          xattr -w -r com.apple.quarantine "0081;$(printf %x "$(date +%s)");Google Chrome;" "$APP"
+          xattr -l "$APP/Contents/MacOS/pantalla-master"
+          echo "APP=$APP" >> "$GITHUB_ENV"
+      - name: 1. La firma (codesign)
+        run: |
+          codesign -dv --verbose=4 "$APP" 2>&1 | grep -E "Identifier|Format|Signature|Sealed|Info.plist" || true
+          codesign --verify --deep --strict --verbose=2 "$APP"
+          echo "### ${{ matrix.zip }}: la firma está bien ✅" >> "$GITHUB_STEP_SUMMARY"
+      - name: 2. Qué diría Gatekeeper
+        run: |
+          SALE=$(spctl --assess --type execute -vv "$APP" 2>&1 || true)
+          echo "$SALE"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"; echo "$SALE" >> "$GITHUB_STEP_SUMMARY"; echo '```' >> "$GITHUB_STEP_SUMMARY"
+          syspolicy_check distribution "$APP" 2>&1 | tee -a "$GITHUB_STEP_SUMMARY" || true
+          # Lo que en el Mac sale como «está dañada» o «no se puede abrir».
+          if echo "$SALE" | grep -qiE "not signed at all|sealed resource|invalid|no resources but signature|damaged"; then
+            echo "### ❌ macOS diría que está dañada o sin firmar" >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+          echo "### Gatekeeper: sin «dañada» ✅ (lo esperado: pide «Abrir igualmente» la primera vez)" >> "$GITHUB_STEP_SUMMARY"
+      - name: 3. Que arranca y sirve la app
+        run: |
+          # Como al pulsar «Abrir igualmente»: sin la marca.
+          xattr -cr "$APP"
+          "$APP/Contents/MacOS/pantalla-master" > lanzador.log 2>&1 &
+          for i in $(seq 1 30); do
+            if curl -sf http://127.0.0.1:47321/__version > /dev/null; then break; fi
+            sleep 1
+          done
+          echo "versión: $(curl -sf http://127.0.0.1:47321/__version)"
+          curl -sf http://127.0.0.1:47321/index.html | grep -q "<title"
+          curl -sf http://127.0.0.1:47321/idiomas/lista.json > /dev/null
+          ls -la "/Applications/" | grep -i "mis-datos" || true
+          cat lanzador.log
+          echo "### ${{ matrix.zip }}: arranca y sirve la app ✅" >> "$GITHUB_STEP_SUMMARY"
