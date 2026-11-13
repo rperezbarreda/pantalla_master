@@ -102,5 +102,4 @@ jobs:
           curl -sf http://127.0.0.1:47321/index.html | grep -q "<title"
           curl -sf http://127.0.0.1:47321/idiomas/lista.json > /dev/null
           ls -la "/Applications/" | grep -i "mis-datos" || true
-          cat lanzador.log
           echo "### ${{ matrix.zip }}: arranca y sirve la app ✅" >> "$GITHUB_STEP_SUMMARY"
