@@ -4,6 +4,26 @@ Una pantalla de máster para rol (D&D 5e, SRD 5.2) que funciona **sin conexión*
 
 Es gratis, sin anuncios y sin nada de pago. Sale de la pantalla de máster de [El Blog de Richi](https://richi.blog/web/pantalla_master/pantalla_master.html), con su diseño y sus temas de accesibilidad, pero sin el blog alrededor.
 
+## Gratis, libre y hecha con IA
+
+> Esta aplicación es y será siempre **totalmente gratuita**, sin anuncios ni compras, y de **código libre** (licencia MIT). La he programado con ayuda de la inteligencia artificial y no me parece lícito lucrarme con ello.
+>
+> **No recoge ningún dato**: todo lo que haces se queda en tu dispositivo, sin cuentas, sin rastreadores y sin nada que se suba a ningún sitio.
+>
+> Está pensada para que la pueda usar **todo el mundo**: con teclado, con lector de pantalla, con el texto más grande y con temas de alto contraste. Si algo no te funciona, dímelo.
+>
+> Te agradezco mucho que la compartas. Y si quieres aportar algo, lo mejor es que ese dinero vaya a algún **refugio de animales de tu zona**: seguro que le dan mucho mejor uso que yo.
+>
+> Cualquiera es libre de clonar la aplicación y su código y cambiarlos a su gusto.
+>
+> Eso sí: aunque la app permite crear y ampliar los compendios, te recomiendo **no publicar contenido de terceros** (manuales, aventuras, suplementos…). La app usa el SRD y las reglas básicas porque son de libre uso.
+>
+> Ideas, fallos o ganas de colaborar: [contacto@richi.blog](mailto:contacto@richi.blog).
+>
+> — Richi
+
+Este manifiesto sale en la app la primera vez, antes de crear la campaña, y siempre al final de ⚙ opciones.
+
 ## Usarla
 
 - **Con un doble clic (lo más fácil):** baja el `.zip` de tu sistema de [la última versión](https://github.com/rperezbarreda/pantalla_master/releases/latest) y descomprímelo. Dentro hay una carpeta «Pantalla de máster» con el programa y, a su lado, la carpeta «archivos» (la app: no hace falta tocarla). Abre el programa con doble clic: se abre en su propia ventana, sin internet y sin instalar nada.
